@@ -1,0 +1,33 @@
+# --- generated data: regenerable from scripts + config + seed, never committed
+data/generated/*.root
+data/generated/*.hepmc
+data/generated/*.lhe
+data/processed/*.parquet
+data/processed/*.root
+# raw = downloaded public data; keep the provenance JSON, not the payload
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/*.json
+!data/raw/*.md
+
+# --- figures/tables ARE committed (they are the record of what we found),
+#     but the ROOT histogram dumps are large and regenerable
+results/tables/*.root
+results/logs/*.log
+
+# --- python / build
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.so
+*.o
+*.d
+build/
+.venv/
+env/
+
+# --- editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

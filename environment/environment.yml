@@ -1,0 +1,55 @@
+# ---------------------------------------------------------------------------
+# heavy-ion-computing : Module 0-4 environment  (WSL2 Ubuntu / any Linux x86_64)
+#
+#   micromamba create -f environment/environment.yml
+#   micromamba activate hic
+#
+# Everything here is a conda-forge BINARY package: no compiling ROOT or PYTHIA
+# from source, which is where most beginners lose a weekend.  Versions are given
+# as lower bounds; the exact resolved versions are recorded by
+# `environment/verify_environment.py` into environment/versions_installed.txt,
+# which IS the reproducibility record (this file is only the request).
+#
+# Deliberately NOT here yet (added when a module needs them, per the project
+# plan): madgraph, delphes, rivet, lhapdf, jetscape, jewel, ampt.
+# ---------------------------------------------------------------------------
+name: hic
+channels:
+  - conda-forge
+dependencies:
+  # --- interpreter & toolchain -------------------------------------------
+  - python=3.11            # ROOT's PyROOT builds track specific Python minors
+  - compilers              # conda-forge gcc/gfortran matched to the packages
+  - cmake>=3.28
+  - make
+  - pkg-config
+  - git
+
+  # --- the HEP core -------------------------------------------------------
+  - root>=6.32             # TFile/TTree/RDataFrame/PyROOT   (Module 1)
+  - pythia8>=8.311         # event generator, incl. Angantyr (Modules 2, 8)
+  - hepmc3>=3.2            # standard event-record interchange format (Module 3)
+  - fastjet>=3.4           # sequential-recombination jet clustering (Module 4)
+  - fastjet-cxx            # C++ headers/libs for standalone compilation
+
+  # --- modern Python analysis stack --------------------------------------
+  - numpy>=1.26
+  - scipy>=1.11
+  - matplotlib-base>=3.8
+  - pandas>=2.0
+  - pyyaml
+  - uproot>=5.3            # read/write ROOT files with no ROOT installed
+  - awkward>=2.6           # jagged (variable-length) arrays
+  - vector>=1.4            # Lorentz-vector operations on awkward arrays
+  - hist>=2.7              # histograms with proper error handling
+  - mplhep>=0.3            # ALICE/ATLAS/CMS plot styles
+  - particle>=0.24         # PDG particle database (masses, names, IDs)
+  - hepunits
+  - iminuit>=2.25          # the fitter used throughout HEP (MINUIT2)
+  - pyarrow                # parquet I/O for intermediate/derived data
+
+  # --- notebooks & tooling ------------------------------------------------
+  - jupyterlab
+  - ipykernel
+  - tqdm
+  - pytest

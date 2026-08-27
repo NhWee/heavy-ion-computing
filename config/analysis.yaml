@@ -1,0 +1,65 @@
+# ---------------------------------------------------------------------------
+# Module 1 configuration.  Every physics parameter lives here, never inside the
+# code: this file IS the provenance of the numbers and figures in results/.
+# ---------------------------------------------------------------------------
+generator:
+  name: hicpy.toy_generator
+  n_events: 20000
+  seed: 20260827
+  sqrt_s_TeV: 13.0          # label; shape parameters below encode the energy
+  nbd_nbar: 60.0            # mean charged multiplicity
+  nbd_k: 2.2                # NBD width parameter (smaller = wider)
+  eta_plateau: 2.0
+  eta_sigma: 1.6
+  eta_max: 6.0
+  tsallis_T: 0.135          # GeV
+  tsallis_n: 6.8
+  pt_min: 0.15              # GeV/c
+  pt_max: 60.0              # GeV/c
+  frac_pi: 0.83
+  frac_K: 0.12
+  frac_p: 0.05
+  z_fraction: 0.02
+  z_pt_scale: 8.0           # GeV/c
+  z_y_sigma: 1.8
+
+analysis:
+  # --- event selection ---
+  event_selection: "all generated events (no trigger emulation in Module 1)"
+  # --- track selection (mimics a typical central-barrel acceptance) ---
+  track_cuts:
+    pt_min: 0.15            # GeV/c
+    pt_max: 50.0            # GeV/c
+    eta_abs_max: 0.8        # ALICE central-barrel-like acceptance
+    charged_only: true
+  # --- muon selection for the Z candidate ---
+  muon_cuts:
+    pt_min: 20.0            # GeV/c
+    eta_abs_max: 2.4        # CMS/ATLAS muon-system-like acceptance
+  # --- binning (bin edges are part of the result; never rebin by eye) ---
+  binning:
+    pt:
+      type: log
+      n_bins: 40
+      lo: 0.15
+      hi: 50.0
+    eta:
+      type: linear
+      n_bins: 60
+      lo: -6.0
+      hi: 6.0
+    mult:
+      type: linear
+      n_bins: 60
+      lo: 0.0
+      hi: 240.0
+    mass:
+      type: linear
+      n_bins: 60
+      lo: 60.0
+      hi: 120.0
+
+paths:
+  generated_file: data/generated/m01_toy_events.root
+  figure_dir: results/figures
+  table_dir: results/tables

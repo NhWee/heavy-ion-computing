@@ -1,0 +1,33 @@
+{
+  "generator": "hicpy.toy_generator",
+  "config_file": "analysis.yaml",
+  "config": {
+    "n_events": 20000,
+    "seed": 20260827,
+    "sqrt_s_TeV": 13.0,
+    "nbd_nbar": 60.0,
+    "nbd_k": 2.2,
+    "eta_plateau": 2.0,
+    "eta_sigma": 1.6,
+    "eta_max": 6.0,
+    "tsallis_T": 0.135,
+    "tsallis_n": 6.8,
+    "pt_min": 0.15,
+    "pt_max": 60.0,
+    "frac_pi": 0.83,
+    "frac_K": 0.12,
+    "frac_p": 0.05,
+    "z_fraction": 0.02,
+    "z_pt_scale": 8.0,
+    "z_y_sigma": 1.8
+  },
+  "produced_utc": "2026-08-27T12:08:50Z",
+  "git_commit": "unknown",
+  "python": "3.11.15",
+  "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+  "versions": {
+    "numpy": "2.4.6",
+    "awkward": "2.13.0",
+    "uproot": "5.7.6"
+  }
+}
