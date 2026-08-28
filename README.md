@@ -131,7 +131,17 @@ heavy-ion-computing/
 
 ---
 
-## 6. 문서 규약
+## 6. GitHub / Notion
+
+- 원격: `https://github.com/NhWee/heavy-ion-computing.git` — 설정과 첫 push 절차는
+  [`docs/github_setup.md`](docs/github_setup.md)
+- Notion 허브: [HIC Computing — 연구 허브](https://app.notion.com/p/3c96974402a681d5bbfdd050e0af6ebe)
+  - 작업 로그 (Work Log) — 세션별 기록, 커밋 해시·seed 포함
+  - 실패 보고 (Failure Report) — 오답노트, 심각도·영역·가드 위치 포함
+
+**"무엇을 했다"는 GitHub, "왜 그렇게 했고 무엇이 안 됐다"는 Notion.**
+
+## 7. 문서 규약
 
 - [`docs/research_log.md`](docs/research_log.md) — 세션마다 Question / Physics /
   Tool / Procedure / Result / Interpretation / Problems / Next step
