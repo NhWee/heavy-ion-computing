@@ -29,6 +29,8 @@ dependencies:
   - root>=6.32             # TFile/TTree/RDataFrame/PyROOT   (Module 1)
   - pythia8>=8.311         # event generator, incl. Angantyr (Modules 2, 8)
   - hepmc3>=3.2            # standard event-record interchange format (Module 3)
+  - pyhepmc>=2.13          # Python bindings for HepMC3 (the conda `hepmc3`
+                           # package ships only the C++ library + headers)
   - fastjet>=3.4           # sequential-recombination jet clustering (Module 4)
   - fastjet-cxx            # C++ headers/libs for standalone compilation
 

@@ -34,7 +34,7 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "analysis"))
 
 from m01_analysis_uproot import (tsallis_invariant, do_fit, make_edges,      # noqa: E402
-                                 hist_with_errors, centers_widths)
+                                 hist_weighted, centers_widths)
 
 SPECIES = [("pi+-", 211, 0.13957039), ("K+-", 321, 0.493677),
            ("p/pbar", 2212, 0.93827208816)]
@@ -70,9 +70,9 @@ def main() -> int:
     for name, code, m0 in SPECIES:
         sel = (apdg == code) & (abs(eta) < eta_max)
         vals = ak.to_numpy(ak.flatten(pt[sel]))
-        c, err = hist_with_errors(vals, edges)
-        norm = 2.0 * np.pi * ctr * n_ev * w * norm_deta
-        y, ye = c / norm, err / norm
+        wts = 1.0 / (2.0 * np.pi * vals * norm_deta)
+        sumw, sumw_err = hist_weighted(vals, wts, edges)
+        y, ye = sumw / (n_ev * w), sumw_err / (n_ev * w)
         fit = do_fit(lambda x, C, T, n, _m=m0: tsallis_invariant(x, C, T, n, _m),
                      ctr, y, ye, p0=[y[0] * 2, 0.13, 7.0],
                      bounds=([0, 0.01, 1.0], [np.inf, 1.0, 50.0]), label=name)
@@ -91,10 +91,11 @@ def main() -> int:
     # deliberate non-closure: inclusive charged hadrons fitted with the pion mass
     sel = ((apdg == 211) | (apdg == 321) | (apdg == 2212)) & (abs(eta) < eta_max)
     vals = ak.to_numpy(ak.flatten(pt[sel]))
-    c, err = hist_with_errors(vals, edges)
-    norm = 2.0 * np.pi * ctr * n_ev * w * norm_deta
-    fit = do_fit(tsallis_invariant, ctr, c / norm, err / norm,
-                 p0=[(c / norm)[0] * 2, 0.13, 7.0],
+    wts = 1.0 / (2.0 * np.pi * vals * norm_deta)
+    sumw, sumw_err = hist_weighted(vals, wts, edges)
+    y, ye = sumw / (n_ev * w), sumw_err / (n_ev * w)
+    fit = do_fit(tsallis_invariant, ctr, y, ye,
+                 p0=[y[0] * 2, 0.13, 7.0],
                  bounds=([0, 0.01, 1.0], [np.inf, 1.0, 50.0]), label="inclusive")
     print(f"{'incl.':8s} {len(vals):9d} {fit['params'][1]*1000:8.1f} +- "
           f"{fit['errors'][1]*1000:4.1f} {(fit['params'][1]-T_true)/fit['errors'][1]:6.1f} "

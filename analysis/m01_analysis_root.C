@@ -4,7 +4,11 @@
 //
 //   root -l -b -q 'analysis/m01_analysis_root.C("data/generated/m01_toy_events.root")'
 //
-// STATUS: written against the ROOT 6.32 API but NOT executed here -- the
+// NOTE: the default arguments below MUST match config/analysis.yaml.  A C++
+// macro cannot read the YAML, so this is the one place in the repository where a
+// number is duplicated -- if you change the config, change these too.
+//
+// STATUS: written against the ROOT 6.32+ API but NOT executed here -- the
 // container this repository was bootstrapped in has no ROOT installation
 // (conda-forge is unreachable from it).  Run it in the WSL2 `hic` environment
 // and record the outcome in docs/troubleshooting.md.
@@ -21,6 +25,7 @@
 #include <TH1F.h>
 #include <TF1.h>
 #include <TCanvas.h>
+#include <TVirtualPad.h>
 #include <TStyle.h>
 #include <TMath.h>
 #include <Math/Vector4D.h>

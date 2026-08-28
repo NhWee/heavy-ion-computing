@@ -22,6 +22,8 @@ echo "### Module 1 : ROOT arm (skipped automatically if ROOT is absent)"
 if $PY -c "import ROOT" 2>/dev/null; then
     $PY analysis/m01_analysis_pyroot.py
     root -l -b -q 'analysis/m01_analysis_root.C("data/generated/m01_toy_events.root")'
+    echo "### Module 1 : cross-check the two arms"
+    $PY analysis/m01_compare_arms.py
 else
     echo "  ROOT not installed -- skipping (see environment/setup_wsl2.sh)"
 fi

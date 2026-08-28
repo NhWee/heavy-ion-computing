@@ -154,3 +154,73 @@ float32는 유효숫자 ~7자리. E ≈ |p| 인 상대론적 입자에서 `E²-p
 
 **배운 점**
 실험 파일이 pT/eta/phi/mass를 따로 저장하는 이유가 여기에 있다.
+
+---
+
+## #7 두 arm이 어긋나는 진짜 원인: 1/pT Jacobian을 어디서 적용하는가
+
+**증상**
+uproot arm과 ROOT arm이 같은 파일에서 불변 pT 수율을 몇 %씩 다르게 냈다
+(실행 전 코드 검토에서 발견).
+
+**원인**
+불변 수율 $\frac{1}{2\pi p_{\rm T}}\frac{d^2N}{dp_{\rm T}d\eta}$ 에서 $1/p_{\rm T}$를
+- Python 초판: **bin 중심** $p_{\rm T}$로 나눔 (히스토그램을 채운 뒤 일괄 처리)
+- ROOT 매크로: `Fill(pt, 1/(2π·pt·Δη))` 로 **입자마다** 자기 $p_{\rm T}$ 사용
+
+로그 bin은 폭이 넓어서(고-pT에서 한 bin이 수 GeV) 두 방식이 수 % 차이가 난다.
+
+**해결**
+둘 다 **입자별 가중치**로 통일. 물리적으로도 이쪽이 옳다 — bin 중심 근사는
+bin 안에서 스펙트럼이 평평하다고 가정하는데, 급격히 떨어지는 스펙트럼에서는 거짓이다.
+가중 히스토그램이므로 오차도 $\sqrt{N}$이 아니라 $\sqrt{\sum w_i^2}$ (= ROOT의 `Sumw2`).
+`hist_weighted()` 헬퍼로 분리.
+
+**부수 효과**
+파이온 closure fit의 χ²/ndf가 0.91 → 0.50으로 개선. 편향이 있었다는 방증.
+
+**배운 점**
+같은 관측량의 두 구현이 어긋날 때 원인은 거의 항상 순서대로:
+**bin edge → 정규화 → 컷 순서 → float 정밀도**. 이번엔 정규화였다.
+
+---
+
+## #8 "η = 0에서의 값"은 정의가 모호하다
+
+**증상**
+`dN/dη|_{η≈0}`을 uproot arm은 `argmin(|bin center|)`, ROOT arm은 `FindBin(0.0)`으로
+잡았는데, bin edge가 0에 정확히 놓이면 **서로 다른 bin**을 고른다.
+
+**해결**
+"η=0의 bin 값" 대신 **|η| < 0.5 구간의 평균 밀도**를 세어서 정의
+(`n_central / (N_ev · Δη)`, 히스토그램을 아예 거치지 않음). 두 arm 모두 동일.
+
+**배운 점**
+비교 가능한 숫자는 **binning에 의존하지 않게** 정의해야 한다.
+실험 논문이 "dN/dη at midrapidity"를 쓸 때 항상 |η| 범위를 명시하는 이유.
+
+---
+
+## #9 WSL2 첫 실행 시 systemd 경고 / conda 환경의 SKIP 2건
+
+**증상 1**
+```
+wsl: Failed to start the systemd user session for 'uno'. See journalctl for more details.
+```
+**원인/해결**: WSL2에서 systemd user session이 뜨지 않는 것은 흔한 경고이며
+셸·컴파일·conda 사용에는 영향이 없다. 실제로 그 뒤 모든 설치와 검증이 정상 동작했다.
+systemd 서비스(예: docker daemon)를 WSL 안에서 돌릴 때만 문제가 된다.
+
+**증상 2**
+`verify_environment.py`에서 `pyhepmc`와 `lhapdf`가 SKIP.
+
+**원인/해결**
+- `pyhepmc`: `environment.yml`에 `hepmc3`만 넣었는데 이건 **C++ 라이브러리와 헤더**만
+  준다. Python 바인딩은 별도 패키지 `pyhepmc`. → environment.yml에 추가함.
+- `lhapdf`: Module 6에서 설치 예정이라 의도적으로 SKIP. PDF set은 수 GB가 될 수
+  있어 필요할 때 받는다.
+
+**배운 점**
+conda-forge에서 C++ 라이브러리 이름과 Python 바인딩 이름이 다른 경우가 흔하다
+(`hepmc3` vs `pyhepmc`, `fastjet` vs `fastjet-cxx`). 검증 스크립트가 없었으면
+Module 3에 가서야 알았을 것이다.

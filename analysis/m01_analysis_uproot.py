@@ -63,6 +63,18 @@ def hist_with_errors(values, edges):
     return counts.astype(float), np.sqrt(counts.astype(float))
 
 
+def hist_weighted(values, weights, edges):
+    """Weighted histogram -> (sum of weights, sqrt(sum of weights^2)) per bin.
+
+    This is exactly what ROOT's TH1::Sumw2() does.  With per-particle weights
+    the Poisson sqrt(N) rule no longer applies: the correct statistical error on
+    a weighted sum is sqrt(sum w_i^2).
+    """
+    sumw, _ = np.histogram(values, bins=edges, weights=weights)
+    sumw2, _ = np.histogram(values, bins=edges, weights=weights ** 2)
+    return sumw, np.sqrt(sumw2)
+
+
 def centers_widths(edges):
     return 0.5 * (edges[1:] + edges[:-1]), np.diff(edges)
 
@@ -188,6 +200,12 @@ def main() -> int:
     ctr, w = centers_widths(edges)
     dndeta, dndeta_err = c / (n_events * w), err / (n_events * w)
 
+    # A single "value at eta = 0" is ambiguous: with edges at 0 the two arms can
+    # pick different bins.  Define it instead as the average density over
+    # |eta| < 0.5, computed from the counts directly (no binning at all).
+    n_central = int(np.sum(np.abs(eta_flat) < 0.5))
+    dndeta_0 = n_central / (n_events * 1.0)
+
     fig, ax = plt.subplots()
     ax.errorbar(ctr, dndeta, yerr=dndeta_err, fmt="o", color=OKABE_ITO[0],
                 label="toy MC (this work)")
@@ -197,7 +215,7 @@ def main() -> int:
     stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
                rf"$p_{{\rm T}} > {acut['pt_min']}$ GeV/$c$, charged hadrons",
                rf"$\mathrm{{d}}N_{{\rm ch}}/\mathrm{{d}}\eta|_{{\eta\approx0}}$ = "
-               rf"{dndeta[np.argmin(abs(ctr))]:.2f}"], loc="upper left")
+               rf"{dndeta_0:.2f}"], loc="upper left")
     ax.legend(loc="lower center")
     for extn in ("pdf", "png"):
         fig.savefig(figdir / f"m01_dndeta.{extn}")
@@ -207,11 +225,16 @@ def main() -> int:
     m = is_charged_hadron & (abs(eta_a) < acut["eta_abs_max"])
     pt_flat = ak.to_numpy(ak.flatten(pt_a[m]))
     edges = make_edges(bins["pt"])
-    c, err = hist_with_errors(pt_flat, edges)
     ctr, w = centers_widths(edges)
     delta_eta = 2.0 * acut["eta_abs_max"]
-    norm = 2.0 * np.pi * ctr * n_events * w * delta_eta
-    yld, yld_err = c / norm, err / norm
+    # NOTE (docs/troubleshooting.md #7): the 1/(2 pi pT) Jacobian is applied
+    # PER PARTICLE, with that particle's own pT -- not with the bin centre.
+    # On a log pT axis the bins are wide and the two differ by several percent,
+    # which is enough to make this arm and the ROOT arm disagree.  Per-particle
+    # weighting is also what experiments do.
+    weights = 1.0 / (2.0 * np.pi * pt_flat * delta_eta)
+    sumw, sumw_err = hist_weighted(pt_flat, weights, edges)
+    yld, yld_err = sumw / (n_events * w), sumw_err / (n_events * w)
 
     fit = do_fit(tsallis_invariant, ctr, yld, yld_err,
                  p0=[yld[0] * 2, 0.13, 7.0],
@@ -289,7 +312,7 @@ def main() -> int:
         "n_events": int(n_events),
         "mean_Nch_in_acceptance": float(nch.mean()),
         "rms_Nch": float(nch.std(ddof=1)),
-        "dNdeta_at_eta0": float(dndeta[np.argmin(abs(ctr))]) if len(ctr) else None,
+        "dNdeta_central": dndeta_0,      # averaged over |eta| < 0.5
         "mean_pt_GeV": float(pt_flat.mean()),
         "n_dimuon_candidates": int(len(mass)),
         "mean_dimuon_mass_GeV": float(mass.mean()) if len(mass) else None,

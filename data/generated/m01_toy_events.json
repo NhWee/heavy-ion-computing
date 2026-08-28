@@ -21,10 +21,10 @@
     "z_pt_scale": 8.0,
     "z_y_sigma": 1.8
   },
-  "produced_utc": "2026-08-27T12:08:50Z",
+  "produced_utc": "2026-08-28T04:33:37Z",
   "git_commit": "unknown",
   "python": "3.11.15",
-  "platform": "Linux-6.18.44-fc-v21-x86_64-with-glibc2.39",
+  "platform": "Linux-6.18.44-fc-v22-x86_64-with-glibc2.39",
   "versions": {
     "numpy": "2.4.6",
     "awkward": "2.13.0",

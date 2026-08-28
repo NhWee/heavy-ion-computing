@@ -35,9 +35,9 @@ ROOT·PYTHIA는 이번 세션 환경에서 설치 불가 → WSL2로 이관.
 - kinematics 단위 검증 4종 통과 (round-trip 오차 ~1e-16, back-to-back 45.6 GeV
   뮤온 → m = 91.200 GeV)
 - $\langle N_{\rm ch}\rangle = 11.99 \pm 0.06$ (|η|<0.8), RMS 8.78
-- $dN_{\rm ch}/d\eta|_{\eta\approx0} = 7.54$
-- Tsallis(inclusive): $T = 147.9 \pm 0.6$ MeV, $n = 7.475 \pm 0.055$, χ²/ndf 1.09
-- Tsallis(종류별): π 136.1±0.6, K 136.0±1.6, p 135.7±2.6 MeV → **입력 135 MeV 복원**
+- $dN_{\rm ch}/d\eta$ (|η| < 0.5 평균) = 7.50
+- Tsallis(inclusive): $T = 148.2 \pm 0.7$ MeV, $n = 7.484 \pm 0.057$, χ²/ndf 0.98
+- Tsallis(종류별): π 136.0±0.7, K 136.3±1.6, p 136.1±2.6 MeV → **입력 135 MeV 복원**
 - Z 피크: $m = 91.06 \pm 0.09$ GeV/c² (PDG 91.1876), $\Gamma = 2.06 \pm 0.23$ GeV
 
 ### Interpretation
@@ -62,3 +62,35 @@ ROOT·PYTHIA는 이번 세션 환경에서 설치 불가 → WSL2로 이관.
    히스토그램 대조 (같은 파일 → 같은 숫자가 나와야 함)
 3. Module 2: PYTHIA 8 minimum-bias pp 13 TeV, toy 생성기를 대체하고
    `dN_{\rm ch}/d\eta`를 ALICE 측정과 비교
+
+---
+
+## Session 2 — 2026-08-27 · WSL2 환경 실체화 + 두 arm 정합성 사전 정비
+
+### Question
+WSL2 `hic` 환경이 실제로 동작하는가. 그리고 실행해 보지 못한 ROOT arm이
+uproot arm과 같은 숫자를 낼 수 있는 상태인가.
+
+### Tool
+micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4 / iminuit 2.32.0,
+Python 3.11.16, WSL2 kernel 6.6.114.1, **16 논리코어**.
+
+### Result
+`verify_environment.py`: **23 PASS / 0 FAIL / 2 SKIP**.
+- ROOT: TFile/TTree/TH1 100 entries 왕복, RDataFrame 합계 일치
+- PYTHIA 8: pp 13 TeV 10 이벤트 → 최종상태 입자 1473개
+- FastJet: anti-kT R=0.4 → 예상대로 2 jets
+- SKIP은 `pyhepmc`(패키지 이름 누락, 추가함)와 `lhapdf`(Module 6 예정)
+
+### Problems (실행 전 코드 검토에서 발견)
+ROOT arm을 돌리기 전에 두 arm이 **어긋날 수밖에 없는** 불일치 두 건을 찾아 고침:
+1. 불변 수율의 $1/p_{\rm T}$를 bin 중심 vs 입자별로 적용 (오답노트 #7)
+2. "η=0에서의 dN/dη"가 bin edge 위치에 따라 다른 bin을 고름 (오답노트 #8)
+
+둘 다 입자별 가중치 / binning-무관 정의로 통일. 부수적으로 파이온 closure fit의
+χ²/ndf가 0.91 → 0.50으로 개선되어 이전 방식에 편향이 있었음이 확인됨.
+
+### Next step
+1. WSL2에서 `bash scripts/run_all.sh` → ROOT arm 실행 → `m01_compare_arms.py`가
+   두 arm 일치를 자동 판정
+2. Module 2: PYTHIA 8 카드 작성 및 minimum-bias 생성
