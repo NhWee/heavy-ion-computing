@@ -169,6 +169,16 @@ pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WS
 - 수정 후: inclusive n 7.484 → 7.479, χ²/ndf 0.98 → 1.08; 종류별 closure 불변
   (pull 1.3/0.8/0.4σ). 다중도 closure는 하드론만 세도록 명시 (NBD 검증이 목적).
 
+### `m02_compare_data.py` (같은 세션)
+- 이벤트 클래스를 저장된 플래그가 아니라 입자(INEL>0)와 process code(NSD)에서
+  다시 계산한다; 저장된 `n_ch_eta1`과 다르면 경고 (생성 스크립트와 분석의
+  "charged"/"eta" 정의 불일치 검출).
+- 발표 dN/dη는 pT → 0 외삽값이므로 비교에는 pT cut을 걸지 않는다 — Module 1의
+  `pT > 0.15` 히스토그램을 재사용하지 않는 이유.
+- 테스트: MC 자신을 HEPData YAML + provenance JSON으로 둔갑시켜 넣으면 ratio가
+  정확히 1이어야 한다(6건 통과). 실데이터는 provenance를 채운 뒤에만.
+
 ### Next step
 `docs/next_steps.md` Step 1: WSL2에서 `run_all.sh` → `ARMS AGREE` 확인 →
-`results/` 재커밋. 이어서 Step 2: `m02_run_pythia.py --n-events 10`부터.
+`results/` 재커밋. 이어서 Step 2: `m02_run_pythia.py --n-events 10`부터,
+그 다음 HEPData 표 provenance 채우기 → `m02_compare_data.py`.

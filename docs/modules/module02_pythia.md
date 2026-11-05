@@ -81,8 +81,19 @@ python analysis/m01_analysis_uproot.py --config config/analysis_m02_pythia.yaml 
 
 1. `data/raw/README.md`의 템플릿대로 ALICE pp 13 TeV $dN_{\rm ch}/d\eta$ (INEL>0)
    provenance JSON을 **먼저** 채우고 HEPData에서 표를 받는다.
-2. `analysis/m02_compare_data.py` (작성 예정): PYTHIA INEL>0 선택 →
-   $dN_{\rm ch}/d\eta$ → ALICE 표와 같은 binning으로 비교 + ratio panel.
+2. `analysis/m02_compare_data.py` (작성 완료, toy로 테스트됨): 이벤트 클래스
+   (INEL / INEL>0 / NSD)를 **입자와 process code에서 계산**해 적용 → 데이터의
+   η bin으로 직접 히스토그램 → ratio panel(통계·계통 분리) → |η|<0.5 평균의
+   MC/data 판정(±15 %) → `results/tables/m02/m02_compare_summary.json`.
+   - 데이터는 provenance JSON을 통해서만 읽는다(템플릿이 안 채워져 있으면 거부).
+     HEPData YAML(정식)과 CSV export 둘 다 읽는다.
+   - **pT cut 없음** (`comparison.dndeta_pt_min = 0`): 발표된 dN/dη는 pT = 0으로
+     외삽한 값이라 Module 1의 0.15 GeV/c cut을 걸면 안 된다. 이것이 Module 1
+     히스토그램을 그대로 쓰지 않는 이유.
+   - 데이터 없이도 돈다 (`--no-data`): MC만 그리고 판정은 null.
+   ```bash
+   python analysis/m02_compare_data.py --config config/analysis_m02_pythia.yaml
+   ```
 3. 판정: $dN_{\rm ch}/d\eta|_{|\eta|<0.5}$가 측정의 ±15 % 이내. 벗어나면 tune 차이보다
    설정 오류(primary 정의, 이벤트 클래스, 하전입자 정의)를 먼저 의심.
 

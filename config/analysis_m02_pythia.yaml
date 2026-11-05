@@ -46,6 +46,12 @@ analysis:
     tsallis_pt_range: [0.15, 6.0]   # GeV/c; soft spectrum only (above: Z muons
                                     # in the toy, hard-scattering tail in PYTHIA)
 
+# --- comparison with data (analysis/m02_compare_data.py) ---
+comparison:
+  data: data/raw/alice_pp13TeV_dndeta.json   # provenance JSON, NOT the table
+  dndeta_pt_min: 0.0        # published dN/deta is extrapolated to pT = 0;
+                            # Module 1's 0.15 GeV/c cut must NOT be applied here
+
 paths:
   generated_file: data/generated/m02_pythia_mb_13TeV.root
   figure_dir: results/figures/m02

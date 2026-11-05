@@ -80,7 +80,7 @@ bash scripts/run_all.sh
 - [x] "하전입자" 정의 → `particle_charge ≠ 0` (module02_pythia.md §5; 부수적으로 오답노트 #12 발견)
 - [ ] HEPData에서 ALICE pp 13 TeV dN_ch/dη (INEL>0) 표를 받아 비교
       (DOI·표 번호·선택 조건을 `data/raw/<dataset>.json`에 먼저 기록)
-- [ ] `analysis/m02_compare_data.py`: INEL>0 선택 + ratio panel
+- [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.
 
