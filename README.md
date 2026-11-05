@@ -157,3 +157,5 @@ heavy-ion-computing/
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — **오답노트**. 실제로 만난
   오류, 원인, 해결, 그리고 "왜 그런 오류가 나는지"의 물리적/소프트웨어적 이유
 - `docs/modules/moduleNN_*.md` — 각 모듈의 코드와 결과 설명
+- `docs/howto/*.md` — 따라 하기 가이드 (명령 → 무엇을 왜 하는지 → 화면에 보일 것).
+  첫 번째: [`fetch_hepdata.md`](docs/howto/fetch_hepdata.md) 실험 데이터 받아 MC와 비교하기

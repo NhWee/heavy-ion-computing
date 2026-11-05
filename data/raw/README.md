@@ -25,7 +25,7 @@
 }
 ```
 
-## 채우는 절차 (`alice_pp13TeV_dndeta.json`)
+## 채우는 절차 (`alice_pp13TeV_dndeta.json`) — 단계별 설명은 [`docs/howto/fetch_hepdata.md`](../../docs/howto/fetch_hepdata.md)
 
 1. JSON에 **식별자만** 적는다 (`verified: false`). 지금 커밋된 상태가 이것이다:
    ALICE, "Pseudorapidity and transverse-momentum distributions of charged

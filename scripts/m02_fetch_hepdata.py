@@ -52,7 +52,8 @@ def main() -> int:
     record = prov["hepdata"]["record"]
     table = args.table or prov["hepdata"]["table"]
 
-    # 1. record metadata ---------------------------------------------------
+    print(f"=== step 1/4: fetch the HEPData RECORD {record} and check it is the paper "
+          f"named in {pj.name} (arXiv {prov.get('arxiv')}, INSPIRE {prov.get('inspire_id')})")
     url = f"{HEPDATA}/record/{record}?format=json"
     print(f"[get] {url}")
     rec = json.loads(get(url))
@@ -72,7 +73,7 @@ def main() -> int:
         print("ABORT -- the record does not match the provenance JSON:\n  " + "\n  ".join(problems))
         return 1
 
-    # 2. tables --------------------------------------------------------------
+    print(f"=== step 2/4: list the record's tables and pick {table!r}")
     tables = rec.get("data_tables", [])
     print(f"[rec] {len(tables)} table(s):")
     for t in tables:
@@ -84,7 +85,8 @@ def main() -> int:
     tdesc = next(t for t in tables if t.get("name") == table)
     version = args.version or meta.get("version", 1)
 
-    # 3. download YAML -------------------------------------------------------
+    print(f"=== step 3/4: download {table!r} as YAML (HEPData's canonical format) "
+          f"to {pj.parent / prov['file']} and fingerprint it (sha256)")
     turl = f"{HEPDATA}/download/table/{record}/{urllib.parse.quote(table)}/{version}/yaml"
     print(f"[get] {turl}")
     payload = get(turl)
@@ -93,7 +95,8 @@ def main() -> int:
     sha = hashlib.sha256(payload).hexdigest()
     print(f"[out] {out} ({len(payload)} bytes, sha256 {sha[:16]}...)")
 
-    # 4. show the header so the event class can be confirmed by eye -------
+    print("=== step 4/4: print the table header -- CONFIRM BY EYE that the event class "
+          "and eta range are the ones in the JSON's 'selection' block")
     import yaml
     doc = yaml.safe_load(payload)
     for dv in doc.get("dependent_variables", []):
@@ -125,6 +128,7 @@ def main() -> int:
                             "version": version})
     pj.write_text(json.dumps(prov, indent=2, ensure_ascii=False) + "\n")
     print(f"[out] {pj} updated (verified = true)")
+    print("next: python analysis/m02_compare_data.py --config config/analysis_m02_pythia.yaml")
     return 0
 
 
