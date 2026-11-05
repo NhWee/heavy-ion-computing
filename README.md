@@ -20,7 +20,7 @@
 | 모듈 | 내용 | 상태 |
 |---|---|---|
 | Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
-| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 실행·검증·재현 확인 완료 / **ROOT arm 미실행** |
+| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 완료 (closure·테스트·CI·바이트 재현) / **ROOT arm 실행 대기** |
 | Module 2 | PYTHIA 8 | 예정 |
 | Module 3 | HepMC · PDG 이벤트 레코드 | 예정 |
 | Module 4 | FastJet | 예정 |
@@ -83,11 +83,18 @@ bash scripts/run_all.sh
 
 수행 순서:
 
-1. `environment/verify_environment.py` — 환경 검증 및 버전 기록
-2. `scripts/m01_make_toy_events.py` — toy 이벤트 20,000개 생성 → ROOT TTree
-3. `analysis/m01_analysis_uproot.py` — 관측량 4종 + fit → `results/`
-4. `analysis/m01_closure_test.py` — **closure test** (분석이 생성기 입력값을 되찾는지)
-5. ROOT가 설치되어 있으면 `m01_analysis_pyroot.py`와 `m01_analysis_root.C`도 실행
+1. `environment/verify_environment.py` — 환경 검증 및 버전 기록 (FAIL이면 중단)
+2. `pytest` — 단위 테스트 + 소규모 파이프라인 테스트 (`tests/`, 22건)
+3. `scripts/m01_make_toy_events.py` — toy 이벤트 20,000개 생성 → ROOT TTree
+4. `analysis/m01_analysis_uproot.py` — 관측량 4종 + fit → `results/`
+5. `analysis/m01_closure_test.py` — **closure test** (다중도·dN/dη 해석적 기대값,
+   종류별 Tsallis 파라미터를 생성기 입력과 대조)
+6. ROOT가 설치되어 있으면 `m01_analysis_pyroot.py`와 `m01_analysis_root.C`를 실행하고
+   `analysis/m01_compare_arms.py`가 세 arm의 히스토그램을 bin별로 대조
+
+GitHub Actions(`.github/workflows/ci.yml`)가 push마다 1–5를 돌리고, 결과가 커밋된
+`results/tables/m01_fit_results.json`과 같은지 확인합니다. 그림은 메타데이터를
+제거해 저장하므로 같은 seed면 **바이트까지 같습니다**.
 
 모든 물리 파라미터는 코드가 아니라 [`config/analysis.yaml`](config/analysis.yaml)에
 있습니다. 이 파일이 결과의 provenance입니다.
@@ -113,6 +120,7 @@ heavy-ion-computing/
 │   ├── troubleshooting.md      # 오답노트 (오류·실패 기록)
 │   └── modules/module01_root.md
 ├── exercises/                  # 모듈별 연습문제
+├── tests/                      # pytest: kinematics, 생성기, 소규모 end-to-end
 └── notebooks/
 ```
 

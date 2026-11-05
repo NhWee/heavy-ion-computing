@@ -36,7 +36,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from hicpy import kinematics as kin              # noqa: E402
-from hicpy.style import apply_style, stamp, OKABE_ITO, plt   # noqa: E402
+from hicpy.style import apply_style, stamp, save_figure, OKABE_ITO, plt   # noqa: E402
 
 CHARGED_HADRONS = {211, 321, 2212}               # |pdg| of pi+-, K+-, p/pbar
 
@@ -77,6 +77,18 @@ def hist_weighted(values, weights, edges):
 
 def centers_widths(edges):
     return 0.5 * (edges[1:] + edges[:-1]), np.diff(edges)
+
+
+def hist_record(edges, contents, errors):
+    """Serialisable histogram (edges, per-bin contents and errors).
+
+    Every arm writes its histograms in this form so that m01_compare_arms.py
+    can compare them bin by bin -- agreeing on a handful of scalar summaries is
+    not evidence that two implementations agree on the histograms.
+    """
+    return {"edges": [float(v) for v in edges],
+            "contents": [float(v) for v in contents],
+            "errors": [float(v) for v in errors]}
 
 
 # ---------------------------------------------------------------- fit models
@@ -125,6 +137,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--config", default=str(REPO / "config" / "analysis.yaml"))
     ap.add_argument("--infile", default=None)
+    ap.add_argument("--figdir", default=None, help="override paths.figure_dir")
+    ap.add_argument("--tabdir", default=None, help="override paths.table_dir")
     args = ap.parse_args()
 
     cfg = yaml.safe_load(open(args.config))
@@ -134,8 +148,8 @@ def main() -> int:
     sqrt_s = cfg["generator"]["sqrt_s_TeV"]
 
     infile = pathlib.Path(args.infile) if args.infile else REPO / cfg["paths"]["generated_file"]
-    figdir = REPO / cfg["paths"]["figure_dir"]
-    tabdir = REPO / cfg["paths"]["table_dir"]
+    figdir = pathlib.Path(args.figdir) if args.figdir else REPO / cfg["paths"]["figure_dir"]
+    tabdir = pathlib.Path(args.tabdir) if args.tabdir else REPO / cfg["paths"]["table_dir"]
     figdir.mkdir(parents=True, exist_ok=True)
     tabdir.mkdir(parents=True, exist_ok=True)
 
@@ -176,6 +190,7 @@ def main() -> int:
     c, err = hist_with_errors(nch, edges)
     ctr, w = centers_widths(edges)
     prob, prob_err = c / (n_events * w), err / (n_events * w)
+    h_mult = hist_record(edges, prob, prob_err)
 
     fig, ax = plt.subplots()
     ax.errorbar(ctr, prob, yerr=prob_err, fmt="o", color=OKABE_ITO[0],
@@ -188,8 +203,7 @@ def main() -> int:
                rf"$p_{{\rm T}} > {acut['pt_min']}$ GeV/$c$",
                rf"$\langle N_{{\rm ch}}\rangle$ = {nch.mean():.1f}"])
     ax.legend(loc="lower left")
-    for extn in ("pdf", "png"):
-        fig.savefig(figdir / f"m01_multiplicity.{extn}")
+    save_figure(fig, figdir / "m01_multiplicity")
     plt.close(fig)
 
     # ------------------------------------------------------- 2) dN_ch/deta
@@ -199,6 +213,7 @@ def main() -> int:
     c, err = hist_with_errors(eta_flat, edges)
     ctr, w = centers_widths(edges)
     dndeta, dndeta_err = c / (n_events * w), err / (n_events * w)
+    h_eta = hist_record(edges, dndeta, dndeta_err)
 
     # A single "value at eta = 0" is ambiguous: with edges at 0 the two arms can
     # pick different bins.  Define it instead as the average density over
@@ -217,13 +232,13 @@ def main() -> int:
                rf"$\mathrm{{d}}N_{{\rm ch}}/\mathrm{{d}}\eta|_{{\eta\approx0}}$ = "
                rf"{dndeta_0:.2f}"], loc="upper left")
     ax.legend(loc="lower center")
-    for extn in ("pdf", "png"):
-        fig.savefig(figdir / f"m01_dndeta.{extn}")
+    save_figure(fig, figdir / "m01_dndeta")
     plt.close(fig)
 
     # ------------------------------------------- 3) invariant pT spectrum
-    m = is_charged_hadron & (abs(eta_a) < acut["eta_abs_max"])
-    pt_flat = ak.to_numpy(ak.flatten(pt_a[m]))
+    # Same track selection as N_ch (charged, |eta| cut, pt_min < pT < pt_max)
+    # so that the three arms histogram exactly the same particles.
+    pt_flat = ak.to_numpy(ak.flatten(pt_a[sel_mult]))
     edges = make_edges(bins["pt"])
     ctr, w = centers_widths(edges)
     delta_eta = 2.0 * acut["eta_abs_max"]
@@ -235,6 +250,7 @@ def main() -> int:
     weights = 1.0 / (2.0 * np.pi * pt_flat * delta_eta)
     sumw, sumw_err = hist_weighted(pt_flat, weights, edges)
     yld, yld_err = sumw / (n_events * w), sumw_err / (n_events * w)
+    h_pt = hist_record(edges, yld, yld_err)
 
     fit = do_fit(tsallis_invariant, ctr, yld, yld_err,
                  p0=[yld[0] * 2, 0.13, 7.0],
@@ -259,8 +275,7 @@ def main() -> int:
                rf"$|\eta| < {acut['eta_abs_max']}$, charged hadrons",
                rf"$\chi^2/$ndf = {fit.get('chi2_ndf', float('nan')):.2f}"])
     ax.legend(loc="lower left")
-    for extn in ("pdf", "png"):
-        fig.savefig(figdir / f"m01_pt_spectrum.{extn}")
+    save_figure(fig, figdir / "m01_pt_spectrum")
     plt.close(fig)
 
     # -------------------------------------------------- 4) dimuon mass
@@ -277,6 +292,7 @@ def main() -> int:
     edges = make_edges(bins["mass"])
     c, err = hist_with_errors(mass, edges)
     ctr, w = centers_widths(edges)
+    h_mass = hist_record(edges, c, err)        # raw counts, not normalised
     zfit = do_fit(bw_plus_linear, ctr, c, np.maximum(err, 1.0),
                   p0=[c.max() * 1e4, 91.2, 2.5, 0.0, 0.0],
                   bounds=([0, 80, 0.1, -1e3, -1e3], [np.inf, 100, 20, 1e3, 1e3]),
@@ -302,12 +318,12 @@ def main() -> int:
                 rf"{zfit['errors'][1]:.2f} GeV/$c^2$") if zfit["converged"] else ""],
           loc="upper right")
     ax.legend(loc="upper left", fontsize=10)
-    for extn in ("pdf", "png"):
-        fig.savefig(figdir / f"m01_dimuon_mass.{extn}")
+    save_figure(fig, figdir / "m01_dimuon_mass")
     plt.close(fig)
 
     # ------------------------------------------------------------- outputs
     summary = {
+        "arm": "uproot",
         "input_file": rel(infile),
         "n_events": int(n_events),
         "mean_Nch_in_acceptance": float(nch.mean()),
@@ -318,6 +334,13 @@ def main() -> int:
         "mean_dimuon_mass_GeV": float(mass.mean()) if len(mass) else None,
         "cuts": {"track": acut, "muon": mcut},
         "fits": [fit, zfit],
+        # Tsallis parameters in the same flat form every arm writes, so the
+        # cross-check can compare them without parsing the fit records.
+        "tsallis": ({"T": fit["params"][1], "T_err": fit["errors"][1],
+                     "n": fit["params"][2], "n_err": fit["errors"][2],
+                     "chi2": fit["chi2"], "ndf": fit["ndf"]}
+                    if fit["converged"] else None),
+        "histograms": {"mult": h_mult, "eta": h_eta, "pt": h_pt, "mass": h_mass},
         "generator_provenance": prov,
     }
     (tabdir / "m01_fit_results.json").write_text(json.dumps(summary, indent=2))

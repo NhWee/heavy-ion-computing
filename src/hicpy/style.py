@@ -66,4 +66,23 @@ def stamp(ax, lines, loc="upper right", **kw):
     return ax
 
 
-__all__ = ["apply_style", "stamp", "OKABE_ITO", "MARKERS", "LINESTYLES", "plt"]
+def save_figure(fig, stem, formats=("pdf", "png")):
+    """Save `fig` as <stem>.pdf / <stem>.png with NO volatile metadata.
+
+    By default matplotlib stamps the creation date (PDF) and the matplotlib
+    version (PNG/PDF) into every file, so re-running the analysis with the same
+    seed produced byte-different figures and a noisy `git diff` even when every
+    number was identical.  Stripping those fields makes the figures a function
+    of (code, config, seed) only -- which is what "reproducible" should mean.
+    """
+    for extn in formats:
+        if extn == "pdf":
+            meta = {"CreationDate": None, "ModDate": None, "Creator": None,
+                    "Producer": None}
+        else:
+            meta = {"Software": None}
+        fig.savefig(f"{stem}.{extn}", metadata=meta)
+
+
+__all__ = ["apply_style", "stamp", "save_figure", "OKABE_ITO", "MARKERS",
+           "LINESTYLES", "plt"]

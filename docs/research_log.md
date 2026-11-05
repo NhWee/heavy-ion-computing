@@ -94,3 +94,59 @@ ROOT arm을 돌리기 전에 두 arm이 **어긋날 수밖에 없는** 불일치
 1. WSL2에서 `bash scripts/run_all.sh` → ROOT arm 실행 → `m01_compare_arms.py`가
    두 arm 일치를 자동 판정
 2. Module 2: PYTHIA 8 카드 작성 및 minimum-bias 생성
+
+---
+
+## Session 3 — 2026-11-05 · 점검 후 검증 장치 보강 (클라우드 컨테이너, ROOT 없음)
+
+### Question
+10주 만에 다시 연 저장소가 여전히 재현되는가. Module 2(PYTHIA)로 넘어가기 전에
+"분석 버그인지 생성기 차이인지"를 가를 장치가 충분한가.
+
+### Tool
+uproot 5.7.7 / awkward 2.14 / numpy 2.5.3 / scipy 1.18.1 / matplotlib 3.11.2 /
+pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WSL2).
+
+### Procedure
+1. 전체 재독 + uproot arm 처음부터 재실행 → 커밋된 `m01_fit_results.json`과 대조
+2. 점검 결과를 `docs/next_steps.md`로 정리
+3. ROOT 없이 가능한 보완 항목 반영:
+   - `m01_compare_arms.py`: 세 arm(uproot / PyROOT / C++ macro)을 스칼라 →
+     히스토그램 bin별(내용·오차) → Tsallis (T, n) σ 단위의 3단계로 비교
+   - C++ 매크로가 같은 스키마의 JSON 요약을 쓰도록 수정 (이전에는 대조 불가)
+   - 세 arm의 track 선택 통일 (`pt < pt_max` 누락, 오답노트 #11)
+   - `m01_closure_test.py`: 생성기 설정에서 해석적으로 계산한 ⟨N_ch⟩와
+     dN/dη|_{|η|<0.5} 기대값 추가 (`--infile` 옵션도)
+   - `hicpy.style.save_figure`: 그림 메타데이터 제거 → 바이트 단위 재현 (#10)
+   - `tests/` 22건 (kinematics 7, toy_generator 9, pipeline 6) + GitHub Actions
+   - `run_all.sh`: `|| true` 제거(FAIL은 중단), pytest 단계 추가
+   - 로드맵 번호를 README의 Module 번호로 통일
+
+### Result
+- 재실행 수치 = 커밋 수치 (Z fit 파라미터만 상대 ~1e-9 최적화기 잡음)
+- 새 closure: ⟨N_ch⟩ 11.988 ± 0.062 vs 기대 12.059 (−1.1σ),
+  dN/dη 7.502 ± 0.041 vs 7.537 (−0.9σ). Tsallis 종류별 pull 1.5/0.8/0.4σ 불변
+- 그림 8개: 두 번 그려 `cmp` 동일. 테스트 22/22 통과, `run_all.sh` 전 구간 exit 0
+- `pt_max` 통일 후에도 uproot arm 수치는 변화 없음 (50 < pT < 60 GeV/c 입자가
+  |η|<0.8 안에 없었음) — ROOT arm에서는 달라졌을 것
+
+### Interpretation
+1. 두 다중도 closure가 모두 약간 음(−1σ)인 것은 생성기의 η 샘플러가 CDF를
+   `cumsum`(사각형 적분)으로, 기대값 계산은 사다리꼴로 하기 때문일 가능성이
+   있다 (상대 ~2.5e-4). 통계 오차(0.5 %)보다 작아 지금은 무시하지만, 이벤트 수를
+   100배 늘리면 보일 것이다 — 그때 샘플러를 사다리꼴 CDF로 바꾼다.
+2. `invariant_mass` 테스트에서 pT = 50, η = 5(p ≈ 3.7 TeV)인 파이온의 질량이
+   8자리까지만 맞는다. $E^2 - p^2$의 상쇄 때문이며 오답노트 #6의 정량적 예다.
+3. "스칼라 5개 일치"로는 arm 정합성을 주장할 수 없었다. 코드를 읽는 것만으로
+   cut 하나(#11)가 빠진 것을 찾았고, 이는 스칼라 비교에서도 보였겠지만
+   히스토그램의 어느 bin에서 어긋나는지는 bin별 비교가 있어야 보인다.
+
+### Problems
+- ROOT arm은 여전히 실행 못 함. 새로 쓴 TF1 fit, JSON 출력, `compare_arms`의
+  fit tolerance(0.05σ)는 **실행 검증 전**이다.
+- `run_all.sh`가 컨테이너에서 `environment/versions_installed.txt`를 덮어써
+  되돌렸다 (next_steps C3).
+
+### Next step
+`docs/next_steps.md` Step 1: WSL2에서 `run_all.sh` → `ARMS AGREE` 확인 →
+`results/` 재커밋 → Module 2 PYTHIA.

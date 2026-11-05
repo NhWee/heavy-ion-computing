@@ -224,3 +224,54 @@ systemd 서비스(예: docker daemon)를 WSL 안에서 돌릴 때만 문제가 �
 conda-forge에서 C++ 라이브러리 이름과 Python 바인딩 이름이 다른 경우가 흔하다
 (`hepmc3` vs `pyhepmc`, `fastjet` vs `fastjet-cxx`). 검증 스크립트가 없었으면
 Module 3에 가서야 알았을 것이다.
+
+---
+
+## #10 같은 seed, 같은 숫자인데 그림 파일이 매번 달라진다
+
+**증상**
+`run_all.sh`를 다시 돌리면 `m01_fit_results.json`의 숫자는 그대로인데
+`git status`에 `results/figures/*.pdf|png` 8개가 전부 수정으로 뜬다.
+`cmp`로 보면 바이트가 다르다.
+
+**원인**
+matplotlib이 PDF에는 `/CreationDate`, `/ModDate`, `/Producer`를, PNG에는
+`Software` 텍스트 청크를 기본으로 심는다. 생성 **시각**과 matplotlib **버전**이
+파일 안에 들어가므로, 같은 데이터로 그려도 같은 파일이 되지 않는다.
+
+**해결**
+`hicpy.style.save_figure()`가 `metadata={"CreationDate": None, ...}`로 그 필드를
+비운다. 모든 분석 스크립트는 `fig.savefig()` 대신 이 함수를 쓴다.
+`tests/test_m01_pipeline.py::test_figures_are_byte_reproducible`가 두 번 그려
+바이트 비교로 이를 지킨다.
+
+**배운 점**
+"재현 가능"의 정의를 숫자에서 **파일**까지 넓히면 `git diff`가 곧 회귀 검출기가
+된다. 그림이 바뀌었다는 것은 코드·설정·seed 중 하나가 바뀌었다는 뜻이어야 한다.
+
+---
+
+## #11 arm마다 cut 집합이 달랐다 (`pt < pt_max`)
+
+**증상**
+실행 전 코드 대조에서 발견. uproot arm의 $N_{\rm ch}$는
+`pt_min < pT < pt_max`를, PyROOT arm과 C++ 매크로는 `pT > pt_min`만 적용하고
+있었다. 반대로 uproot arm의 $p_{\rm T}$ 스펙트럼은 pT cut 없이 |η|만 걸고 있었다.
+
+**원인**
+cut을 세 곳에 따로 썼기 때문. `config/analysis.yaml`에는 `pt_max: 50.0`이
+있지만 두 ROOT arm은 그 키를 읽지 않았다. 생성 범위가 60 GeV/c라
+50–60 GeV/c 사이 입자가 실제로 존재하므로 숫자가 달라졌을 것이다.
+
+**해결**
+세 arm 모두 track 선택을 "하전 하드론 ∧ |η| < 0.8 ∧ pt_min < pT < pt_max"로
+통일하고 $N_{\rm ch}$와 $p_{\rm T}$ 스펙트럼이 **같은 입자 집합**을 쓰게 했다.
+$dN/d\eta$는 세 arm 모두 pT 상한 없이 `pT > pt_min`만 적용한다.
+`m01_compare_arms.py`가 이제 네 히스토그램을 bin별로 비교하므로, 이런 차이는
+다음부터 자동으로 잡힌다.
+
+**배운 점**
+"같은 분석"을 두 언어로 쓰면 cut 하나가 빠지는 건 시간문제다. 스칼라 요약 몇 개가
+아니라 **히스토그램 전체**를 대조해야 하고, C++ 매크로처럼 설정 파일을 못 읽는
+코드는 기본 인자 옆에 "config와 같아야 함"을 적는 것으로는 부족하다 — 대조
+스크립트가 cut 값 자체를 비교해야 한다.
