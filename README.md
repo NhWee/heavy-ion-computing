@@ -15,17 +15,18 @@
 
 ---
 
-## 1. 현재 상태 (2026-08-27)
+## 1. 현재 상태 (2026-11-05 점검)
 
 | 모듈 | 내용 | 상태 |
 |---|---|---|
-| Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | 스크립트 작성 완료, **사용자 실행 대기** |
-| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | **완료** (uproot arm 실행·검증 완료 / ROOT arm 미실행) |
+| Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
+| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 실행·검증·재현 확인 완료 / **ROOT arm 미실행** |
 | Module 2 | PYTHIA 8 | 예정 |
 | Module 3 | HepMC · PDG 이벤트 레코드 | 예정 |
 | Module 4 | FastJet | 예정 |
 
-자세한 로드맵: [`docs/roadmap.md`](docs/roadmap.md)
+자세한 로드맵: [`docs/roadmap.md`](docs/roadmap.md) ·
+보완 사항과 바로 다음 할 일: [`docs/next_steps.md`](docs/next_steps.md)
 
 ---
 
