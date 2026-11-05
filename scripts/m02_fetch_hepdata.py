@@ -55,6 +55,9 @@ def get(url: str, timeout=60) -> bytes:
         if exc.code not in (403, 429, 503):
             raise
         print(f"      urllib got HTTP {exc.code}; retrying with curl")
+    except urllib.error.URLError as exc:
+        # proxy CONNECT refusals surface here, not as HTTPError
+        print(f"      urllib failed ({exc.reason}); retrying with curl")
     import shutil
     import subprocess
     if not shutil.which("curl"):
