@@ -59,6 +59,16 @@ GAMMA_Z = 2.4952      # Z total width
 
 PDG = {"pi": 211, "K": 321, "p": 2212, "mu": 13}
 MASS = {211: M_PI, 321: M_K, 2212: M_P, 13: M_MU}
+# electric charge of the PARTICLE (positive pdg code); the antiparticle has the
+# opposite sign.  Note the PDG sign convention: 13 is the mu-, so its charge is -1.
+CHARGE = {211: +1, 321: +1, 2212: +1, 13: -1}
+
+
+def charge_of(pdg):
+    """Electric charge (in units of e) from a signed PDG code, vectorised."""
+    pdg = np.asarray(pdg)
+    base = np.vectorize(CHARGE.__getitem__, otypes=[np.int8])(np.abs(pdg))
+    return (base * np.sign(pdg)).astype(np.int8)
 
 
 @dataclass
@@ -197,7 +207,7 @@ def _boost_z_decay(rng, m_zz, pt_z, phi_z, y_z):
 def generate(cfg: ToyConfig):
     """Generate the event sample.
 
-    Returns a dict of per-event lists (ragged): px, py, pz, E, pdg
+    Returns a dict of per-event lists (ragged): px, py, pz, E, pdg, charge
     plus per-event scalars: n_particles, has_z.
     """
     rng = np.random.default_rng(cfg.seed)
@@ -222,7 +232,7 @@ def generate(cfg: ToyConfig):
     weights = np.array([cfg.frac_pi, cfg.frac_K, cfg.frac_p], dtype=float)
     weights /= weights.sum()
 
-    px_l, py_l, pz_l, e_l, id_l = [], [], [], [], []
+    px_l, py_l, pz_l, e_l, id_l, q_l = [], [], [], [], [], []
     iz = 0
     for iev in range(cfg.n_events):
         n = mult[iev]
@@ -254,9 +264,10 @@ def generate(cfg: ToyConfig):
 
         px_l.append(px); py_l.append(py); pz_l.append(pz); e_l.append(e)
         id_l.append(pdg.astype(np.int32))
+        q_l.append(charge_of(pdg))
 
     return {
-        "px": px_l, "py": py_l, "pz": pz_l, "E": e_l, "pdg": id_l,
+        "px": px_l, "py": py_l, "pz": pz_l, "E": e_l, "pdg": id_l, "charge": q_l,
         "n_particles": np.array([len(a) for a in px_l], dtype=np.int32),
         "has_z": has_z.astype(bool),
     }

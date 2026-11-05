@@ -31,7 +31,7 @@ def test_root_file_layout_and_provenance(small_sample):
         # NanoAOD-style: counter branch + jagged particle branches, classic TTree
         assert t.classname == "TTree"
         for b in ("nparticle", "particle_px", "particle_py", "particle_pz",
-                  "particle_E", "particle_pdg", "has_z"):
+                  "particle_E", "particle_pdg", "particle_charge", "has_z"):
             assert b in t.keys(), b
         prov = json.loads(str(f["provenance"]))
     assert prov["config"]["n_events"] == N_EVENTS_SMALL
@@ -80,7 +80,7 @@ def test_histograms_are_properly_normalised(analysed):
     w = np.diff(h["edges"])
     total = np.sum(np.array(h["contents"]) * w)
     nbar = s["generator_provenance"]["config"]["nbd_nbar"]
-    assert total == pytest.approx(nbar, rel=0.05)      # all charged hadrons, pT > pt_min
+    assert total == pytest.approx(nbar, rel=0.05)      # all charged particles, pT > pt_min
     assert np.all(np.array(s["histograms"]["pt"]["contents"]) >= 0)
 
 

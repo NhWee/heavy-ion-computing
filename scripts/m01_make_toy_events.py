@@ -12,6 +12,7 @@ variable-length branches instead of CSV.  Here we build such a TTree with
 
     px, py, pz, E   -- variable-length float32 arrays, one entry per particle
     pdg             -- variable-length int32 array (PDG Monte Carlo ID)
+    charge          -- variable-length int8 array (electric charge, units of e)
     n_particles     -- scalar int32
     has_z           -- scalar bool
 
@@ -89,6 +90,7 @@ def main() -> int:
         "pz":  ak.values_astype(ak.Array(ev["pz"]),  np.float32),
         "E":   ak.values_astype(ak.Array(ev["E"]),   np.float32),
         "pdg": ak.values_astype(ak.Array(ev["pdg"]), np.int32),
+        "charge": ak.values_astype(ak.Array(ev["charge"]), np.int8),
     })
     arrays = {"particle": particle, "has_z": ev["has_z"]}
 

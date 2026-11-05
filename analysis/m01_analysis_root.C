@@ -79,7 +79,8 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
                        const char *outfile = "results/tables/m01_root_histograms.root",
                        const char *jsonfile = "results/tables/m01_root_summary.json",
                        Double_t etaMax = 0.8, Double_t ptMin = 0.15, Double_t ptMax = 50.0,
-                       Double_t muPtMin = 20.0, Double_t muEtaMax = 2.4) {
+                       Double_t muPtMin = 20.0, Double_t muEtaMax = 2.4,
+                       Double_t fitPtLo = 0.15, Double_t fitPtHi = 6.0) {
    gStyle->SetOptStat(0);
 
    TFile *fin = TFile::Open(infile, "READ");
@@ -92,12 +93,14 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
    Int_t nparticle = 0;
    static Float_t px[kMax], py[kMax], pz[kMax], E[kMax];
    static Int_t pdg[kMax];
+   static Char_t charge[kMax];                 // int8 branch -> Char_t ("B")
    tree->SetBranchAddress("nparticle", &nparticle);
    tree->SetBranchAddress("particle_px", px);
    tree->SetBranchAddress("particle_py", py);
    tree->SetBranchAddress("particle_pz", pz);
    tree->SetBranchAddress("particle_E", E);
    tree->SetBranchAddress("particle_pdg", pdg);
+   tree->SetBranchAddress("particle_charge", charge);
 
    // --- histograms: log bins in pT, linear elsewhere (= config/analysis.yaml)
    const Int_t nPt = 40;
@@ -135,8 +138,8 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
          if (p <= 0) continue;
          const Double_t eta = 0.5 * TMath::Log((p + pz[i]) / (p - pz[i]));
 
-         const bool chargedHadron = (ap == 211 || ap == 321 || ap == 2212);
-         if (chargedHadron && pt > ptMin) {
+         const bool isCharged = (charge[i] != 0);   // charge branch, not a pdg list
+         if (isCharged && pt > ptMin) {
             hEta->Fill(eta);                       // dN/deta: no pT upper cut
             if (TMath::Abs(eta) < 0.5) ++nCentral;
             if (pt < ptMax && TMath::Abs(eta) < etaMax) {
@@ -162,7 +165,9 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
 
    // --- fit the pT spectrum (same function / start values / limits as the
    //     other arms) ----------------------------------------------------------
-   TF1 *fTsallis = new TF1("fTsallis", TsallisInvariant, ptMin, ptMax, 4);
+   // "R": fit only inside [fitPtLo, fitPtHi] -- the range stated in
+   // config/analysis.yaml (analysis.fits.tsallis_pt_range)
+   TF1 *fTsallis = new TF1("fTsallis", TsallisInvariant, fitPtLo, fitPtHi, 4);
    fTsallis->SetParameters(hPt->GetBinContent(1) * 2.0, 0.13, 7.0, 0.13957039);
    fTsallis->SetParLimits(0, 0.0, 1e30);
    fTsallis->SetParLimits(1, 0.01, 1.0);

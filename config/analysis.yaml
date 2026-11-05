@@ -59,6 +59,11 @@ analysis:
       lo: 60.0
       hi: 120.0
 
+  # --- fits: ranges are part of the result ---
+  fits:
+    tsallis_pt_range: [0.15, 6.0]   # GeV/c; soft spectrum only (above: Z muons
+                                    # in the toy, hard-scattering tail in PYTHIA)
+
 paths:
   generated_file: data/generated/m01_toy_events.root
   figure_dir: results/figures

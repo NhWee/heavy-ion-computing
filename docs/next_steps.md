@@ -77,7 +77,7 @@ bash scripts/run_all.sh
 - [x] `config/analysis_m02_pythia.yaml`, `data/raw/README.md`(provenance 템플릿), `tests/test_m02_card.py`
 - [ ] WSL2에서 10 → 1,000 → 20,000 이벤트 생성 (스크립트는 **미실행**, API drift 가능)
 - [ ] Module 1 분석 코드를 **수정 없이** 실행 — 안 되면 인터페이스 설계 문제로 기록
-- [ ] "하전입자" 정의 결정 (module02_pythia.md §5; π/K/p → charge ≠ 0 권장)
+- [x] "하전입자" 정의 → `particle_charge ≠ 0` (module02_pythia.md §5; 부수적으로 오답노트 #12 발견)
 - [ ] HEPData에서 ALICE pp 13 TeV dN_ch/dη (INEL>0) 표를 받아 비교
       (DOI·표 번호·선택 조건을 `data/raw/<dataset>.json`에 먼저 기록)
 - [ ] `analysis/m02_compare_data.py`: INEL>0 선택 + ratio panel

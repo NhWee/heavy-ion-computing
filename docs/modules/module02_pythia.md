@@ -38,7 +38,7 @@ Module 1과 **같은 TTree 브랜치**(`nparticle`, `particle_px/py/pz/E/pdg`, `
 
 | 브랜치 | 용도 |
 |---|---|
-| `particle_charge` | 하전입자 선택. Module 1 분석은 π/K/p만 "charged hadron"으로 세는데(toy에는 그것뿐), PYTHIA에는 e, μ, Σ±, Ξ±, Ω± 등도 있다 → **분석 쪽 결정 필요** (§5) |
+| `particle_charge` | 하전입자 선택 (`≠ 0`). Module 1 분석도 이 브랜치를 쓴다 (§5) |
 | `process_code` | 101 ND, 103/104 SD, 105 DD, 106 CD → NSD 선택 |
 | `n_ch_eta1` | \|η\|<1 하전입자 수 → INEL>0 선택 |
 | `weight` | 이벤트 가중치 (MB는 1) |
@@ -88,7 +88,7 @@ python analysis/m01_analysis_uproot.py --config config/analysis_m02_pythia.yaml 
 
 ---
 
-## 5. 열린 결정 — "하전입자"의 정의
+## 5. 결정됨 — "하전입자"의 정의 → (a) `particle_charge ≠ 0` (2026-11-05)
 
 Module 1 분석의 `CHARGED_HADRONS = {211, 321, 2212}`는 toy 생성기의 산물입니다.
 PYTHIA 샘플에서 이대로 세면 ALICE의 "charged primary"보다 수 % 적게 셉니다
@@ -98,9 +98,13 @@ PYTHIA 샘플에서 이대로 세면 ALICE의 "charged primary"보다 수 % 적�
   (Module 1 결과 재생성; 값은 동일해야 함 — 그것 자체가 검증)
 - (b) Module 1 분석은 그대로 두고 Module 2 비교 스크립트만 charge를 사용
 
-**(a)를 권장**: "같은 분석 코드가 수정 없이 돈다"는 목표의 참뜻은 "입력이 바뀌어도
-정의가 흔들리지 않는다"이고, 그러려면 정의가 입력의 우연(toy에 π/K/p뿐)이 아니라
-물리(전하)에 걸려 있어야 합니다. 실행 후 결정.
+**(a)로 결정·반영 완료**: toy 생성기와 writer에 `charge` 브랜치를 추가하고 세 arm의
+분석을 `particle_charge ≠ 0`으로 바꿨다. "같은 분석 코드가 수정 없이 돈다"는 목표의
+참뜻은 "입력이 바뀌어도 정의가 흔들리지 않는다"이고, 그러려면 정의가 입력의
+우연(toy에 π/K/p뿐)이 아니라 물리(전하)에 걸려 있어야 한다. Module 1 결과는
+뮤온 두 개만큼 바뀌었고(`module01_root.md`), 그 과정에서 float32 히스토그램 버그
+(오답노트 #12)를 찾았다. 따라서 `m02_run_pythia.py`가 쓰는 `particle_charge`(int8)는
+Module 1 파일과 같은 브랜치·dtype이다.
 
 ---
 

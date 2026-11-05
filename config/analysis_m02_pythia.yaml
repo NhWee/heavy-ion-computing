@@ -41,6 +41,11 @@ analysis:
     mult: {type: linear, n_bins: 60, lo: 0.0,  hi: 240.0}
     mass: {type: linear, n_bins: 60, lo: 60.0, hi: 120.0}
 
+  # --- fits: ranges are part of the result ---
+  fits:
+    tsallis_pt_range: [0.15, 6.0]   # GeV/c; soft spectrum only (above: Z muons
+                                    # in the toy, hard-scattering tail in PYTHIA)
+
 paths:
   generated_file: data/generated/m02_pythia_mb_13TeV.root
   figure_dir: results/figures/m02

@@ -24,8 +24,17 @@ def test_different_seed_different_events(sample):
     assert not np.array_equal(sample["n_particles"], other["n_particles"])
 
 
+def test_charge_follows_pdg_sign_convention(sample):
+    """pi+ (211) -> +1, pi- (-211) -> -1, mu- (13) -> -1, mu+ (-13) -> +1."""
+    assert tg.charge_of([211, -211, 321, -2212, 13, -13]).tolist() == [1, -1, 1, -1, -1, 1]
+    for pdg, q in zip(sample["pdg"], sample["charge"]):
+        assert q.dtype == np.int8
+        assert np.array_equal(q, tg.charge_of(pdg))
+        assert np.all(q != 0)                # the toy has no neutrals
+
+
 def test_particle_counts_consistent(sample):
-    for key in ("px", "py", "pz", "E", "pdg"):
+    for key in ("px", "py", "pz", "E", "pdg", "charge"):
         assert [len(a) for a in sample[key]] == list(sample["n_particles"])
     assert np.all(sample["n_particles"] >= 1)
 

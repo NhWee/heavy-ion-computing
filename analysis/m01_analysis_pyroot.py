@@ -34,15 +34,25 @@ ROOT.gInterpreter.Declare(r"""
 #include <cmath>
 
 using RVecF = ROOT::VecOps::RVec<float>;
+using RVecD = ROOT::VecOps::RVec<double>;
 using RVecI = ROOT::VecOps::RVec<int>;
 
-RVecF calcPt(const RVecF &px, const RVecF &py) { return sqrt(px*px + py*py); }
-
-RVecF calcEta(const RVecF &px, const RVecF &py, const RVecF &pz) {
-   auto p = sqrt(px*px + py*py + pz*pz);
-   RVecF out(px.size());
+// Storage is float32; arithmetic is double, as in the other two arms
+// (docs/troubleshooting.md #12).
+RVecD calcPt(const RVecF &px, const RVecF &py) {
+   RVecD out(px.size());
    for (size_t i = 0; i < px.size(); ++i)
-      out[i] = (p[i] > 0.f) ? 0.5f * std::log((p[i] + pz[i]) / (p[i] - pz[i])) : 0.f;
+      out[i] = std::sqrt(double(px[i]) * px[i] + double(py[i]) * py[i]);
+   return out;
+}
+
+RVecD calcEta(const RVecF &px, const RVecF &py, const RVecF &pz) {
+   RVecD out(px.size());
+   for (size_t i = 0; i < px.size(); ++i) {
+      const double p = std::sqrt(double(px[i]) * px[i] + double(py[i]) * py[i]
+                                 + double(pz[i]) * pz[i]);
+      out[i] = (p > 0.) ? 0.5 * std::log((p + pz[i]) / (p - pz[i])) : 0.;
+   }
    return out;
 }
 
@@ -92,18 +102,18 @@ def main() -> int:
           .Define("pt", "calcPt(particle_px, particle_py)")
           .Define("eta", "calcEta(particle_px, particle_py, particle_pz)")
           .Define("apdg", "abs(particle_pdg)")
-          .Define("isCh", "apdg == 211 || apdg == 321 || apdg == 2212")
-          .Define("selTrk", f"isCh && pt > {pt_min}f && pt < {pt_max}f "
-                            f"&& abs(eta) < {eta_max}f")
-          .Define("selMu", f"apdg == 13 && pt > {mu_pt_min}f "
-                           f"&& abs(eta) < {mu_eta_max}f")
+          .Define("isCh", "particle_charge != 0")      # charge branch, not a pdg list
+          .Define("selTrk", f"isCh && pt > {pt_min} && pt < {pt_max} "
+                            f"&& abs(eta) < {eta_max}")
+          .Define("selMu", f"apdg == 13 && pt > {mu_pt_min} "
+                           f"&& abs(eta) < {mu_eta_max}")
           .Define("nch", "Sum(selTrk)")
-          .Define("etaCh", f"eta[isCh && pt > {pt_min}f]")
+          .Define("etaCh", f"eta[isCh && pt > {pt_min}]")
           .Define("ptSel", "pt[selTrk]")
-          .Define("nEta05", f"Sum(isCh && pt > {pt_min}f && abs(eta) < 0.5f)")
+          .Define("nEta05", f"Sum(isCh && pt > {pt_min} && abs(eta) < 0.5)")
           # per-particle 1/(2 pi pT d_eta) Jacobian, same convention as the
-          # uproot arm (NOT the bin centre)
-          .Define("ptWgt", f"1.f / (2.f * (float)M_PI * ptSel * {delta_eta}f)")
+          # uproot arm (NOT the bin centre); double precision throughout
+          .Define("ptWgt", f"1.0 / (2.0 * M_PI * ptSel * {delta_eta})")
           .Define("mmumu", "dimuonMass(particle_px, particle_py, particle_pz,"
                            " particle_E, selMu)"))
 
@@ -133,7 +143,8 @@ def main() -> int:
     # the uproot arm.  "R": restrict to the function range, "Q": quiet,
     # "S": return the FitResult, "N": do not store/draw the function.
     hpt = h_pt.GetValue()
-    f_ts = ROOT.TF1("fTsallis", ROOT.tsallisInvariant, bpt["lo"], bpt["hi"], 4)
+    fr = cfg["analysis"]["fits"]["tsallis_pt_range"]
+    f_ts = ROOT.TF1("fTsallis", ROOT.tsallisInvariant, fr[0], fr[1], 4)
     f_ts.SetParameters(hpt.GetBinContent(1) * 2.0, 0.13, 7.0, 0.13957039)
     f_ts.SetParLimits(0, 0.0, 1e30)
     f_ts.SetParLimits(1, 0.01, 1.0)

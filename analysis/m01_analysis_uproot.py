@@ -38,7 +38,10 @@ sys.path.insert(0, str(REPO / "src"))
 from hicpy import kinematics as kin              # noqa: E402
 from hicpy.style import apply_style, stamp, save_figure, OKABE_ITO, plt   # noqa: E402
 
-CHARGED_HADRONS = {211, 321, 2212}               # |pdg| of pi+-, K+-, p/pbar
+# "Charged particle" = electric charge != 0, read from the particle_charge
+# branch.  NOT a list of PDG codes: a list written for the toy sample (pi, K, p)
+# silently undercounts a PYTHIA sample (e, mu, Sigma, Xi, Omega ...) and no
+# longer matches the experimental "charged primary" definition.
 
 
 def rel(path: pathlib.Path) -> str:
@@ -59,7 +62,7 @@ def make_edges(spec):
 def hist_with_errors(values, edges):
     """Unweighted histogram -> (counts, sqrt(N) errors). Poisson errors are the
     correct statistical uncertainty for a raw count in a bin."""
-    counts, _ = np.histogram(values, bins=edges)
+    counts, _ = np.histogram(np.asarray(values, dtype=np.float64), bins=edges)
     return counts.astype(float), np.sqrt(counts.astype(float))
 
 
@@ -70,6 +73,8 @@ def hist_weighted(values, weights, edges):
     the Poisson sqrt(N) rule no longer applies: the correct statistical error on
     a weighted sum is sqrt(sum w_i^2).
     """
+    values = np.asarray(values, dtype=np.float64)      # see troubleshooting #12
+    weights = np.asarray(weights, dtype=np.float64)
     sumw, _ = np.histogram(values, bins=edges, weights=weights)
     sumw2, _ = np.histogram(values, bins=edges, weights=weights ** 2)
     return sumw, np.sqrt(sumw2)
@@ -160,14 +165,21 @@ def main() -> int:
         tree = f["events"]
         n_events = tree.num_entries
         ev = tree.arrays(["particle_px", "particle_py", "particle_pz",
-                          "particle_E", "particle_pdg", "has_z"])
+                          "particle_E", "particle_pdg", "particle_charge", "has_z"])
         prov = json.loads(str(f["provenance"]))
     print(f"[read] {infile.name}: {n_events} events, "
           f"{ak.sum(ak.num(ev.particle_px))} particles "
           f"(seed {prov['config']['seed']}, git {prov['git_commit']})")
 
-    px, py, pz, e, pdg = (ev.particle_px, ev.particle_py, ev.particle_pz,
-                          ev.particle_E, ev.particle_pdg)
+    # Promote the float32 branches to float64 BEFORE any arithmetic
+    # (docs/troubleshooting.md #12): numpy's weighted histogram accumulates a
+    # cumulative sum, and in float32 the sparsely populated high-pT bins come
+    # out quantised -- their sum of w^2 rounds to exactly zero, which silently
+    # removed them from the fit.  Storage is float32; arithmetic is not.
+    f64 = lambda arr: ak.values_astype(arr, np.float64)          # noqa: E731
+    px, py, pz, e = (f64(ev.particle_px), f64(ev.particle_py),
+                     f64(ev.particle_pz), f64(ev.particle_E))
+    pdg = ev.particle_pdg
 
     # NOTE (docs/troubleshooting.md #2): only numpy *ufuncs* (sqrt, hypot,
     # arctanh, comparisons) broadcast over awkward arrays.  np.clip and np.isin
@@ -178,10 +190,10 @@ def main() -> int:
     # |pz/|p|| <= 1 by construction; the shrink factor keeps arctanh finite
     eta_a = np.arctanh((pz / p_a) * (1.0 - 1e-12))
     apdg = abs(pdg)
-    is_charged_hadron = (apdg == 211) | (apdg == 321) | (apdg == 2212)
+    is_charged = ev.particle_charge != 0
 
     # ------------------------------------------------- 1) multiplicity P(Nch)
-    sel_mult = (is_charged_hadron
+    sel_mult = (is_charged
                 & (abs(eta_a) < acut["eta_abs_max"])
                 & (pt_a > acut["pt_min"]) & (pt_a < acut["pt_max"]))
     nch = ak.to_numpy(ak.sum(sel_mult, axis=1))
@@ -207,7 +219,7 @@ def main() -> int:
     plt.close(fig)
 
     # ------------------------------------------------------- 2) dN_ch/deta
-    eta_flat = ak.to_numpy(ak.flatten(eta_a[is_charged_hadron
+    eta_flat = ak.to_numpy(ak.flatten(eta_a[is_charged
                                             & (pt_a > acut["pt_min"])]))
     edges = make_edges(bins["eta"])
     c, err = hist_with_errors(eta_flat, edges)
@@ -228,7 +240,7 @@ def main() -> int:
     ax.set_ylabel(r"$\mathrm{d}N_{\rm ch}/\mathrm{d}\eta$")
     ax.set_ylim(0, max(dndeta) * 1.45)
     stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
-               rf"$p_{{\rm T}} > {acut['pt_min']}$ GeV/$c$, charged hadrons",
+               rf"$p_{{\rm T}} > {acut['pt_min']}$ GeV/$c$, charged particles",
                rf"$\mathrm{{d}}N_{{\rm ch}}/\mathrm{{d}}\eta|_{{\eta\approx0}}$ = "
                rf"{dndeta_0:.2f}"], loc="upper left")
     ax.legend(loc="lower center")
@@ -252,16 +264,23 @@ def main() -> int:
     yld, yld_err = sumw / (n_events * w), sumw_err / (n_events * w)
     h_pt = hist_record(edges, yld, yld_err)
 
-    fit = do_fit(tsallis_invariant, ctr, yld, yld_err,
+    # Fit range is a stated choice (config), not "wherever the bins happen to
+    # be empty".  Tsallis describes the soft hadron spectrum; in this toy the
+    # bins above a few GeV/c are dominated by Z-decay muons (z_fraction = 2 %
+    # is ~1e5 times the real rate) and in Module 2 by the hard-scattering tail.
+    fr = cfg["analysis"]["fits"]["tsallis_pt_range"]
+    in_range = (ctr > fr[0]) & (ctr < fr[1])
+    fit = do_fit(tsallis_invariant, ctr[in_range], yld[in_range], yld_err[in_range],
                  p0=[yld[0] * 2, 0.13, 7.0],
                  bounds=([0, 0.01, 1.0], [np.inf, 1.0, 50.0]),
                  label="Tsallis fit to invariant pT yield")
+    fit["requested_range"] = [float(fr[0]), float(fr[1])]
 
     fig, ax = plt.subplots()
     ax.errorbar(ctr, yld, yerr=yld_err, fmt="o", color=OKABE_ITO[0],
                 label="toy MC (this work)")
     if fit["converged"]:
-        xs = np.geomspace(ctr[0], ctr[-1], 300)
+        xs = np.geomspace(fr[0], fr[1], 300)
         ax.plot(xs, tsallis_invariant(xs, *fit["params"]), "-",
                 color=OKABE_ITO[1],
                 label=(rf"Tsallis: $T$ = {fit['params'][1]*1000:.0f} MeV, "
@@ -272,7 +291,7 @@ def main() -> int:
                   r"\frac{\mathrm{d}^2N}{\mathrm{d}p_{\rm T}\mathrm{d}\eta}$"
                   r"  ($c^2$/GeV$^2$)")
     stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
-               rf"$|\eta| < {acut['eta_abs_max']}$, charged hadrons",
+               rf"$|\eta| < {acut['eta_abs_max']}$, charged particles",
                rf"$\chi^2/$ndf = {fit.get('chi2_ndf', float('nan')):.2f}"])
     ax.legend(loc="lower left")
     save_figure(fig, figdir / "m01_pt_spectrum")

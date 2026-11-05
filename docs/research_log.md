@@ -157,6 +157,18 @@ pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WS
   샘플에서는 charge ≠ 0으로 바꿔야 ALICE primary 정의와 맞음 (module02 §5).
 - `tests/test_m02_card.py` 13건: 카드가 필수 설정을 빠짐없이, 중복 없이 담는지.
 
+### 하전입자 정의 변경 (같은 세션) → float32 버그 발견
+- 결정 (a): `charge` 브랜치(int8) 추가, 세 arm 모두 `particle_charge ≠ 0`.
+  ⟨N_ch⟩ 11.988 → 11.999, ⟨pT⟩ 0.551 → 0.584 GeV/c (Z 뮤온 ~270개가 |η|<0.8에).
+- 뮤온이 pT 20–50 GeV/c에 들어왔는데 Tsallis fit 범위가 여전히 6.1 GeV/c에서
+  끝나는 게 이상해서 파 보니: float32 가중치 + numpy 누적합 → 꼬리 bin의 Σw²가
+  정확히 0 → 오차 0인 점이 fit에서 **조용히 제외**되고 있었다 (오답노트 #12).
+  커밋돼 있던 Module 1 결과도 이 영향을 받았다 (고 pT bin 내용이 1/128 단위로 양자화).
+- 수정: 읽자마자 float64, 히스토그램 헬퍼에서 캐스팅, PyROOT 헬퍼 double 반환,
+  fit 범위를 config에 명시(`fits.tsallis_pt_range = [0.15, 6.0]`).
+- 수정 후: inclusive n 7.484 → 7.479, χ²/ndf 0.98 → 1.08; 종류별 closure 불변
+  (pull 1.3/0.8/0.4σ). 다중도 closure는 하드론만 세도록 명시 (NBD 검증이 목적).
+
 ### Next step
 `docs/next_steps.md` Step 1: WSL2에서 `run_all.sh` → `ARMS AGREE` 확인 →
 `results/` 재커밋. 이어서 Step 2: `m02_run_pythia.py --n-events 10`부터.

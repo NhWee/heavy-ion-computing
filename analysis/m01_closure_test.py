@@ -111,12 +111,18 @@ def main() -> int:
               "using the file's provenance as truth")
         T_true, n_true = gen.tsallis_T, gen.tsallis_n
 
-    pt = np.hypot(a.particle_px, a.particle_py)
-    p = np.sqrt(a.particle_px ** 2 + a.particle_py ** 2 + a.particle_pz ** 2)
-    eta = np.arctanh((a.particle_pz / p) * (1.0 - 1e-12))
+    f64 = lambda arr: ak.values_astype(arr, np.float64)          # noqa: E731
+    px, py, pz = f64(a.particle_px), f64(a.particle_py), f64(a.particle_pz)
+    pt = np.hypot(px, py)
+    p = np.sqrt(px ** 2 + py ** 2 + pz ** 2)
+    eta = np.arctanh((pz / p) * (1.0 - 1e-12))
     apdg = abs(a.particle_pdg)
 
     # ---------------------------------------------------- multiplicity closure
+    # Charged HADRONS only (pi, K, p): the NBD expectation is for the hadrons
+    # the generator draws from the NBD; the two muons of an embedded Z are
+    # extra and are deliberately excluded here (the analysis itself counts
+    # every charged particle, muons included -- see module01_root.md).
     is_ch = (apdg == 211) | (apdg == 321) | (apdg == 2212)
     sel_acc = is_ch & (abs(eta) < eta_max) & (pt > acut["pt_min"]) & (pt < acut["pt_max"])
     nch = ak.to_numpy(ak.sum(sel_acc, axis=1))
@@ -138,6 +144,8 @@ def main() -> int:
     edges = make_edges(cfg["analysis"]["binning"]["pt"])
     ctr, w = centers_widths(edges)
     norm_deta = 2.0 * eta_max
+    fr = cfg["analysis"]["fits"]["tsallis_pt_range"]
+    in_fr = (ctr > fr[0]) & (ctr < fr[1])
 
     # ---------------------------------------------------- Tsallis closure
     print(f"generator truth:  T = {T_true*1000:.1f} MeV,  n = {n_true:.3f}\n")
@@ -151,7 +159,7 @@ def main() -> int:
         sumw, sumw_err = hist_weighted(vals, wts, edges)
         y, ye = sumw / (n_ev * w), sumw_err / (n_ev * w)
         fit = do_fit(lambda x, C, T, n, _m=m0: tsallis_invariant(x, C, T, n, _m),
-                     ctr, y, ye, p0=[y[0] * 2, 0.13, 7.0],
+                     ctr[in_fr], y[in_fr], ye[in_fr], p0=[y[0] * 2, 0.13, 7.0],
                      bounds=([0, 0.01, 1.0], [np.inf, 1.0, 50.0]), label=name)
         if not fit["converged"]:
             print(f"{name:8s}  FIT DID NOT CONVERGE: {fit.get('error')}")
@@ -171,7 +179,7 @@ def main() -> int:
     wts = 1.0 / (2.0 * np.pi * vals * norm_deta)
     sumw, sumw_err = hist_weighted(vals, wts, edges)
     y, ye = sumw / (n_ev * w), sumw_err / (n_ev * w)
-    fit = do_fit(tsallis_invariant, ctr, y, ye,
+    fit = do_fit(tsallis_invariant, ctr[in_fr], y[in_fr], ye[in_fr],
                  p0=[y[0] * 2, 0.13, 7.0],
                  bounds=([0, 0.01, 1.0], [np.inf, 1.0, 50.0]), label="inclusive")
     print(f"{'incl.':8s} {len(vals):9d} {fit['params'][1]*1000:8.1f} +- "
