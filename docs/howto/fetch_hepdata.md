@@ -4,8 +4,31 @@
 각 단계마다 **무엇을 하는지, 왜 하는지, 화면에 무엇이 보여야 하는지**를 적었습니다.
 예제는 Module 2의 ALICE pp 13 TeV $dN_{\rm ch}/d\eta$ 표입니다.
 
-필요한 것: 인터넷(`www.hepdata.net`), Python 환경(`micromamba activate hic` 또는
+필요한 것: 인터넷(`www.hepdata.net`), Python 환경(`hic` 또는
 `pip install uproot awkward scipy pyyaml matplotlib`). PYTHIA는 4단계부터만 필요.
+
+## 시작 전에 — 두 가지 전제 (여기서 가장 많이 막힙니다)
+
+**(1) 모든 명령은 저장소 루트에서 칩니다.** 스크립트 경로가 `scripts/...`,
+`data/raw/...`처럼 상대 경로이기 때문입니다. 홈 디렉토리에서 치면
+`can't open file '.../scripts/m02_fetch_hepdata.py'`가 납니다.
+
+```bash
+cd "/mnt/c/Users/Administrator/Claude/Projects/HIC analysis/heavy-ion-computing"   # WSL2의 저장소 위치
+git fetch origin && git checkout claude/vigilant-sagan-aatxhs && git pull
+```
+(저장소가 없으면 `git clone https://github.com/NhWee/heavy-ion-computing.git` 후 그 폴더로.)
+
+**(2) 새 터미널에서는 micromamba 셸 초기화가 먼저입니다.** 안 하면
+`'micromamba' is running as a subprocess and can't modify the parent shell`이 납니다.
+
+```bash
+eval "$(micromamba shell hook --shell bash)"
+micromamba activate hic
+```
+매번 치기 싫으면 한 번만 `micromamba shell init --shell bash --root-prefix=~/.local/share/mamba`
+(다음 터미널부터 자동). 프롬프트 앞에 `(hic)`가 보이면 준비 끝입니다.
+`(base)`는 conda 기본 환경이라 uproot/pyyaml이 없을 수 있습니다.
 
 ---
 

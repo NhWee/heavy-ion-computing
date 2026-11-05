@@ -306,3 +306,20 @@ PyROOT arm의 `calcPt/calcEta`도 `RVec<double>`을 반환하도록 바꿨다 (C
 대한 말이다 — 어떤 점이 왜 빠졌는지 보지 않으면 좋은 χ²는 아무것도 보증하지
 않는다. 이 버그는 하전입자 정의를 바꾸다가(#11 다음 단계) 발견했다: 뮤온이 꼬리에
 들어왔는데도 fit 범위가 늘어나지 않는 것이 이상했다.
+
+---
+
+## #13 `can't open file 'scripts/...'` / `micromamba ... can't modify the parent shell`
+
+**증상 1**: `python scripts/m02_fetch_hepdata.py ...` → `No such file or directory`.
+**원인/해결**: 홈 디렉토리에서 실행함. 이 저장소의 모든 명령은 **저장소 루트**에서
+친다(상대 경로). WSL2의 저장소는 `/mnt/c/Users/Administrator/Claude/Projects/HIC analysis/heavy-ion-computing`.
+
+**증상 2**: `micromamba activate hic` → `'micromamba' is running as a subprocess and
+can't modify the parent shell`.
+**원인/해결**: 새 터미널에서 셸 hook이 안 읽힌 상태. `eval "$(micromamba shell hook
+--shell bash)"` 후 activate. 영구히 하려면 `micromamba shell init --shell bash
+--root-prefix=~/.local/share/mamba` 한 번.
+
+**배운 점**: 가이드에 "어디서", "어떤 환경에서"가 빠지면 첫 줄에서 막힌다.
+`docs/howto/*.md`는 이제 "시작 전에" 절로 시작한다.
