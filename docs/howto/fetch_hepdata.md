@@ -104,8 +104,17 @@ JSON에 `"dependent_index": 1`처럼 적습니다(0부터 셈). η 범위를 `se
 **실패하면**:
 - `ABORT -- the record does not match` → JSON의 arXiv/INSPIRE 번호가 틀림. HEPData
   페이지에서 번호를 확인하고 JSON을 고친 뒤 재실행.
-- `URLError ... 403` / `ENOTFOUND` → 네트워크가 `www.hepdata.net`을 막고 있음.
+- `ENOTFOUND` / `CONNECT ... 403` → 네트워크(프록시)가 `www.hepdata.net`을 막고 있음.
   클라우드 세션이면 환경 설정의 Network access에 추가 후 **새 세션**에서.
+- `HTTP Error 403: Forbidden` (서버까지 갔는데 거부) → HEPData 앞의 Cloudflare가
+  자동 다운로드를 막은 것. 스크립트는 브라우저형 헤더 → `curl` 순으로 재시도한다.
+  그래도 안 되면 **브라우저로 받는다**: 레코드 페이지에서 Table 1 → "Download" →
+  YAML을 `data/raw/alice_pp13TeV_dndeta_table1.yaml`로 저장한 뒤
+  ```bash
+  python scripts/m02_fetch_hepdata.py data/raw/alice_pp13TeV_dndeta.json --local
+  ```
+  `--local`은 다운로드 없이 sha256·헤더 출력·`verified: true`만 한다. 이때 식별자
+  대조(1/4)는 사람이 페이지에서 한 것이므로 JSON의 `_status`에 "by hand"로 남는다.
 
 ---
 

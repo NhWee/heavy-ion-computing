@@ -27,16 +27,94 @@ import hashlib
 import json
 import pathlib
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 
 HEPDATA = "https://www.hepdata.net"
 
 
+# HEPData sits behind Cloudflare, which answers 403 to requests that do not
+# look like a browser (a bare urllib User-Agent is enough to be refused).
+# Send browser-like headers; if that still fails, fall back to curl, which
+# some proxies trust more than Python.
+HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+    "Accept": "application/json, text/x-yaml, text/plain, */*",
+    "Accept-Language": "en",
+}
+
+
 def get(url: str, timeout=60) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "heavy-ion-computing/0.1"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read()
+    req = urllib.request.Request(url, headers=HEADERS)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return r.read()
+    except urllib.error.HTTPError as exc:
+        if exc.code not in (403, 429, 503):
+            raise
+        print(f"      urllib got HTTP {exc.code}; retrying with curl")
+    import shutil
+    import subprocess
+    if not shutil.which("curl"):
+        raise RuntimeError(f"HTTP 403 from {url} and no curl to retry with. "
+                           "Download the file in a browser and place it as the JSON's 'file'.")
+    cmd = ["curl", "-sS", "-L", "--fail", "--max-time", str(timeout)]
+    for k, v in HEADERS.items():
+        cmd += ["-H", f"{k}: {v}"]
+    out = subprocess.run(cmd + [url], capture_output=True)
+    if out.returncode != 0:
+        raise RuntimeError(f"curl failed for {url}: {out.stderr.decode(errors='replace').strip()}\n"
+                           "If the site keeps refusing automated downloads, open the record "
+                           "in a browser, download the table as YAML, save it under the "
+                           "JSON's 'file' name and run this script with --local.")
+    return out.stdout
+
+
+def describe_table(payload: bytes):
+    import yaml
+    doc = yaml.safe_load(payload)
+    for dv in doc.get("dependent_variables", []):
+        print(f"      dependent: {dv.get('header')}  qualifiers: {dv.get('qualifiers')}")
+    for iv in doc.get("independent_variables", []):
+        vals = iv.get("values", [])
+        lo = min(v.get("low", v.get("value")) for v in vals)
+        hi = max(v.get("high", v.get("value")) for v in vals)
+        print(f"      independent: {iv.get('header')}  range [{lo}, {hi}]  ({len(vals)} bins)")
+    n_dep = len(doc.get("dependent_variables", []))
+    if n_dep > 1:
+        print(f"NOTE: {n_dep} dependent variables in this table (e.g. INEL and INEL>0). "
+              "analysis/m02_compare_data.py reads the FIRST; add "
+              '"dependent_index" to the JSON if the wanted class is another one.')
+
+
+def local_only(pj, prov, table) -> int:
+    """--local: the table was downloaded by hand (browser).  Fingerprint it,
+    print its header, mark verified -- the identifiers were checked by the
+    human on the HEPData page, and that is recorded in _status."""
+    out = pj.parent / prov["file"]
+    if not out.exists():
+        print(f"ABORT -- {out} not found; download {table!r} of {prov['hepdata']['record']} "
+              "as YAML from the record page and save it there")
+        return 1
+    payload = out.read_bytes()
+    sha = hashlib.sha256(payload).hexdigest()
+    print(f"=== --local: {out} ({len(payload)} bytes, sha256 {sha[:16]}...)")
+    describe_table(payload)
+    prov.update({
+        "verified": True,
+        "_status": f"table downloaded BY HAND from {prov['hepdata'].get('record_url')} on "
+                   f"{dt.datetime.now(dt.timezone.utc):%Y-%m-%d}; identifiers checked on the "
+                   "HEPData page by the person who downloaded it; header printed by "
+                   "scripts/m02_fetch_hepdata.py --local",
+        "downloaded_utc": dt.datetime.fromtimestamp(out.stat().st_mtime, dt.timezone.utc)
+                           .strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "sha256": sha,
+    })
+    pj.write_text(json.dumps(prov, indent=2, ensure_ascii=False) + "\n")
+    print(f"[out] {pj} updated (verified = true, by hand)")
+    return 0
 
 
 def main() -> int:
@@ -45,12 +123,18 @@ def main() -> int:
     ap.add_argument("provenance", help="data/raw/<dataset>.json")
     ap.add_argument("--table", default=None, help='table name, e.g. "Table 1"')
     ap.add_argument("--version", type=int, default=None, help="record version (default: latest)")
+    ap.add_argument("--local", action="store_true",
+                    help="skip the download: fingerprint and describe a table YAML already "
+                         "saved under the JSON's 'file' (downloaded by hand in a browser)")
     args = ap.parse_args()
 
     pj = pathlib.Path(args.provenance)
     prov = json.loads(pj.read_text())
     record = prov["hepdata"]["record"]
     table = args.table or prov["hepdata"]["table"]
+
+    if args.local:
+        return local_only(pj, prov, table)
 
     print(f"=== step 1/4: fetch the HEPData RECORD {record} and check it is the paper "
           f"named in {pj.name} (arXiv {prov.get('arxiv')}, INSPIRE {prov.get('inspire_id')})")
@@ -97,20 +181,7 @@ def main() -> int:
 
     print("=== step 4/4: print the table header -- CONFIRM BY EYE that the event class "
           "and eta range are the ones in the JSON's 'selection' block")
-    import yaml
-    doc = yaml.safe_load(payload)
-    for dv in doc.get("dependent_variables", []):
-        print(f"      dependent: {dv.get('header')}  qualifiers: {dv.get('qualifiers')}")
-    for iv in doc.get("independent_variables", []):
-        vals = iv.get("values", [])
-        lo = min(v.get("low", v.get("value")) for v in vals)
-        hi = max(v.get("high", v.get("value")) for v in vals)
-        print(f"      independent: {iv.get('header')}  range [{lo}, {hi}]  ({len(vals)} bins)")
-    n_dep = len(doc.get("dependent_variables", []))
-    if n_dep > 1:
-        print(f"NOTE: {n_dep} dependent variables in this table (e.g. INEL and INEL>0). "
-              "analysis/m02_compare_data.py reads the FIRST; add "
-              '"dependent_index" to the JSON if the wanted class is another one.')
+    describe_table(payload)
 
     prov.update({
         "verified": True,

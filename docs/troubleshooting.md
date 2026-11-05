@@ -323,3 +323,10 @@ can't modify the parent shell`.
 
 **배운 점**: 가이드에 "어디서", "어떤 환경에서"가 빠지면 첫 줄에서 막힌다.
 `docs/howto/*.md`는 이제 "시작 전에" 절로 시작한다.
+
+**증상 3**: `micromamba shell init --shell bash --root-prefix=~/.local/share/mamba` 실행 후
+새 터미널에서 `hic` 환경이 안 보임.
+**원인/해결**: root prefix는 **환경이 실제로 있는 곳**이어야 한다. `hic`는
+`~/micromamba/envs/hic`에 있으므로 `micromamba shell init --shell bash --root-prefix=~/micromamba`.
+(micromamba의 안내 메시지가 보여주는 기본값을 그대로 쓰면 안 된다 —
+`micromamba env list`로 위치를 먼저 확인.)
