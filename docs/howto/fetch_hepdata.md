@@ -74,7 +74,7 @@ python scripts/m02_fetch_hepdata.py data/raw/alice_pp13TeV_dndeta.json
 | 1/4 | `https://www.hepdata.net/record/ins1395253?format=json`을 받아 레코드의 arXiv·INSPIRE 번호를 JSON과 비교 | 레코드 번호를 잘못 적었으면 **다른 논문의 표**를 받게 됨. 불일치면 여기서 멈추고 아무것도 쓰지 않음 |
 | 2/4 | 레코드의 표 목록을 출력하고 `Table 1`이 있는지 확인 | 표 이름이 바뀌었거나 번호를 잘못 알았을 때 목록을 보고 고를 수 있게 |
 | 3/4 | `Table 1`을 YAML로 받아 `data/raw/alice_pp13TeV_dndeta_table1.yaml`에 저장, sha256 계산 | YAML이 HEPData의 정식 포맷(CSV는 export). sha256은 "그때 받은 파일과 지금 파일이 같다"의 증거 |
-| 4/4 | 표의 헤더(qualifier)와 η 범위 출력 | **사람이 눈으로** 이벤트 클래스(INEL / INEL>0)와 η 범위를 확인하는 단계. 스크립트는 이것을 판단하지 않음 |
+| 4/4 | 표의 헤더(qualifier)를 읽어 JSON의 `event_class`(예: INEL>0)를 이름에 담은 **열을 자동으로 고르고**(`dependent_index`), η 범위를 `selection.eta_range`에 기록 | 모든 열의 qualifier를 로그에 출력하므로 왜 그 열인지 확인 가능. 후보가 0개 또는 2개 이상이면 멈추고 손으로 `dependent_index`를 적으라고 함 |
 
 끝나면 JSON에 `verified: true`, `downloaded_utc`, `sha256`, 표 DOI가 채워집니다.
 
@@ -97,9 +97,10 @@ NOTE: 2 dependent variables in this table (e.g. INEL and INEL>0) ...
 [out] data/raw/alice_pp13TeV_dndeta.json updated (verified = true)
 ```
 
-**4/4에서 할 일**: 표에 INEL과 INEL>0 두 열이 있으면 어느 열이 INEL>0인지 보고
-JSON에 `"dependent_index": 1`처럼 적습니다(0부터 셈). η 범위를 `selection.eta_range`에
-적고 "(to be confirmed)"를 지웁니다. 이 한 줄이 사람이 책임지는 부분입니다.
+**4/4 이후 사람이 할 일**: 로그의 `-> column N matches event class 'INEL>0'` 줄과
+그 위에 찍힌 qualifier를 한 번 읽어 보는 것뿐입니다. 스크립트가 고른 열이 이상하면
+JSON의 `dependent_index`를 고칩니다. `selection.primary_definition`은 표가 아니라
+논문 본문에 있으므로 논문을 읽고 채웁니다(비교 결과에는 영향 없음, 기록용).
 
 **실패하면**:
 - `ABORT -- the record does not match` → JSON의 arXiv/INSPIRE 번호가 틀림. HEPData

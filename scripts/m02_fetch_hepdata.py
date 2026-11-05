@@ -72,21 +72,49 @@ def get(url: str, timeout=60) -> bytes:
     return out.stdout
 
 
-def describe_table(payload: bytes):
+def _norm(s) -> str:
+    return str(s).replace(" ", "").replace("_", "").upper()
+
+
+def describe_table(payload: bytes, event_class: str):
+    """Print the table header and pick, from the dependent-variable qualifiers,
+    the column whose event class matches `event_class`.
+
+    Returns (dependent_index, eta_range_text, column_label).  The choice is
+    automatic but the evidence (every column's qualifiers) is printed, so a
+    reader of the log can see why that column was chosen."""
     import yaml
     doc = yaml.safe_load(payload)
-    for dv in doc.get("dependent_variables", []):
-        print(f"      dependent: {dv.get('header')}  qualifiers: {dv.get('qualifiers')}")
+    deps = doc.get("dependent_variables", [])
+    want = _norm(event_class)
+    matches = []
+    for i, dv in enumerate(deps):
+        quals = dv.get("qualifiers", [])
+        text = " | ".join(f"{q.get('name')}={q.get('value')}" for q in quals)
+        print(f"      dependent[{i}]: {dv.get('header')}  qualifiers: {text}")
+        blob = _norm(text) + _norm(dv.get("header", {}).get("name", ""))
+        # "INEL>0" must not match a column that merely says "INEL"
+        if want in blob and not (want == "INEL" and "INEL>0" in blob):
+            matches.append(i)
+    eta_range = None
     for iv in doc.get("independent_variables", []):
         vals = iv.get("values", [])
         lo = min(v.get("low", v.get("value")) for v in vals)
         hi = max(v.get("high", v.get("value")) for v in vals)
+        eta_range = f"{lo} to {hi} ({len(vals)} bins, from the table)"
         print(f"      independent: {iv.get('header')}  range [{lo}, {hi}]  ({len(vals)} bins)")
-    n_dep = len(doc.get("dependent_variables", []))
-    if n_dep > 1:
-        print(f"NOTE: {n_dep} dependent variables in this table (e.g. INEL and INEL>0). "
-              "analysis/m02_compare_data.py reads the FIRST; add "
-              '"dependent_index" to the JSON if the wanted class is another one.')
+    if len(matches) == 1:
+        idx = matches[0]
+        label = deps[idx].get("header", {}).get("name", "")
+        print(f"      -> column {idx} matches event class {event_class!r}: {label}")
+        return idx, eta_range, label
+    if not matches and len(deps) == 1:
+        print(f"      -> single column; its qualifiers do not name {event_class!r} -- "
+              "CHECK the paper that this is the right event class")
+        return 0, eta_range, deps[0].get("header", {}).get("name", "")
+    raise RuntimeError(f"could not pick a column for event class {event_class!r} "
+                       f"automatically (candidates: {matches or 'none'} of {len(deps)}); "
+                       "set \"dependent_index\" in the JSON by hand from the list above")
 
 
 def local_only(pj, prov, table) -> int:
@@ -101,7 +129,10 @@ def local_only(pj, prov, table) -> int:
     payload = out.read_bytes()
     sha = hashlib.sha256(payload).hexdigest()
     print(f"=== --local: {out} ({len(payload)} bytes, sha256 {sha[:16]}...)")
-    describe_table(payload)
+    idx, eta_range, label = describe_table(payload, prov["event_class"])
+    prov["dependent_index"] = idx
+    prov.setdefault("selection", {})["eta_range"] = eta_range
+    prov["selection"]["column"] = label
     prov.update({
         "verified": True,
         "_status": f"table downloaded BY HAND from {prov['hepdata'].get('record_url')} on "
@@ -179,9 +210,12 @@ def main() -> int:
     sha = hashlib.sha256(payload).hexdigest()
     print(f"[out] {out} ({len(payload)} bytes, sha256 {sha[:16]}...)")
 
-    print("=== step 4/4: print the table header -- CONFIRM BY EYE that the event class "
-          "and eta range are the ones in the JSON's 'selection' block")
-    describe_table(payload)
+    print("=== step 4/4: read the table header; pick the column whose qualifiers name "
+          f"the event class {prov['event_class']!r}; record the eta range")
+    idx, eta_range, label = describe_table(payload, prov["event_class"])
+    prov["dependent_index"] = idx
+    prov.setdefault("selection", {})["eta_range"] = eta_range
+    prov["selection"]["column"] = label
 
     prov.update({
         "verified": True,
