@@ -71,13 +71,16 @@ bash scripts/run_all.sh
 - [ ] `docs/research_log.md`에 Session 4 기록, README 상태표에서 Module 1을 "완료"로
 
 ### Step 2 — Module 2: PYTHIA 8 minimum bias pp 13 TeV
-`docs/roadmap.md` Module 2 항목 그대로. 시작점:
-1. `generators/pythia_mb_13TeV.cmnd` 작성 (빔, √s, `SoftQCD:inelastic`, tune, seed, 이벤트 수)
-2. 10 → 1,000 → 20,000 이벤트로 확대, Module 1과 **같은 TTree 스키마**로 저장
-3. Module 1 분석 코드를 **수정 없이** 실행 — `tests/test_m01_pipeline.py`가
-   PYTHIA 파일로도 통과해야 한다. 수정이 필요하면 그것이 인터페이스 설계 문제
-4. HEPData에서 ALICE pp 13 TeV dN_ch/dη (INEL>0) 표를 받아 비교
-   (DOI·표 번호·선택 조건을 `data/raw/<dataset>.json`에 먼저 기록)
+`docs/modules/module02_pythia.md`에 상세. 진행:
+- [x] `generators/pythia_mb_13TeV.cmnd` (빔, √s, `SoftQCD:inelastic`, Monash, PDF, tau0Max, seed, 이벤트 수)
+- [x] `scripts/m02_run_pythia.py` — Module 1과 같은 TTree 스키마 + charge/process_code/n_ch_eta1
+- [x] `config/analysis_m02_pythia.yaml`, `data/raw/README.md`(provenance 템플릿), `tests/test_m02_card.py`
+- [ ] WSL2에서 10 → 1,000 → 20,000 이벤트 생성 (스크립트는 **미실행**, API drift 가능)
+- [ ] Module 1 분석 코드를 **수정 없이** 실행 — 안 되면 인터페이스 설계 문제로 기록
+- [ ] "하전입자" 정의 결정 (module02_pythia.md §5; π/K/p → charge ≠ 0 권장)
+- [ ] HEPData에서 ALICE pp 13 TeV dN_ch/dη (INEL>0) 표를 받아 비교
+      (DOI·표 번호·선택 조건을 `data/raw/<dataset>.json`에 먼저 기록)
+- [ ] `analysis/m02_compare_data.py`: INEL>0 선택 + ratio panel
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.
 

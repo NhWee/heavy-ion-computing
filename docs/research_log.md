@@ -147,6 +147,16 @@ pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WS
 - `run_all.sh`가 컨테이너에서 `environment/versions_installed.txt`를 덮어써
   되돌렸다 (next_steps C3).
 
+### Module 2 착수 (같은 세션, 실행 없이 작성만)
+- `generators/pythia_mb_13TeV.cmnd`: 물리에 영향을 주는 설정은 기본값이라도 전부
+  명시 (Monash 2013, NNPDF2.3 LO, tau0Max = 10 mm, MPI/ISR/FSR/CR on). 이벤트
+  클래스(INEL>0, NSD)는 카드가 아니라 분석에서 고르도록 설계.
+- `scripts/m02_run_pythia.py`: Module 1과 같은 TTree 브랜치 + `particle_charge`,
+  `process_code`, `n_ch_eta1`, `weight`. provenance에 카드 전문과 sigmaGen 기록.
+- 열린 결정: Module 1 분석의 "charged hadron = π/K/p"는 toy의 우연. PYTHIA
+  샘플에서는 charge ≠ 0으로 바꿔야 ALICE primary 정의와 맞음 (module02 §5).
+- `tests/test_m02_card.py` 13건: 카드가 필수 설정을 빠짐없이, 중복 없이 담는지.
+
 ### Next step
 `docs/next_steps.md` Step 1: WSL2에서 `run_all.sh` → `ARMS AGREE` 확인 →
-`results/` 재커밋 → Module 2 PYTHIA.
+`results/` 재커밋. 이어서 Step 2: `m02_run_pythia.py --n-events 10`부터.

@@ -21,7 +21,7 @@
 |---|---|---|
 | Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
 | Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 완료 (closure·테스트·CI·바이트 재현) / **ROOT arm 실행 대기** |
-| Module 2 | PYTHIA 8 | 예정 |
+| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | 카드·생성 스크립트·설정 작성 완료, **WSL2 실행 대기** |
 | Module 3 | HepMC · PDG 이벤트 레코드 | 예정 |
 | Module 4 | FastJet | 예정 |
 
@@ -110,7 +110,7 @@ heavy-ion-computing/
 ├── src/hicpy/                  # 재사용 라이브러리: style, kinematics, toy_generator
 ├── scripts/                    # 이벤트 생성 / run_all.sh
 ├── analysis/                   # 관측량 계산 (uproot arm, ROOT arm, closure test)
-├── generators/                 # (예정) PYTHIA·Angantyr 등 생성기 설정 카드
+├── generators/                 # PYTHIA 카드 (pythia_mb_13TeV.cmnd)
 ├── data/{raw,generated,processed}/
 ├── results/{figures,tables,logs}/
 ├── docs/                       # README 외 모든 문서
@@ -118,7 +118,7 @@ heavy-ion-computing/
 │   ├── roadmap.md              # 마일스톤
 │   ├── research_log.md         # 연구 노트 (세션별)
 │   ├── troubleshooting.md      # 오답노트 (오류·실패 기록)
-│   └── modules/module01_root.md
+│   └── modules/module0N_*.md   # 모듈별 코드·결과 설명
 ├── exercises/                  # 모듈별 연습문제
 ├── tests/                      # pytest: kinematics, 생성기, 소규모 end-to-end
 └── notebooks/
