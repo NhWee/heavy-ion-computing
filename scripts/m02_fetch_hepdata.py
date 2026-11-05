@@ -46,7 +46,7 @@ HEADERS = {
 }
 
 
-def get(url: str, timeout=60) -> bytes:
+def get(url: str, timeout=180) -> bytes:
     req = urllib.request.Request(url, headers=HEADERS)
     try:
         with urllib.request.urlopen(req, timeout=timeout) as r:
@@ -58,12 +58,15 @@ def get(url: str, timeout=60) -> bytes:
     except urllib.error.URLError as exc:
         # proxy CONNECT refusals surface here, not as HTTPError
         print(f"      urllib failed ({exc.reason}); retrying with curl")
+    except (TimeoutError, OSError) as exc:
+        # HEPData can take well over a minute to answer a record request
+        print(f"      urllib timed out after {timeout} s ({exc}); retrying with curl")
     import shutil
     import subprocess
     if not shutil.which("curl"):
         raise RuntimeError(f"HTTP 403 from {url} and no curl to retry with. "
                            "Download the file in a browser and place it as the JSON's 'file'.")
-    cmd = ["curl", "-sS", "-L", "--fail", "--max-time", str(timeout)]
+    cmd = ["curl", "-sS", "-L", "--fail", "--max-time", str(2 * timeout), "--retry", "2"]
     for k, v in HEADERS.items():
         cmd += ["-H", f"{k}: {v}"]
     out = subprocess.run(cmd + [url], capture_output=True)
@@ -172,8 +175,10 @@ def main() -> int:
 
     print(f"=== step 1/4: fetch the HEPData RECORD {record} and check it is the paper "
           f"named in {pj.name} (arXiv {prov.get('arxiv')}, INSPIRE {prov.get('inspire_id')})")
-    url = f"{HEPDATA}/record/{record}?format=json"
-    print(f"[get] {url}")
+    # light=true: metadata and the table list only, without every table's data
+    # (the full record JSON can take minutes to render server-side)
+    url = f"{HEPDATA}/record/{record}?format=json&light=true"
+    print(f"[get] {url}  (can take up to a few minutes; HEPData renders on demand)")
     rec = json.loads(get(url))
     meta = rec.get("record", rec)
     rec_arxiv = str(meta.get("arxiv_id", "")).replace("arXiv:", "")
