@@ -69,15 +69,16 @@ VERDICT_TOLERANCE = 0.15
 
 
 # --------------------------------------------------------------------- data
-def load_hepdata(path: pathlib.Path):
+def load_hepdata(path: pathlib.Path, dependent_index: int = 0):
     """Return dict(x, xlo, xhi, y, stat, sys) as float arrays.  stat/sys are
     symmetrised: max(|plus|, |minus|) -- conservative, and the published
-    asymmetries for dN/deta are small."""
+    asymmetries for dN/deta are small.  `dependent_index` picks the column
+    when a HEPData table carries several (e.g. INEL and INEL>0)."""
     path = pathlib.Path(path)
     if path.suffix in (".yaml", ".yml"):
         doc = yaml.safe_load(path.read_text())
         xv = doc["independent_variables"][0]["values"]
-        yv = doc["dependent_variables"][0]["values"]
+        yv = doc["dependent_variables"][dependent_index]["values"]
         xlo = np.array([v["low"] if "low" in v else v["value"] for v in xv], float)
         xhi = np.array([v["high"] if "high" in v else v["value"] for v in xv], float)
         y = np.array([v["value"] for v in yv], float)
@@ -128,11 +129,14 @@ def load_dataset(prov_json: pathlib.Path):
     if missing:
         raise ValueError(f"{prov_json.name}: provenance incomplete, fill in {missing} "
                          "(see data/raw/README.md)")
+    if not prov.get("verified", True):
+        raise ValueError(f"{prov_json.name}: identifiers not yet verified against HEPData "
+                         "(verified = false) -- run scripts/m02_fetch_hepdata.py first")
     table = prov_json.parent / prov["file"]
     if not table.exists():
         raise FileNotFoundError(f"{table} named in {prov_json.name} is not on disk "
                                 "(data payloads are not committed; download it)")
-    return prov, load_hepdata(table)
+    return prov, load_hepdata(table, int(prov.get("dependent_index", 0)))
 
 
 # --------------------------------------------------------------------- MC

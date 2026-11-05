@@ -112,6 +112,30 @@ def test_csv_loader_equivalent_to_yaml(tmp_path):
         np.testing.assert_allclose(a[k], b[k])
 
 
+def test_unverified_provenance_is_refused(tmp_path):
+    pj = tmp_path / "p.json"
+    pj.write_text(json.dumps({"experiment": "ALICE", "sqrt_s_TeV": 13.0, "verified": False,
+                              "observable": "dN_ch/deta", "event_class": "INEL>0", "file": "x.yaml"}))
+    with pytest.raises(ValueError, match="verified"):
+        cmp.load_dataset(pj)
+
+
+def test_repository_provenance_json_is_consistent():
+    """The committed ALICE JSON must be refused until verified, and its fields
+    must be the ones the fetch script and the comparison expect."""
+    pj = REPO / "data" / "raw" / "alice_pp13TeV_dndeta.json"
+    prov = json.loads(pj.read_text())
+    for k in ("experiment", "arxiv", "hepdata", "sqrt_s_TeV", "observable", "event_class", "file"):
+        assert k in prov
+    assert prov["hepdata"]["record"].startswith("ins")
+    if not prov["verified"]:
+        assert prov["sha256"] is None and prov["downloaded_utc"] is None
+        with pytest.raises(ValueError, match="verified"):
+            cmp.load_dataset(pj)
+    else:
+        assert prov["sha256"] and prov["downloaded_utc"]
+
+
 def test_incomplete_provenance_is_refused(tmp_path):
     pj = tmp_path / "p.json"
     pj.write_text(json.dumps({"experiment": "ALICE", "sqrt_s_TeV": 13.0,
