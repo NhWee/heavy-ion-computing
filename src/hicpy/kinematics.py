@@ -6,7 +6,7 @@ Conventions used throughout this project
   "p_T (GeV/c)" on an axis we are using the experimentalists' convention of
   keeping the c explicit in the label only.
 * Beam axis = z.  The transverse plane is (x, y).
-* Pseudorapidity   eta = -ln[ tan(theta/2) ]      (purely geometric)
+* Pseudorapidity   eta = -ln[ tan(theta/2) ] = asinh(pz/pT)  (purely geometric)
 * Rapidity          y  = 0.5 * ln[(E+pz)/(E-pz)]  (additive under z-boosts)
   eta -> y in the massless limit p >> m.  Experiments that only track a
   particle's direction (no mass hypothesis) report eta; theorists prefer y
@@ -27,16 +27,24 @@ def p_mag(px, py, pz):
 
 
 def eta(px, py, pz):
-    """Pseudorapidity. Uses the numerically stable arctanh(pz/|p|) form."""
-    p = p_mag(px, py, pz)
-    # clip guards against |pz| == |p| (exactly-collinear particles -> +-inf)
-    return np.arctanh(np.clip(pz / np.where(p > 0, p, 1e-300), -1 + 1e-15, 1 - 1e-15))
+    """Pseudorapidity eta = asinh(pz / pT).
+
+    The asinh form is an exact identity (sinh eta = pz / pT) and stays precise
+    at any |eta|, unlike -ln tan(theta/2) or 0.5 ln((p+pz)/(p-pz)), which lose
+    digits as |eta| grows.  It uses numpy ufuncs only, so it works unchanged on
+    jagged awkward arrays (np.clip / np.where do not: troubleshooting #3).
+    A particle exactly along the beam (pT = 0) gets a large finite value
+    (|eta| ~ 70 + ln|pz|) instead of inf.  All three Module 1 arms use this
+    same definition.
+    """
+    return np.arcsinh(pz / np.maximum(pt(px, py), 1e-30))
 
 
 def rapidity(e, pz):
     """Rapidity y = 0.5 ln[(E+pz)/(E-pz)]."""
-    num = np.clip(e + pz, 1e-300, None)
-    den = np.clip(e - pz, 1e-300, None)
+    # np.maximum, not np.clip: ufuncs only, so awkward arrays work too
+    num = np.maximum(e + pz, 1e-300)
+    den = np.maximum(e - pz, 1e-300)
     return 0.5 * np.log(num / den)
 
 
@@ -72,7 +80,7 @@ def invariant_mass(e, px, py, pz):
     producing NaN.
     """
     m2 = e * e - (px * px + py * py + pz * pz)
-    return np.sqrt(np.clip(m2, 0.0, None))
+    return np.sqrt(np.maximum(m2, 0.0))      # ufunc: works on awkward arrays
 
 
 def invariant_mass_pair(p1, p2):
