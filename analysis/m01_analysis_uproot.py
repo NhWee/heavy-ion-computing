@@ -13,11 +13,23 @@ Observables produced
 1. P(N_ch)              charged multiplicity distribution in |eta| < 0.8
 2. dN_ch/deta           charged-particle pseudorapidity density
 3. invariant pT yield   1/(2 pi pT N_ev) d2N/(dpT deta), with a Tsallis fit
-4. m(mu+ mu-)           dimuon invariant mass, with a Breit-Wigner + linear fit
+4. m(mu+ mu-)           dimuon invariant mass, with a Breit-Wigner fit
+
+Fits (hicpy.fitting; docs/troubleshooting.md #15, #16)
+------------------------------------------------------
+* Physics results use a binned Poisson likelihood on the RAW counts with the
+  model integrated over each bin.  The Tsallis fit therefore has no
+  bin-centre approximation, and the 240-event Z peak is fitted with the right
+  statistics (a chi2 with sigma = sqrt(N) biased its width low by 0.8 sigma).
+* The Tsallis fit is ALSO done the Session 1-3 way -- least squares at the bin
+  centres -- because that algorithm is identical in the PyROOT and C++ arms
+  (TF1 chi2).  It is written to the "tsallis" block that
+  m01_compare_arms.py compares; it is a cross-check of the implementations,
+  not a physics number.
 
 Every figure carries its dataset stamp (system, energy, cuts); every fit records
-range, function, initial parameters, convergence status, chi2/ndf and the
-covariance matrix into results/tables/m01_fit_results.json.
+range, function, method, initial parameters, convergence status, goodness of
+fit, covariance and correlation into results/tables/m01_fit_results.json.
 """
 from __future__ import annotations
 
@@ -30,13 +42,21 @@ import awkward as ak
 import numpy as np
 import uproot
 import yaml
-from scipy.optimize import curve_fit
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from hicpy import kinematics as kin              # noqa: E402
+from hicpy import pdg as pdgref                  # noqa: E402  (reference values)
 from hicpy.style import apply_style, stamp, save_figure, OKABE_ITO, plt   # noqa: E402
+# Shared helpers (moved to src/hicpy; re-exported here for older imports such
+# as analysis/m02_compare_data.py)
+from hicpy.histograms import (make_edges, centers_widths, hist_counts,  # noqa: E402,F401
+                              hist_with_errors, hist_weighted, hist_record,
+                              select_bins)
+from hicpy.fitting import (tsallis_invariant, rel_breit_wigner, fit_chi2,  # noqa: E402,F401
+                           do_fit, fit_poisson, tsallis_expected_counts,
+                           bw_expected_counts, bin_integrals, sub_edges)
 
 # "Charged particle" = electric charge != 0, read from the particle_charge
 # branch.  NOT a list of PDG codes: a list written for the toy sample (pi, K, p)
@@ -52,91 +72,6 @@ def rel(path: pathlib.Path) -> str:
         return str(path)
 
 
-# ---------------------------------------------------------------- histograms
-def make_edges(spec):
-    if spec["type"] == "log":
-        return np.geomspace(spec["lo"], spec["hi"], spec["n_bins"] + 1)
-    return np.linspace(spec["lo"], spec["hi"], spec["n_bins"] + 1)
-
-
-def hist_with_errors(values, edges):
-    """Unweighted histogram -> (counts, sqrt(N) errors). Poisson errors are the
-    correct statistical uncertainty for a raw count in a bin."""
-    counts, _ = np.histogram(np.asarray(values, dtype=np.float64), bins=edges)
-    return counts.astype(float), np.sqrt(counts.astype(float))
-
-
-def hist_weighted(values, weights, edges):
-    """Weighted histogram -> (sum of weights, sqrt(sum of weights^2)) per bin.
-
-    This is exactly what ROOT's TH1::Sumw2() does.  With per-particle weights
-    the Poisson sqrt(N) rule no longer applies: the correct statistical error on
-    a weighted sum is sqrt(sum w_i^2).
-    """
-    values = np.asarray(values, dtype=np.float64)      # see troubleshooting #12
-    weights = np.asarray(weights, dtype=np.float64)
-    sumw, _ = np.histogram(values, bins=edges, weights=weights)
-    sumw2, _ = np.histogram(values, bins=edges, weights=weights ** 2)
-    return sumw, np.sqrt(sumw2)
-
-
-def centers_widths(edges):
-    return 0.5 * (edges[1:] + edges[:-1]), np.diff(edges)
-
-
-def hist_record(edges, contents, errors):
-    """Serialisable histogram (edges, per-bin contents and errors).
-
-    Every arm writes its histograms in this form so that m01_compare_arms.py
-    can compare them bin by bin -- agreeing on a handful of scalar summaries is
-    not evidence that two implementations agree on the histograms.
-    """
-    return {"edges": [float(v) for v in edges],
-            "contents": [float(v) for v in contents],
-            "errors": [float(v) for v in errors]}
-
-
-# ---------------------------------------------------------------- fit models
-def tsallis_invariant(pt, C, T, n, m0=0.13957039):
-    """Invariant yield form: C * [1 + (mT - m0)/(nT)]^(-n)."""
-    mt = np.sqrt(pt * pt + m0 * m0)
-    return C * (1.0 + (mt - m0) / (n * T)) ** (-n)
-
-
-def bw_plus_linear(m, A, m0, gamma, a, b):
-    """Relativistic Breit-Wigner peak on a linear background."""
-    num = m ** 2 * gamma ** 2
-    den = (m ** 2 - m0 ** 2) ** 2 + m0 ** 2 * gamma ** 2
-    return A * num / den + a + b * m
-
-
-def do_fit(func, x, y, yerr, p0, bounds=(-np.inf, np.inf), label=""):
-    """Fit and return a full record: params, errors, chi2/ndf, covariance."""
-    mask = (yerr > 0) & np.isfinite(y)
-    try:
-        popt, pcov = curve_fit(func, x[mask], y[mask], p0=p0,
-                               sigma=yerr[mask], absolute_sigma=True,
-                               bounds=bounds, maxfev=40000)
-        converged = True
-    except Exception as exc:                       # noqa: BLE001
-        return {"label": label, "converged": False, "error": str(exc)}
-    resid = (y[mask] - func(x[mask], *popt)) / yerr[mask]
-    chi2 = float(np.sum(resid ** 2))
-    ndf = int(mask.sum() - len(popt))
-    return {
-        "label": label,
-        "function": func.__name__,
-        "converged": converged,
-        "fit_range": [float(x[mask].min()), float(x[mask].max())],
-        "n_points": int(mask.sum()),
-        "p0": [float(v) for v in p0],
-        "params": [float(v) for v in popt],
-        "errors": [float(v) for v in np.sqrt(np.diag(pcov))],
-        "covariance": [[float(v) for v in row] for row in pcov],
-        "chi2": chi2, "ndf": ndf, "chi2_ndf": chi2 / ndf if ndf > 0 else None,
-    }
-
-
 # ---------------------------------------------------------------------- main
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
@@ -150,7 +85,6 @@ def main() -> int:
     acut = cfg["analysis"]["track_cuts"]
     mcut = cfg["analysis"]["muon_cuts"]
     bins = cfg["analysis"]["binning"]
-    sqrt_s = cfg["generator"]["sqrt_s_TeV"]
 
     infile = pathlib.Path(args.infile) if args.infile else REPO / cfg["paths"]["generated_file"]
     figdir = pathlib.Path(args.figdir) if args.figdir else REPO / cfg["paths"]["figure_dir"]
@@ -170,6 +104,10 @@ def main() -> int:
     print(f"[read] {infile.name}: {n_events} events, "
           f"{ak.sum(ak.num(ev.particle_px))} particles "
           f"(seed {prov['config']['seed']}, git {prov['git_commit']})")
+    # The figure stamp describes the FILE that was analysed, so the collision
+    # energy comes from its provenance (toy and PYTHIA files both record it);
+    # the config value is only a fallback for files without it.
+    sqrt_s = prov.get("config", {}).get("sqrt_s_TeV", cfg["generator"]["sqrt_s_TeV"])
 
     # Promote the float32 branches to float64 BEFORE any arithmetic
     # (docs/troubleshooting.md #12): numpy's weighted histogram accumulates a
@@ -181,14 +119,12 @@ def main() -> int:
                      f64(ev.particle_pz), f64(ev.particle_E))
     pdg = ev.particle_pdg
 
-    # NOTE (docs/troubleshooting.md #2): only numpy *ufuncs* (sqrt, hypot,
-    # arctanh, comparisons) broadcast over awkward arrays.  np.clip and np.isin
-    # are __array_function__ dispatches and try to rectangularise the jagged
-    # array, which fails.  Everything below is written with ufuncs only.
-    pt_a = np.hypot(px, py)
-    p_a = np.sqrt(px ** 2 + py ** 2 + pz ** 2)
-    # |pz/|p|| <= 1 by construction; the shrink factor keeps arctanh finite
-    eta_a = np.arctanh((pz / p_a) * (1.0 - 1e-12))
+    # NOTE (docs/troubleshooting.md #3): only numpy *ufuncs* (sqrt, hypot,
+    # arcsinh, maximum, comparisons) broadcast over awkward arrays.  np.clip
+    # and np.isin are __array_function__ dispatches and try to rectangularise
+    # the jagged array, which fails.  hicpy.kinematics uses ufuncs only.
+    pt_a = kin.pt(px, py)
+    eta_a = kin.eta(px, py, pz)          # asinh(pz/pT), same in all three arms
     apdg = abs(pdg)
     is_charged = ev.particle_charge != 0
 
@@ -199,7 +135,7 @@ def main() -> int:
     nch = ak.to_numpy(ak.sum(sel_mult, axis=1))
 
     edges = make_edges(bins["mult"])
-    c, err = hist_with_errors(nch, edges)
+    c, err = hist_counts(nch, edges)
     ctr, w = centers_widths(edges)
     prob, prob_err = c / (n_events * w), err / (n_events * w)
     h_mult = hist_record(edges, prob, prob_err)
@@ -222,7 +158,7 @@ def main() -> int:
     eta_flat = ak.to_numpy(ak.flatten(eta_a[is_charged
                                             & (pt_a > acut["pt_min"])]))
     edges = make_edges(bins["eta"])
-    c, err = hist_with_errors(eta_flat, edges)
+    c, err = hist_counts(eta_flat, edges)
     ctr, w = centers_widths(edges)
     dndeta, dndeta_err = c / (n_events * w), err / (n_events * w)
     h_eta = hist_record(edges, dndeta, dndeta_err)
@@ -269,21 +205,40 @@ def main() -> int:
     # bins above a few GeV/c are dominated by Z-decay muons (z_fraction = 2 %
     # is ~1e5 times the real rate) and in Module 2 by the hard-scattering tail.
     fr = cfg["analysis"]["fits"]["tsallis_pt_range"]
-    in_range = (ctr > fr[0]) & (ctr < fr[1])
-    fit = do_fit(tsallis_invariant, ctr[in_range], yld[in_range], yld_err[in_range],
-                 p0=[yld[0] * 2, 0.13, 7.0],
-                 bounds=([0, 0.01, 1.0], [np.inf, 1.0, 50.0]),
-                 label="Tsallis fit to invariant pT yield")
+    in_range = select_bins(edges, fr[0], fr[1])     # bin centre inside, as ROOT's "R"
+
+    # (a) physics fit: Poisson likelihood on the RAW counts of the same
+    #     particles, model = N_ev * delta_eta * integral over the bin of
+    #     2 pi pT f_inv.  Same C, T, n meaning as the invariant-yield form.
+    counts_pt, _ = hist_counts(pt_flat, edges)
+    fit = fit_poisson(tsallis_expected_counts(sub_edges(edges, in_range), n_events,
+                                              delta_eta),
+                      counts_pt[in_range],
+                      p0={"C": yld[0] * 2, "T": 0.13, "n": 7.0},
+                      limits={"C": (0.0, None), "T": (0.01, 1.0), "n": (1.0, 50.0)},
+                      label="Tsallis fit to the pT spectrum (Poisson likelihood)",
+                      function="tsallis_invariant")
     fit["requested_range"] = [float(fr[0]), float(fr[1])]
+    fit["fit_range"] = [float(sub_edges(edges, in_range)[0]),
+                        float(sub_edges(edges, in_range)[-1])]
+
+    # (b) arm cross-check: least squares at the bin centres, the algorithm the
+    #     ROOT arms run (TF1 chi2).  Not a physics result -- see the docstring.
+    fit_xc = fit_chi2(tsallis_invariant, ctr[in_range], yld[in_range], yld_err[in_range],
+                      p0=[yld[0] * 2, 0.13, 7.0],
+                      bounds=([0, 0.01, 1.0], [np.inf, 1.0, 50.0]),
+                      label="Tsallis chi2 at bin centres (three-arm cross-check only)")
+    fit_xc["requested_range"] = [float(fr[0]), float(fr[1])]
 
     fig, ax = plt.subplots()
     ax.errorbar(ctr, yld, yerr=yld_err, fmt="o", color=OKABE_ITO[0],
                 label="toy MC (this work)")
     if fit["converged"]:
-        xs = np.geomspace(fr[0], fr[1], 300)
+        xs = np.geomspace(*fit["fit_range"], 300)
         ax.plot(xs, tsallis_invariant(xs, *fit["params"]), "-",
                 color=OKABE_ITO[1],
-                label=(rf"Tsallis: $T$ = {fit['params'][1]*1000:.0f} MeV, "
+                label=("Tsallis fit (Poisson LL)\n"
+                       rf"$T$ = {fit['params'][1]*1000:.0f} MeV, "
                        rf"$n$ = {fit['params'][2]:.2f}"))
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlabel(r"$p_{\rm T}$ (GeV/$c$)")
@@ -292,8 +247,9 @@ def main() -> int:
                   r"  ($c^2$/GeV$^2$)")
     stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
                rf"$|\eta| < {acut['eta_abs_max']}$, charged particles",
-               rf"$\chi^2/$ndf = {fit.get('chi2_ndf', float('nan')):.2f}"])
-    ax.legend(loc="lower left")
+               (rf"$-2\ln\lambda$/ndf = {fit['deviance']:.1f}/{fit['ndf']}"
+                if fit["converged"] else "fit failed")])
+    ax.legend(loc="lower left", fontsize=10)
     save_figure(fig, figdir / "m01_pt_spectrum")
     plt.close(fig)
 
@@ -309,24 +265,32 @@ def main() -> int:
                               sum_over_pair(py), sum_over_pair(pz))
 
     edges = make_edges(bins["mass"])
-    c, err = hist_with_errors(mass, edges)
+    c, err = hist_counts(mass, edges)
     ctr, w = centers_widths(edges)
     h_mass = hist_record(edges, c, err)        # raw counts, not normalised
-    zfit = do_fit(bw_plus_linear, ctr, c, np.maximum(err, 1.0),
-                  p0=[c.max() * 1e4, 91.2, 2.5, 0.0, 0.0],
-                  bounds=([0, 80, 0.1, -1e3, -1e3], [np.inf, 100, 20, 1e3, 1e3]),
-                  label="Breit-Wigner + linear fit to m(mu+mu-)")
+    # Poisson likelihood with a relativistic Breit-Wigner and NO background
+    # term: the toy contains no dimuon background by construction, and a
+    # background term bounded at >= 0 absorbs the Breit-Wigner tails and
+    # biases the width low (-0.3 sigma; m01_fit_validation.py).  Module 2
+    # (Drell-Yan continuum, heavy-flavour muons) must add one.
+    zfit = fit_poisson(bw_expected_counts(edges), c,
+                       p0={"N": max(c.sum(), 1.0), "m0": 91.2, "gamma": 2.5},
+                       limits={"N": (0.0, None), "m0": (80.0, 100.0), "gamma": (0.1, 20.0)},
+                       label="Breit-Wigner fit to m(mu+mu-) (Poisson likelihood)",
+                       function="rel_breit_wigner")
 
     fig, ax = plt.subplots(figsize=(6.2, 4.2))
     ax.errorbar(ctr, c, yerr=err, fmt="o", color=OKABE_ITO[0],
                 label="toy MC (this work)")
     if zfit["converged"]:
+        n_fit, m_fit, g_fit = zfit["params"]
         xs = np.linspace(edges[0], edges[-1], 400)
-        ax.plot(xs, bw_plus_linear(xs, *zfit["params"]), "-", color=OKABE_ITO[1],
-                label="Breit-Wigner + linear fit")
+        norm = bin_integrals(rel_breit_wigner, edges, m_fit, g_fit).sum()
+        # expected counts per bin of width w[0], drawn as a smooth curve
+        ax.plot(xs, n_fit * rel_breit_wigner(xs, m_fit, g_fit) / norm * w[0], "-",
+                color=OKABE_ITO[1], label="Breit-Wigner fit (Poisson LL)")
     ax.set_ylim(0, c.max() * 2.2)           # headroom so stamp/legend never overlap data
-    ax.axvline(91.1876, ls=":", lw=1.2, color="0.4")
-    ax.text(92.5, c.max() * 0.30, r"PDG $m_Z$", fontsize=10, color="0.4")
+    ax.axvline(pdgref.Z_MASS, ls=":", lw=1.2, color="0.4", label=r"RPP 2026 $m_Z$")
     ax.set_xlabel(r"$m_{\mu^+\mu^-}$ (GeV/$c^2$)")
     ax.set_ylabel(f"counts / {w[0]:.1f} GeV/$c^2$")
     stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
@@ -334,7 +298,9 @@ def main() -> int:
                rf"$|\eta_\mu| < {mcut['eta_abs_max']}$",
                f"{len(mass)} candidates",
                (rf"$m_{{\rm fit}}$ = {zfit['params'][1]:.2f} $\pm$ "
-                rf"{zfit['errors'][1]:.2f} GeV/$c^2$") if zfit["converged"] else ""],
+                rf"{zfit['errors'][1]:.2f} GeV/$c^2$") if zfit["converged"] else "",
+               (rf"$\Gamma_{{\rm fit}}$ = {zfit['params'][2]:.2f} $\pm$ "
+                rf"{zfit['errors'][2]:.2f} GeV") if zfit["converged"] else ""],
           loc="upper right")
     ax.legend(loc="upper left", fontsize=10)
     save_figure(fig, figdir / "m01_dimuon_mass")
@@ -352,13 +318,23 @@ def main() -> int:
         "n_dimuon_candidates": int(len(mass)),
         "mean_dimuon_mass_GeV": float(mass.mean()) if len(mass) else None,
         "cuts": {"track": acut, "muon": mcut},
-        "fits": [fit, zfit],
-        # Tsallis parameters in the same flat form every arm writes, so the
-        # cross-check can compare them without parsing the fit records.
-        "tsallis": ({"T": fit["params"][1], "T_err": fit["errors"][1],
-                     "n": fit["params"][2], "n_err": fit["errors"][2],
-                     "chi2": fit["chi2"], "ndf": fit["ndf"]}
-                    if fit["converged"] else None),
+        "fits": [fit, zfit, fit_xc],
+        # Physics result (Poisson likelihood) in flat form
+        "tsallis_poisson": ({"T": fit["params"][1], "T_err": fit["errors"][1],
+                             "n": fit["params"][2], "n_err": fit["errors"][2],
+                             "deviance": fit["deviance"], "ndf": fit["ndf"]}
+                            if fit["converged"] else None),
+        "z_fit": ({"m": zfit["params"][1], "m_err": zfit["errors"][1],
+                   "gamma": zfit["params"][2], "gamma_err": zfit["errors"][2],
+                   "n_signal": zfit["params"][0], "deviance": zfit["deviance"],
+                   "ndf": zfit["ndf"]} if zfit["converged"] else None),
+        # Cross-check block: the bin-centre chi2 fit, in the flat form every arm
+        # writes, so m01_compare_arms.py can compare the three implementations.
+        "tsallis": ({"T": fit_xc["params"][1], "T_err": fit_xc["errors"][1],
+                     "n": fit_xc["params"][2], "n_err": fit_xc["errors"][2],
+                     "chi2": fit_xc["chi2"], "ndf": fit_xc["ndf"],
+                     "method": "chi2 at bin centres (cross-check only)"}
+                    if fit_xc["converged"] else None),
         "histograms": {"mult": h_mult, "eta": h_eta, "pt": h_pt, "mass": h_mass},
         "generator_provenance": prov,
     }
@@ -370,11 +346,16 @@ def main() -> int:
     if fit["converged"]:
         print(f"[fit] Tsallis  T = {fit['params'][1]*1000:.1f} +- "
               f"{fit['errors'][1]*1000:.1f} MeV, n = {fit['params'][2]:.3f} +- "
-              f"{fit['errors'][2]:.3f}, chi2/ndf = {fit['chi2_ndf']:.2f}")
+              f"{fit['errors'][2]:.3f}, -2lnL/ndf = {fit['deviance']:.1f}/{fit['ndf']} "
+              f"(Poisson likelihood)")
+    if fit_xc["converged"]:
+        print(f"[x-chk] Tsallis chi2 at bin centres: T = {fit_xc['params'][1]*1000:.1f} "
+              f"MeV, n = {fit_xc['params'][2]:.3f}, chi2/ndf = {fit_xc['chi2_ndf']:.2f} "
+              f"(for m01_compare_arms.py only)")
     if zfit["converged"]:
         print(f"[fit] Z peak   m = {zfit['params'][1]:.3f} +- {zfit['errors'][1]:.3f} "
               f"GeV/c2, Gamma = {zfit['params'][2]:.2f} +- {zfit['errors'][2]:.2f} GeV, "
-              f"chi2/ndf = {zfit['chi2_ndf']:.2f}")
+              f"-2lnL/ndf = {zfit['deviance']:.1f}/{zfit['ndf']} (Poisson likelihood)")
     print(f"[out] figures -> {rel(figdir)}/m01_*.pdf|png")
     print(f"[out] tables  -> {rel(tabdir / 'm01_fit_results.json')}")
     return 0

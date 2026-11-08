@@ -64,6 +64,17 @@ analysis:
     tsallis_pt_range: [0.15, 6.0]   # GeV/c; soft spectrum only (above: Z muons
                                     # in the toy, hard-scattering tail in PYTHIA)
 
+# ---------------------------------------------------------------------------
+# Pseudo-experiments that validate the fit METHODS (analysis/m01_fit_validation.py):
+# bias and error coverage of each statistic, measured on toys drawn from the
+# generator's own model with the statistics of the real sample.
+# ---------------------------------------------------------------------------
+validation:
+  seed: 20261107
+  n_toys_pt: 300            # per species (pi, K, p), Tsallis methods
+  n_toys_z: 1000            # Z line-shape methods
+  n_z_acceptance: 2000000   # Z decays for the acceptance-vs-mass curve
+
 paths:
   generated_file: data/generated/m01_toy_events.root
   figure_dir: results/figures

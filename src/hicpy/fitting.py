@@ -133,7 +133,7 @@ def _inside(x, lo, hi):
 
 
 def fit_poisson(expected, counts, p0, limits=None, label="", function="",
-                n_starts=5, seed=0):
+                n_starts=5, seed=0, tol=1e-6):
     """Binned Poisson maximum-likelihood fit (minimises poisson_deviance).
 
     expected : callable(*params) -> expected counts per bin
@@ -143,8 +143,14 @@ def fit_poisson(expected, counts, p0, limits=None, label="", function="",
                where they are physical (a yield >= 0, a width > 0); a result
                sitting on a bound is listed in "at_limit".
     n_starts : multi-start check: n_starts - 1 extra fits from start values
-               scattered by +-30 % around p0.  If one of them reaches a lower
-               deviance it becomes the result ("multistart.improved").
+               scattered by +-30 % around p0.  If one of them reaches a
+               deviance lower by more than 1e-3 (a genuinely different
+               minimum, not convergence noise) it becomes the result
+               ("multistart.improved").
+    tol      : MIGRAD tolerance; the EDM goal is 0.002 * tol, so the default
+               1e-6 locates the minimum to ~1e-4 sigma.  The iminuit default
+               (0.1) leaves ~1e-2 sigma of start-point dependence, enough to
+               make results differ between machines.
 
     Returns a record with params, errors, covariance, correlation, deviance,
     ndf, the multi-start summary and convergence flags.
@@ -161,6 +167,7 @@ def fit_poisson(expected, counts, p0, limits=None, label="", function="",
     def run(start):
         m = Minuit(cost, *start, name=names)
         m.errordef = Minuit.LEAST_SQUARES          # D = -2 ln L + const
+        m.tol = tol
         for k, (lo, hi) in limits.items():
             m.limits[k] = (lo, hi)
         m.migrad()
@@ -178,7 +185,7 @@ def fit_poisson(expected, counts, p0, limits=None, label="", function="",
         others.append(run(st))
     improved = False
     for m in others:
-        if m.valid and (not best.valid or m.fval < best.fval - 1e-6):
+        if m.valid and (not best.valid or m.fval < best.fval - 1e-3):
             best, improved = m, True
     if not best.valid:
         return {"label": label, "function": function, "converged": False,
