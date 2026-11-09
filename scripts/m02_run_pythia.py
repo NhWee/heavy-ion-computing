@@ -48,7 +48,6 @@ import json
 import pathlib
 import platform
 import re
-import subprocess
 import sys
 import time
 
@@ -58,15 +57,14 @@ import uproot
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
+sys.path.insert(0, str(REPO / "src"))
+
+from hicpy.provenance import git_describe  # noqa: E402
 
 
 def git_hash(repo: pathlib.Path) -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "-C", str(repo), "rev-parse", "--short", "HEAD"],
-            stderr=subprocess.DEVNULL).decode().strip()
-    except Exception:
-        return "unknown"
+    """Commit hash with "-dirty" if code/config differ from it (hicpy.provenance)."""
+    return git_describe(repo)
 
 
 def card_value(card_text: str, key: str, default=None):
