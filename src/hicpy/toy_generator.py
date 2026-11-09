@@ -128,7 +128,16 @@ def _eta_shape(eta, plateau, sigma):
 
 
 def _sample_eta(rng, n, cfg):
-    """Inverse-CDF sampling on a fine grid (fast, exact enough, no rejection loop)."""
+    """Inverse-CDF sampling on a fine grid (fast, exact enough, no rejection loop).
+
+    KNOWN ARTEFACT (troubleshooting #17): the CDF is a cumulative sum that
+    starts at pdf[0] / sum > 0, so every u < cdf[0] is mapped to exactly
+    -eta_max -- about 20 of the 1.2 million particles of the committed sample
+    sit exactly at eta = -6.0.  Only the outermost dN/deta bin notices (+1 %).
+    Not fixed here because any change to the mapping moves every eta and so
+    every committed number; fix it (CDF starting at 0, trapezoidal) together
+    with the next deliberate regeneration of the samples.
+    """
     grid = np.linspace(-cfg.eta_max, cfg.eta_max, 4001)
     pdf = _eta_shape(grid, cfg.eta_plateau, cfg.eta_sigma)
     cdf = np.cumsum(pdf)
