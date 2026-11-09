@@ -226,7 +226,7 @@ CI에서 쓴다.
 7. ROOT arm 코드를 검토하고 수정했다(실행은 못 함): use-after-free, float 연산, 버퍼,
    provenance. `compare_arms`는 입력 동일성과 컷을 먼저 확인하고, arm이 빠지면 실패한다.
 8. `run_all.sh`(C3: 버전 기록은 `RECORD_ENV=1`에서만), `check_results_drift.py`, CI 수정.
-9. 테스트를 44개에서 65개로 늘렸다.
+9. 테스트를 44개에서 67개로 늘렸다.
 
 ### Result
 - **Tsallis 방법 편향**: 평균 T pull이 bin 중심 χ²에서 +0.85 / +0.74 / +0.65

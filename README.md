@@ -20,7 +20,7 @@
 | 모듈 | 내용 | 상태 |
 |---|---|---|
 | Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
-| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 완료: Poisson-likelihood fit, closure(생성기 성분 4종), pseudo-experiment 방법 검증, 체계 오차, 테스트 65개, CI 실가동 / **ROOT arm은 이 계열에서 실행 대기** |
+| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 완료: Poisson-likelihood fit, closure(생성기 성분 4종), pseudo-experiment 방법 검증, 체계 오차, 테스트 67개, CI 실가동 / **ROOT arm은 이 계열에서 실행 대기** |
 | Module 2 | PYTHIA 8 minimum bias pp 13 TeV | 카드·생성 스크립트·설정 작성 완료, **WSL2 실행 대기** |
 | Module 3 | HepMC · PDG 이벤트 레코드 | 예정 |
 | Module 4 | FastJet | 예정 |
@@ -91,7 +91,7 @@ python scripts/check_results_drift.py    # 커밋된 결과 표가 그대로 재
 
 1. `environment/verify_environment.py` — 환경 검증 (FAIL이면 중단). 버전 기록
    `environment/versions_installed.txt`는 `RECORD_ENV=1`일 때만 다시 씁니다
-2. `pytest` — 단위·파이프라인·교차검증 판정 테스트 (`tests/`, 65건; `RUN_TESTS=0`이면 생략)
+2. `pytest` — 단위·파이프라인·교차검증 판정 테스트 (`tests/`, 67건; `RUN_TESTS=0`이면 생략)
 3. `scripts/m01_make_toy_events.py` — toy 이벤트 20,000개 생성 → ROOT TTree
 4. `analysis/m01_analysis_uproot.py` — 관측량 4종 + Poisson-likelihood fit → `results/`
 5. `analysis/m01_closure_test.py` — **closure test**: 다중도 평균·NBD k, dN/dη, 종류별
@@ -105,7 +105,8 @@ python scripts/check_results_drift.py    # 커밋된 결과 표가 그대로 재
 
 GitHub Actions(`.github/workflows/ci.yml`)가 push마다 ROOT를 뺀 전 과정을 돌리고,
 커밋된 `results/tables/*.json`이 재현되는지 `scripts/check_results_drift.py`로 확인합니다
-(중심값 1e-6, 기계마다 흔들리는 수치 Hessian 오차는 1e-2). 그림은 메타데이터를
+(중심값 1e-6, 기계마다 흔들리는 수치 Hessian 오차는 1e-2, 수치적으로 불안정한 Barlow
+참고값은 비교 제외). 그림은 메타데이터를
 제거해 저장하므로 같은 기계·같은 seed면 **바이트까지 같습니다**.
 
 모든 물리 파라미터는 코드가 아니라 [`config/analysis.yaml`](config/analysis.yaml)에

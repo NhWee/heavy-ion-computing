@@ -20,7 +20,7 @@
 | Closure test | Tsallis만 | + 다중도, dN/dη | + NBD k, truth Z 선형, 참값은 파일 provenance, JSON 기록 |
 | ROOT arm | ❌ 미실행 | ❌ 미실행 (코드 수정) | ❌ 미실행. 첫 실행에서 터졌을 use-after-free 등 수정 (#19) |
 | `m01_compare_arms.py` | 스칼라 5개 | 세 arm, bin별, fit | + 같은 입력·같은 컷 확인, arm 누락 = 실패, 판정 테스트 6건 |
-| CI | 없음 | ⚠️ 추가했지만 **11회 전부 설정 단계에서 실패** | ✅ 실제로 테스트 65건과 전체 재현이 돈다 (#14) |
+| CI | 없음 | ⚠️ 추가했지만 **11회 전부 설정 단계에서 실패** | ✅ 실제로 테스트 67건과 전체 재현이 돈다 (#14) |
 | 체계 오차 틀 (C2) | 없음 | 없음 | ✅ `m01_fit_systematics.py`: bootstrap 유의성, 참 모형 대조군 |
 | 버전 기록 덮어쓰기 (C3) | 열림 | 열림 | ✅ `RECORD_ENV=1`일 때만 기록 |
 | provenance | `git_commit: unknown` | 해시 기록 | ✅ 코드·설정이 커밋과 다르면 `-dirty` |
@@ -57,8 +57,9 @@ push 뒤 Actions 실행 결과를 확인하는 습관이 필요합니다(#14). G
 켜 두는 것을 권합니다.
 
 ### C5. (선택) 오차의 기계 의존성
-MINUIT HESSE 오차는 기계마다 상대 1e-5–2e-3 다릅니다. 물리적으로는 무의미하지만, 논문용 숫자는
-MINOS 비대칭 오차나 `strategy=2`로 확인하는 것이 좋습니다.
+MINUIT HESSE 오차는 기계마다 상대 1e-5–2e-3 다릅니다(중심값은 1e-6 안에서 같음). 그래서
+`check_results_drift.py`는 오차를 1e-2로 비교하고, 이를 증폭하는 Barlow 참고값은 비교하지 않습니다.
+물리적으로는 무의미하지만, 논문용 숫자는 MINOS 비대칭 오차나 `strategy=2`로 확인하는 것이 좋습니다.
 
 ---
 
@@ -75,7 +76,7 @@ python scripts/check_results_drift.py
 ```
 **완료 기준**
 - [ ] `verify_environment.py` FAIL 0, SKIP은 LHAPDF 1건만
-- [ ] `pytest` 65건 통과 (WSL2에서도)
+- [ ] `pytest` 67건 통과 (WSL2에서도)
 - [ ] PyROOT arm, C++ macro 실행 성공 → `results/tables/m01_{pyroot,root}_summary.json`
 - [ ] `m01_compare_arms.py` → `ARMS AGREE` (같은 입력·같은 컷 확인 포함)
 - [ ] 불일치가 나오면 원인을 `docs/troubleshooting.md`에 다음 번호로 기록

@@ -13,12 +13,17 @@ with the file on disk:
   derived numbers such as a toy-averaged bias): enough slack for round-off
   between machines, far tighter than any physics change;
 * EXCEPT uncertainty-derived floats (fit errors, covariance, correlation,
-  pulls, Barlow sigmas -- key names in UNCERTAINTY_KEYS): they come from
-  MINUIT's numerical second derivatives (HESSE), which depend on the exact
-  floating-point path and differ between machines by 1e-5 to 2e-3 relative
-  (first CI run, 2026-11-09; central values agreed to 1e-6).  They must agree
-  to 1e-2 relative -- a real change (wrong errordef, wrong weights) moves them
-  by tens of percent;
+  pulls, the nominal "stat" error -- UNCERTAINTY_KEYS / UNCERTAINTY_SEGMENTS):
+  they come from MINUIT's numerical second derivatives (HESSE), which depend
+  on the exact floating-point path and differ between machines by 1e-5 to
+  2e-3 relative (first CI run, 2026-11-09; central values agreed to 1e-6).
+  They must agree to 1e-2 relative -- a real change (wrong errordef, wrong
+  weights) moves them by tens of percent;
+* informational values that are ill-conditioned by construction are not
+  compared at all (INFORMATIONAL_KEYS): the Barlow shortcut
+  sqrt(|s_v^2 - s_nom^2|) subtracts two nearly equal squared HESSE errors and
+  amplifies their 1e-3 machine dependence to ~10 % (second CI run) -- which is
+  why the systematics decision uses the bootstrap instead (troubleshooting #18);
 * everything else (counts, strings, structure) must be identical.
 
 Figures are not compared byte by byte here: PNG rasterisation can change
@@ -38,11 +43,24 @@ REL_TOL, ABS_TOL = 1e-6, 1e-7
 UNCERTAINTY_REL_TOL = 1e-2
 # a path segment containing one of these marks an uncertainty-derived value
 UNCERTAINTY_KEYS = ("error", "_err", "covariance", "correlation", "pull",
-                    "barlow", "_sd", "mean_fit_error")
+                    "_sd", "mean_fit_error")
+UNCERTAINTY_SEGMENTS = {"stat"}            # exact key names
+# path segments containing these are reported, not compared (see docstring)
+INFORMATIONAL_KEYS = ("barlow",)
+
+
+def _segments(path):
+    return [seg.split("[")[0] for seg in path.split("/") if seg]
 
 
 def is_uncertainty(path):
-    return any(k in seg for seg in path.split("/") for k in UNCERTAINTY_KEYS)
+    segs = _segments(path)
+    return (any(k in seg for seg in segs for k in UNCERTAINTY_KEYS)
+            or any(seg in UNCERTAINTY_SEGMENTS for seg in segs))
+
+
+def is_informational(path):
+    return any(k in seg for seg in _segments(path) for k in INFORMATIONAL_KEYS)
 
 
 def walk(a, b, path, problems):
@@ -51,7 +69,7 @@ def walk(a, b, path, problems):
             problems.append(f"{path}: keys differ {sorted(a.keys() ^ b.keys())}")
             return
         for k in a:
-            if k not in SKIP_KEYS:
+            if k not in SKIP_KEYS and not is_informational(f"{path}/{k}"):
                 walk(a[k], b[k], f"{path}/{k}", problems)
     elif isinstance(a, list) and isinstance(b, list):
         if len(a) != len(b):
