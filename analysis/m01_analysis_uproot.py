@@ -106,9 +106,16 @@ def main() -> int:
           f"{ak.sum(ak.num(ev.px))} particles "
           f"(seed {prov['config']['seed']}, git {prov['git_commit']})")
     # The figure stamp describes the FILE that was analysed, so the collision
-    # energy comes from its provenance (toy and PYTHIA files both record it);
-    # the config value is only a fallback for files without it.
-    sqrt_s = prov.get("config", {}).get("sqrt_s_TeV", cfg["generator"]["sqrt_s_TeV"])
+    # energy comes from its provenance: the toy records sqrt_s_TeV, PYTHIA
+    # (scripts/m02_run_pythia.py) records eCM_GeV.  The config value is only a
+    # fallback for files that record neither.
+    pcfg = prov.get("config", {})
+    if "sqrt_s_TeV" in pcfg:
+        sqrt_s = float(pcfg["sqrt_s_TeV"])
+    elif "eCM_GeV" in pcfg:
+        sqrt_s = float(pcfg["eCM_GeV"]) / 1000.0
+    else:
+        sqrt_s = float(cfg["generator"]["sqrt_s_TeV"])
 
     px, py, pz, e = ev.px, ev.py, ev.pz, ev.E
     pt_a, eta_a = ev.pt, ev.eta          # eta = asinh(pz/pT), same in all three arms
