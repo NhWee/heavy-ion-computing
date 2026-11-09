@@ -28,3 +28,16 @@ def small_sample(tmp_path_factory):
                    check=True, capture_output=True)
     assert out.exists() and out.with_suffix(".json").exists()
     return out
+
+
+@pytest.fixture(scope="session")
+def analysed(small_sample, tmp_path_factory):
+    """The uproot arm run once on the small sample; returns the output dir
+    (figures in ./fig, tables in ./tab)."""
+    out = tmp_path_factory.mktemp("analysis")
+    r = subprocess.run([sys.executable, str(REPO / "analysis" / "m01_analysis_uproot.py"),
+                        "--infile", str(small_sample),
+                        "--figdir", str(out / "fig"), "--tabdir", str(out / "tab")],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    return out

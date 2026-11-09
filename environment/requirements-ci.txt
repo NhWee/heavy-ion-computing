@@ -1,0 +1,12 @@
+# PyPI subset of environment/environment.yml: the packages the ROOT-free part
+# of the pipeline needs.  Used by .github/workflows/ci.yml (also as its pip
+# cache key) and by cloud containers that cannot reach conda-forge.
+# Lower bounds only; CI prints the versions it actually installed (pip freeze).
+numpy>=1.26
+scipy>=1.11
+matplotlib>=3.8
+pyyaml
+uproot>=5.3
+awkward>=2.6
+iminuit>=2.25
+pytest

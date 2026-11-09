@@ -40,22 +40,21 @@ import sys
 
 import awkward as ak
 import numpy as np
-import uproot
 import yaml
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from hicpy import kinematics as kin              # noqa: E402
+from hicpy.events import read_particles, track_selection   # noqa: E402
 from hicpy import pdg as pdgref                  # noqa: E402  (reference values)
 from hicpy.style import apply_style, stamp, save_figure, OKABE_ITO, plt   # noqa: E402
 # Shared helpers (moved to src/hicpy; re-exported here for older imports such
 # as analysis/m02_compare_data.py)
-from hicpy.histograms import (make_edges, centers_widths, hist_counts,  # noqa: E402,F401
-                              hist_with_errors, hist_weighted, hist_record,
-                              select_bins)
-from hicpy.fitting import (tsallis_invariant, rel_breit_wigner, fit_chi2,  # noqa: E402,F401
-                           do_fit, fit_poisson, tsallis_expected_counts,
+from hicpy.histograms import (make_edges, centers_widths, hist_counts,  # noqa: E402
+                              hist_weighted, hist_record, select_bins)
+from hicpy.fitting import (tsallis_invariant, rel_breit_wigner, fit_chi2,  # noqa: E402
+                           fit_poisson, tsallis_expected_counts,
                            bw_expected_counts, bin_integrals, sub_edges)
 
 # "Charged particle" = electric charge != 0, read from the particle_charge
@@ -95,43 +94,29 @@ def main() -> int:
     apply_style()
 
     # ---------------------------------------------------------------- read
-    with uproot.open(infile) as f:
-        tree = f["events"]
-        n_events = tree.num_entries
-        ev = tree.arrays(["particle_px", "particle_py", "particle_pz",
-                          "particle_E", "particle_pdg", "particle_charge", "has_z"])
-        prov = json.loads(str(f["provenance"]))
+    # hicpy.events.read_particles promotes the float32 branches to float64
+    # BEFORE any arithmetic (docs/troubleshooting.md #12: numpy's weighted
+    # histogram accumulates a cumulative sum, and in float32 the sparse high-pT
+    # bins came out quantised, their sum of w^2 exactly zero) and computes pT
+    # and eta = asinh(pz/pT) with ufunc-only hicpy.kinematics, which works on
+    # jagged awkward arrays (troubleshooting #3).
+    ev = read_particles(infile)
+    n_events, prov = ev.n_events, ev.provenance
     print(f"[read] {infile.name}: {n_events} events, "
-          f"{ak.sum(ak.num(ev.particle_px))} particles "
+          f"{ak.sum(ak.num(ev.px))} particles "
           f"(seed {prov['config']['seed']}, git {prov['git_commit']})")
     # The figure stamp describes the FILE that was analysed, so the collision
     # energy comes from its provenance (toy and PYTHIA files both record it);
     # the config value is only a fallback for files without it.
     sqrt_s = prov.get("config", {}).get("sqrt_s_TeV", cfg["generator"]["sqrt_s_TeV"])
 
-    # Promote the float32 branches to float64 BEFORE any arithmetic
-    # (docs/troubleshooting.md #12): numpy's weighted histogram accumulates a
-    # cumulative sum, and in float32 the sparsely populated high-pT bins come
-    # out quantised -- their sum of w^2 rounds to exactly zero, which silently
-    # removed them from the fit.  Storage is float32; arithmetic is not.
-    f64 = lambda arr: ak.values_astype(arr, np.float64)          # noqa: E731
-    px, py, pz, e = (f64(ev.particle_px), f64(ev.particle_py),
-                     f64(ev.particle_pz), f64(ev.particle_E))
-    pdg = ev.particle_pdg
-
-    # NOTE (docs/troubleshooting.md #3): only numpy *ufuncs* (sqrt, hypot,
-    # arcsinh, maximum, comparisons) broadcast over awkward arrays.  np.clip
-    # and np.isin are __array_function__ dispatches and try to rectangularise
-    # the jagged array, which fails.  hicpy.kinematics uses ufuncs only.
-    pt_a = kin.pt(px, py)
-    eta_a = kin.eta(px, py, pz)          # asinh(pz/pT), same in all three arms
-    apdg = abs(pdg)
-    is_charged = ev.particle_charge != 0
+    px, py, pz, e = ev.px, ev.py, ev.pz, ev.E
+    pt_a, eta_a = ev.pt, ev.eta          # eta = asinh(pz/pT), same in all three arms
+    apdg = abs(ev.pdg)
+    is_charged = ev.charge != 0
 
     # ------------------------------------------------- 1) multiplicity P(Nch)
-    sel_mult = (is_charged
-                & (abs(eta_a) < acut["eta_abs_max"])
-                & (pt_a > acut["pt_min"]) & (pt_a < acut["pt_max"]))
+    sel_mult = track_selection(ev, acut)      # charged, |eta|, pt_min < pT < pt_max
     nch = ak.to_numpy(ak.sum(sel_mult, axis=1))
 
     edges = make_edges(bins["mult"])

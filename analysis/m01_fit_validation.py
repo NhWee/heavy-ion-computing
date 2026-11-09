@@ -53,8 +53,7 @@ from hicpy.histograms import (make_edges, centers_widths, hist_counts,     # noq
                               hist_weighted, select_bins)
 from hicpy.fitting import (tsallis_invariant, bw_plus_linear, fit_chi2,    # noqa: E402
                            fit_poisson, tsallis_expected_counts,
-                           bw_expected_counts, bin_integrals, rel_breit_wigner,
-                           sub_edges)
+                           bw_expected_counts, rel_breit_wigner, sub_edges)
 from hicpy.style import apply_style, save_figure, OKABE_ITO, plt           # noqa: E402
 
 SPECIES = [("pi+-", tg.PDG["pi"]), ("K+-", tg.PDG["K"]), ("p/pbar", tg.PDG["p"])]

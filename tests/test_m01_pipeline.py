@@ -7,7 +7,6 @@ generator is replaced by PYTHIA (Module 2): the analysis code must keep giving
 the same answers for the same input.
 """
 import json
-import pathlib
 import subprocess
 import sys
 
@@ -38,15 +37,6 @@ def test_root_file_layout_and_provenance(small_sample):
     assert prov["config"]["seed"] == 20260827
     assert prov["generator"] == "hicpy.toy_generator"
     assert json.loads(small_sample.with_suffix(".json").read_text()) == prov
-
-
-@pytest.fixture(scope="module")
-def analysed(small_sample, tmp_path_factory):
-    out = tmp_path_factory.mktemp("analysis")
-    r = run("analysis/m01_analysis_uproot.py", "--infile", small_sample,
-            "--figdir", out / "fig", "--tabdir", out / "tab")
-    assert r.returncode == 0, r.stderr
-    return out
 
 
 def test_analysis_outputs_exist(analysed):
@@ -94,7 +84,41 @@ def test_figures_are_byte_reproducible(small_sample, tmp_path):
         assert f.read_bytes() == (tmp_path / "b" / f.name).read_bytes(), f.name
 
 
-def test_closure_passes_on_small_sample(small_sample):
-    r = run("analysis/m01_closure_test.py", "--infile", small_sample)
+def test_closure_passes_on_small_sample(small_sample, tmp_path):
+    r = run("analysis/m01_closure_test.py", "--infile", small_sample, "--tabdir", tmp_path)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "CLOSURE PASSED" in r.stdout
+    out = json.loads((tmp_path / "m01_closure_test.json").read_text())
+    assert out["passed"] and out["truth_from"] == "input file provenance"
+    names = {c["observable"] for c in out["checks"]}
+    for must in ("<N_ch> in acceptance", "dN/deta, |eta|<0.5", "NBD k (accepted N_ch)",
+                 "Tsallis T [pi+-]", "Z mass (truth level)", "Z width (truth level)"):
+        assert must in names, must
+    assert all(abs(c["pull"]) <= out["tolerance_sigma"] for c in out["checks"])
+
+
+def test_physics_fits_are_poisson_and_crosscheck_is_chi2(analysed):
+    """The physics numbers come from the Poisson likelihood; the "tsallis" block
+    that m01_compare_arms.py compares is the bin-centre chi2 the ROOT arms run."""
+    s = json.loads((analysed / "tab" / "m01_fit_results.json").read_text())
+    ts, xc, z = s["fits"][0], s["fits"][2], s["fits"][1]
+    assert ts["method"].startswith("binned Poisson likelihood")
+    assert z["method"].startswith("binned Poisson likelihood")
+    assert xc["method"].startswith("least squares at bin centres")
+    assert s["tsallis"]["T"] == xc["params"][1]
+    assert s["tsallis_poisson"]["T"] == ts["params"][1]
+    assert s["z_fit"]["m"] == z["params"][1]
+    for f in (ts, z):
+        assert f["accurate_covariance"] and not f["at_limit"]
+        assert f["multistart"]["max_param_shift_sigma"] < 1e-3
+
+
+def test_fit_validation_runs_with_few_toys(tmp_path):
+    r = run("analysis/m01_fit_validation.py", "--n-toys-pt", 4, "--n-toys-z", 6,
+            "--n-z-acceptance", 20000, "--tabdir", tmp_path, "--figdir", tmp_path)
+    assert r.returncode == 0, r.stdout + r.stderr
+    v = json.loads((tmp_path / "m01_fit_validation.json").read_text())
+    assert set(v["tsallis"]) == {"pi+-", "K+-", "p/pbar"}
+    assert set(v["z"]) >= {"neyman_cuts", "poisson_cuts", "poisson_truth", "poisson_bkg_cuts"}
+    assert (tmp_path / "m01_fit_validation.pdf").exists()
+    assert (tmp_path / "m01_fit_validation.png").exists()

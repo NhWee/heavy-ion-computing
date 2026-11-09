@@ -4,15 +4,23 @@
 //
 //   root -l -b -q 'analysis/m01_analysis_root.C("data/generated/m01_toy_events.root")'
 //
-// NOTE: the default arguments below MUST match config/analysis.yaml.  A C++
-// macro cannot read the YAML, so this is the one place in the repository where a
-// number is duplicated -- if you change the config, change these too.
-// m01_compare_arms.py will catch a mismatch (bin edges and cuts are compared).
+// scripts/run_all.sh passes the cut values read from config/analysis.yaml, so
+// the defaults below are only used when the macro is run by hand.  The binning
+// is still duplicated here (60 bins etc.); m01_compare_arms.py compares bin
+// edges AND cut values, so a mismatch fails the cross-check.
 //
-// STATUS: written against the ROOT 6.32+ API but NOT executed here -- the
-// container this repository was bootstrapped in has no ROOT installation
-// (conda-forge is unreachable from it).  Run it in the WSL2 `hic` environment
-// and record the outcome in docs/troubleshooting.md.
+// STATUS: written against the ROOT 6.32+ API but NOT executed by Claude (no
+// ROOT in the cloud container).  2026-11-07 review fixed, still unexecuted:
+//   * histograms were owned by the INPUT file (gDirectory at creation) and
+//     were deleted by fin->Close() before the JSON summary read them
+//     (use-after-free) -> TH1::AddDirectory(kFALSE)
+//   * pT was computed in float (Float_t * Float_t) -> double, as the other arms
+//   * eta = asinh(pz/pT), the definition all three arms share
+//   * fixed 20000-entry branch buffers -> sized from GetMaximum("nparticle")
+//   * the input file's provenance is copied into the JSON summary, so the
+//     cross-check can verify that every arm read the same file
+// Run it in the WSL2 `hic` environment and record the outcome in
+// docs/troubleshooting.md.
 //
 // What it demonstrates
 //   TFile      -- the container; a ROOT file is a small hierarchical filesystem
@@ -32,6 +40,7 @@
 // ---------------------------------------------------------------------------
 #include <TROOT.h>
 #include <TFile.h>
+#include <TObjString.h>
 #include <TTree.h>
 #include <TH1D.h>
 #include <TF1.h>
@@ -82,25 +91,35 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
                        Double_t muPtMin = 20.0, Double_t muEtaMax = 2.4,
                        Double_t fitPtLo = 0.15, Double_t fitPtHi = 6.0) {
    gStyle->SetOptStat(0);
+   // Histograms created below must NOT belong to the input file: by default a
+   // new TH1 attaches to gDirectory (= fin after TFile::Open), and fin->Close()
+   // deletes everything attached to it -- the JSON summary at the end would
+   // then read freed memory.
+   TH1::AddDirectory(kFALSE);
 
    TFile *fin = TFile::Open(infile, "READ");
    if (!fin || fin->IsZombie()) { std::cerr << "cannot open " << infile << "\n"; return; }
    TTree *tree = dynamic_cast<TTree *>(fin->Get("events"));
    if (!tree) { std::cerr << "no TTree named 'events'\n"; return; }
+   // provenance written by scripts/m01_make_toy_events.py (a JSON TObjString)
+   TObjString *provObj = dynamic_cast<TObjString *>(fin->Get("provenance"));
+   const std::string provJson = provObj ? provObj->GetString().Data() : "null";
 
-   // --- branch buffers -----------------------------------------------------
-   const Int_t kMax = 20000;
+   // --- branch buffers, sized from the largest event in THIS file ------------
+   // (a fixed C array overflows silently once a sample has bigger events --
+   //  Pb-Pb in Module 8 has tens of thousands of particles per event)
+   const Int_t nMax = Int_t(tree->GetMaximum("nparticle")) + 1;
    Int_t nparticle = 0;
-   static Float_t px[kMax], py[kMax], pz[kMax], E[kMax];
-   static Int_t pdg[kMax];
-   static Char_t charge[kMax];                 // int8 branch -> Char_t ("B")
+   std::vector<Float_t> px(nMax), py(nMax), pz(nMax), E(nMax);
+   std::vector<Int_t> pdg(nMax);
+   std::vector<Char_t> charge(nMax);           // int8 branch -> Char_t ("B")
    tree->SetBranchAddress("nparticle", &nparticle);
-   tree->SetBranchAddress("particle_px", px);
-   tree->SetBranchAddress("particle_py", py);
-   tree->SetBranchAddress("particle_pz", pz);
-   tree->SetBranchAddress("particle_E", E);
-   tree->SetBranchAddress("particle_pdg", pdg);
-   tree->SetBranchAddress("particle_charge", charge);
+   tree->SetBranchAddress("particle_px", px.data());
+   tree->SetBranchAddress("particle_py", py.data());
+   tree->SetBranchAddress("particle_pz", pz.data());
+   tree->SetBranchAddress("particle_E", E.data());
+   tree->SetBranchAddress("particle_pdg", pdg.data());
+   tree->SetBranchAddress("particle_charge", charge.data());
 
    // --- histograms: log bins in pT, linear elsewhere (= config/analysis.yaml)
    const Int_t nPt = 40;
@@ -131,12 +150,19 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
       Int_t nmu = 0;
       ROOT::Math::PxPyPzEVector muSum(0, 0, 0, 0);
 
+      if (nparticle >= nMax) {               // cannot happen with nMax from GetMaximum
+         std::cerr << "event " << iev << ": nparticle " << nparticle
+                   << " exceeds buffer " << nMax << "\n";
+         return;
+      }
       for (Int_t i = 0; i < nparticle; ++i) {
          const Int_t ap = TMath::Abs(pdg[i]);
-         const Double_t pt = TMath::Sqrt(px[i] * px[i] + py[i] * py[i]);
-         const Double_t p  = TMath::Sqrt(pt * pt + pz[i] * pz[i]);
-         if (p <= 0) continue;
-         const Double_t eta = 0.5 * TMath::Log((p + pz[i]) / (p - pz[i]));
+         // storage is float32, arithmetic is double (Float_t * Float_t would be
+         // evaluated in float before the promotion)
+         const Double_t x = px[i], y = py[i], z = pz[i];
+         const Double_t pt = TMath::Sqrt(x * x + y * y);
+         if (pt <= 0) continue;
+         const Double_t eta = TMath::ASinH(z / pt);   // = hicpy.kinematics.eta
 
          const bool isCharged = (charge[i] != 0);   // charge branch, not a pdg list
          if (isCharged && pt > ptMin) {
@@ -150,7 +176,7 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
          }
          if (ap == 13 && pt > muPtMin && TMath::Abs(eta) < muEtaMax) {
             ++nmu;
-            muSum += ROOT::Math::PxPyPzEVector(px[i], py[i], pz[i], E[i]);
+            muSum += ROOT::Math::PxPyPzEVector(x, y, z, Double_t(E[i]));
          }
       }
       hMult->Fill(nch);
@@ -229,6 +255,7 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
    jsonHist(js, "pt", hPt);
    jsonHist(js, "mass", hMass, true);
    js << "  },\n"
+      << "  \"input_provenance\": " << provJson << ",\n"
       << "  \"root_version\": \"" << gROOT->GetVersion() << "\"\n"
       << "}\n";
    js.close();

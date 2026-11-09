@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Module 1, step 4: do the three arms give the SAME numbers?
 
-    python analysis/m01_compare_arms.py
+    python analysis/m01_compare_arms.py [--allow-missing]
 
 Three independent implementations read the same file:
 
@@ -9,15 +9,31 @@ Three independent implementations read the same file:
     PyROOT arm   analysis/m01_analysis_pyroot.py  -> results/tables/m01_pyroot_summary.json
     C++ macro    analysis/m01_analysis_root.C     -> results/tables/m01_root_summary.json
 
-The uproot arm is the reference; each ROOT arm whose summary exists is compared
-against it.  Three levels are checked, because agreeing on a few scalar
-summaries is NOT evidence that two implementations agree:
+The uproot arm is the reference; BOTH ROOT arms must be present (a missing
+summary is a failure, not a pass -- use --allow-missing to compare only what
+exists, and the verdict then says so).  Before any number is compared, two
+preconditions are checked, because a comparison of the wrong inputs proves
+nothing:
+
+  0a. same input    every arm records the provenance of the file it read
+                    (produced_utc, git commit, generator config); they must be
+                    identical -- a stale summary from an earlier run fails here
+  0b. same cuts     the track and muon cut values each arm actually applied
+
+Then three levels are checked, because agreeing on a few scalar summaries is
+NOT evidence that two implementations agree:
 
   1. scalars        <N_ch>, dN/deta, dimuon count and mean mass
   2. histograms     bin edges, then every bin's content and error, for the
                     four histograms (P(N_ch), dN/deta, invariant pT yield,
                     m(mumu))
-  3. Tsallis fit    T and n, compared in units of their statistical error
+  3. Tsallis fit    T and n, compared in units of their statistical error.
+                    This is the least-squares fit at bin centres that all
+                    three arms implement identically (TF1 chi2 / curve_fit) --
+                    a check of the implementations.  The physics result of the
+                    uproot arm is a Poisson-likelihood fit ("tsallis_poisson"),
+                    which the ROOT arms do not run; its inputs (the selected
+                    particles and the binning) are covered by levels 1-2.
 
 When the arms disagree, in this order of likelihood the cause is:
 
@@ -46,6 +62,7 @@ loosen FIT_TOL_SIGMA and record why in docs/troubleshooting.md.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import sys
@@ -53,9 +70,9 @@ import sys
 REPO = pathlib.Path(__file__).resolve().parent.parent
 TAB = REPO / "results" / "tables"
 
-REFERENCE = ("uproot", TAB / "m01_fit_results.json")
-ARMS = [("pyroot", TAB / "m01_pyroot_summary.json"),
-        ("root_macro", TAB / "m01_root_summary.json")]
+REFERENCE_FILE = "m01_fit_results.json"
+ARM_FILES = [("pyroot", "m01_pyroot_summary.json"),
+             ("root_macro", "m01_root_summary.json")]
 
 # (label, key in uproot summary, key in ROOT summaries, relative tolerance)
 SCALARS = [
@@ -147,9 +164,46 @@ def compare_fit(fa, fb):
     return ok, "; ".join(parts) + "; " + chi
 
 
+PROVENANCE_KEYS = ("produced_utc", "git_commit", "config")
+CUT_KEYS = {"track": ("pt_min", "pt_max", "eta_abs_max"), "muon": ("pt_min", "eta_abs_max")}
+
+
+def compare_inputs(up, rt):
+    """0a: both arms read the same file; 0b: both applied the same cut values."""
+    ok = True
+    pu, pr = up.get("generator_provenance"), rt.get("input_provenance")
+    if not pu or not pr:
+        print("  [0a] input provenance MISSING in one summary -- re-run that arm "
+              "(summaries written before 2026-11-07 do not record it)")
+        ok = False
+    else:
+        diff = [k for k in PROVENANCE_KEYS if pu.get(k) != pr.get(k)]
+        if diff:
+            print(f"  [0a] DIFFERENT INPUT FILES: {', '.join(diff)} differ "
+                  f"({pu.get('produced_utc')} vs {pr.get('produced_utc')}) -- a stale summary?")
+            ok = False
+        else:
+            print(f"  [0a] same input file (produced {pu['produced_utc']}, "
+                  f"git {pu['git_commit']}, seed {pu['config'].get('seed')})")
+    cu, cr = up.get("cuts"), rt.get("cuts")
+    if not cu or not cr:
+        print("  [0b] cut values MISSING in one summary -- re-run that arm")
+        return False
+    bad = [f"{blk}.{k}: {cu[blk][k]} vs {cr[blk].get(k)}"
+           for blk, keys in CUT_KEYS.items() for k in keys
+           if cr.get(blk, {}).get(k) is None or rel_diff(cu[blk][k], cr[blk][k]) > 1e-12]
+    if bad:
+        print("  [0b] DIFFERENT CUTS: " + "; ".join(bad))
+        ok = False
+    else:
+        print("  [0b] same cut values")
+    return ok
+
+
 def compare_arm(name, up, rt):
     print(f"\n=== uproot arm vs {name} ({rt.get('root_version', '?')}) ===")
-    ok = True
+    print("[0] inputs")
+    ok = compare_inputs(up, rt)
 
     print("[1] scalars")
     ok &= compare_scalars(up, rt)
@@ -169,6 +223,15 @@ def compare_arm(name, up, rt):
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--allow-missing", action="store_true",
+                    help="compare only the ROOT arms whose summary exists")
+    ap.add_argument("--tabdir", default=str(TAB), help="directory with the summaries")
+    args = ap.parse_args()
+    tab = pathlib.Path(args.tabdir)
+    REFERENCE = ("uproot", tab / REFERENCE_FILE)
+    ARMS = [(n, tab / f) for n, f in ARM_FILES]
     if not REFERENCE[1].exists():
         print(f"missing {REFERENCE[1].name}; run analysis/m01_analysis_uproot.py first")
         return 1
@@ -182,7 +245,7 @@ def main() -> int:
     if not found:
         print("no ROOT-arm summary found; expected one of:")
         for n, p in ARMS:
-            print(f"  {p.relative_to(REPO)}   ({n})")
+            print(f"  {p}   ({n})")
         print("(those arms need ROOT -- they are skipped automatically without it)")
         return 1
 
@@ -191,10 +254,15 @@ def main() -> int:
         ok &= compare_arm(name, up, json.loads(path.read_text()))
     missing = [n for n, p in ARMS if not p.exists()]
     if missing:
-        print(f"\n(not run: {', '.join(missing)})")
+        print(f"\nNOT CHECKED: {', '.join(missing)} (no summary file)")
+        if not args.allow_missing:
+            ok = False
 
-    print("\nARMS " + ("AGREE" if ok else "DISAGREE -- see the checklist in this "
-                                         "file's docstring"))
+    if ok and missing:
+        print("\nARMS AGREE for the arms present -- NOT a full three-arm check")
+    else:
+        print("\nARMS " + ("AGREE" if ok else "DISAGREE -- see the checklist in this "
+                                             "file's docstring"))
     return 0 if ok else 1
 
 

@@ -65,6 +65,20 @@ analysis:
                                     # in the toy, hard-scattering tail in PYTHIA)
 
 # ---------------------------------------------------------------------------
+# Systematic variations of the Tsallis fit (analysis/m01_fit_systematics.py).
+# One choice changed at a time; a change counts only if it exceeds
+# significance_threshold x its own statistical spread (bootstrap).
+# ---------------------------------------------------------------------------
+systematics:
+  tsallis:
+    range_low: [0.3, 0.5]          # GeV/c, alternative lower fit edges
+    range_high: [3.0, 4.5, 8.0]    # GeV/c, alternative upper fit edges
+    n_bins: [20, 80]               # alternative number of log bins (0.15-50 GeV/c)
+    significance_threshold: 2.0    # |delta| / (its bootstrap statistical spread)
+    n_bootstrap: 50                # particle-level bootstrap replicas
+    seed: 20261108
+
+# ---------------------------------------------------------------------------
 # Pseudo-experiments that validate the fit METHODS (analysis/m01_fit_validation.py):
 # bias and error coverage of each statistic, measured on toys drawn from the
 # generator's own model with the statistics of the real sample.

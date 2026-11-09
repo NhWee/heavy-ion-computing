@@ -3,9 +3,13 @@
 
     python analysis/m01_analysis_pyroot.py
 
-STATUS: written against the ROOT 6.32 API but NOT executed in the bootstrap
-container (no ROOT there).  Run it inside the WSL2 `hic` environment; record any
-API drift in docs/troubleshooting.md.
+STATUS: written against the ROOT 6.32 API but NOT executed by Claude (no ROOT in
+the cloud container).  2026-11-07, still unexecuted: eta = asinh(pz/pT) like the
+other arms, the dimuon mass accumulated in double (was float), and the input
+file's provenance and the cut values copied into the JSON summary so that
+m01_compare_arms.py can check that all arms read the same file with the same
+cuts.  Run it inside the WSL2 `hic` environment; record any API drift in
+docs/troubleshooting.md.
 
 Why RDataFrame
 --------------
@@ -31,6 +35,7 @@ REPO = pathlib.Path(__file__).resolve().parent.parent
 # C++ helpers compiled once by cling and then usable inside Define() strings.
 ROOT.gInterpreter.Declare(r"""
 #include "ROOT/RVec.hxx"
+#include <algorithm>
 #include <cmath>
 
 using RVecF = ROOT::VecOps::RVec<float>;
@@ -46,12 +51,13 @@ RVecD calcPt(const RVecF &px, const RVecF &py) {
    return out;
 }
 
+// eta = asinh(pz / pT): the definition shared by all three arms
+// (hicpy.kinematics.eta); exact, and stable at any |eta|
 RVecD calcEta(const RVecF &px, const RVecF &py, const RVecF &pz) {
    RVecD out(px.size());
    for (size_t i = 0; i < px.size(); ++i) {
-      const double p = std::sqrt(double(px[i]) * px[i] + double(py[i]) * py[i]
-                                 + double(pz[i]) * pz[i]);
-      out[i] = (p > 0.) ? 0.5 * std::log((p + pz[i]) / (p - pz[i])) : 0.;
+      const double pt = std::sqrt(double(px[i]) * px[i] + double(py[i]) * py[i]);
+      out[i] = std::asinh(double(pz[i]) / std::max(pt, 1e-30));
    }
    return out;
 }
@@ -63,15 +69,16 @@ double tsallisInvariant(double *x, double *par) {
    return C * std::pow(1.0 + (mt - m0) / (n * T), -n);
 }
 
-// invariant mass of exactly-two selected muons (returns -1 if not exactly two)
-float dimuonMass(const RVecF &px, const RVecF &py, const RVecF &pz,
-                 const RVecF &E, const ROOT::VecOps::RVec<int> &sel) {
-   float sx = 0, sy = 0, sz = 0, se = 0; int n = 0;
+// invariant mass of exactly-two selected muons (returns -1 if not exactly two);
+// summed and squared in double -- E^2 - p^2 at E ~ 100 GeV loses ~1e-4 GeV in float
+double dimuonMass(const RVecF &px, const RVecF &py, const RVecF &pz,
+                  const RVecF &E, const ROOT::VecOps::RVec<int> &sel) {
+   double sx = 0, sy = 0, sz = 0, se = 0; int n = 0;
    for (size_t i = 0; i < sel.size(); ++i)
       if (sel[i]) { sx += px[i]; sy += py[i]; sz += pz[i]; se += E[i]; ++n; }
-   if (n != 2) return -1.f;
-   float m2 = se*se - (sx*sx + sy*sy + sz*sz);
-   return m2 > 0 ? std::sqrt(m2) : 0.f;
+   if (n != 2) return -1.;
+   const double m2 = se*se - (sx*sx + sy*sy + sz*sz);
+   return m2 > 0 ? std::sqrt(m2) : 0.;
 }
 """)
 
@@ -93,6 +100,12 @@ def main() -> int:
     if not infile.exists():
         print(f"missing {infile}; run scripts/m01_make_toy_events.py first")
         return 1
+    # provenance JSON stored by the generator script as a TObjString; for a
+    # TObjString, GetName() returns the string itself
+    fin = ROOT.TFile.Open(str(infile))
+    prov_obj = fin.Get("provenance")
+    input_provenance = json.loads(prov_obj.GetName()) if prov_obj else None
+    fin.Close()
 
     # identical log bin edges to the uproot arm -- bin edges are the single most
     # common source of disagreement between two implementations
@@ -170,9 +183,12 @@ def main() -> int:
         "dNdeta_central": float(mean_eta05.GetValue() / 1.0),
         "n_dimuon_candidates": int(h_mass.GetEntries()),
         "mean_dimuon_mass_GeV": float(mean_mass.GetValue()),
+        "cuts": {"track": {"pt_min": pt_min, "pt_max": pt_max, "eta_abs_max": eta_max},
+                 "muon": {"pt_min": mu_pt_min, "eta_abs_max": mu_eta_max}},
         "tsallis": tsallis,
         "histograms": {"mult": hist_record(h_mult), "eta": hist_record(h_eta),
                        "pt": hist_record(h_pt), "mass": hist_record(h_mass)},
+        "input_provenance": input_provenance,
         "root_version": ROOT.gROOT.GetVersion(),
     }
     print(f"[read] {infile.name}: {n_ev} events")

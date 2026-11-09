@@ -47,13 +47,13 @@ import sys
 
 import awkward as ak
 import numpy as np
-import uproot
 import yaml
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from hicpy import kinematics as kin                                        # noqa: E402
+from hicpy.events import read_particles                                    # noqa: E402
 from hicpy.histograms import make_edges, hist_counts, select_bins          # noqa: E402
 from hicpy.fitting import (fit_poisson, tsallis_expected_counts,          # noqa: E402
                            bw_expected_counts, sub_edges)
@@ -106,12 +106,8 @@ def main() -> int:
     tabdir = pathlib.Path(args.tabdir) if args.tabdir else REPO / cfg["paths"]["table_dir"]
     tabdir.mkdir(parents=True, exist_ok=True)
 
-    with uproot.open(infile) as f:
-        tree = f["events"]
-        n_ev = tree.num_entries
-        a = tree.arrays(["particle_px", "particle_py", "particle_pz", "particle_E",
-                         "particle_pdg"])
-        prov = json.loads(str(f["provenance"]))
+    ev = read_particles(infile)          # float64 kinematics, eta = asinh(pz/pT)
+    n_ev, prov = ev.n_events, ev.provenance
 
     # The truth is what the FILE says it was generated with, not the current yaml.
     gen = ToyConfig(**prov["config"])
@@ -120,12 +116,9 @@ def main() -> int:
         print("note: the generator block of the config differs from the file's "
               "provenance -- using the file's provenance as truth")
 
-    f64 = lambda arr: ak.values_astype(arr, np.float64)          # noqa: E731
-    px, py, pz, e = (f64(a.particle_px), f64(a.particle_py), f64(a.particle_pz),
-                     f64(a.particle_E))
-    pt = kin.pt(px, py)
-    eta = kin.eta(px, py, pz)
-    apdg = abs(a.particle_pdg)
+    px, py, pz, e = ev.px, ev.py, ev.pz, ev.E
+    pt, eta = ev.pt, ev.eta
+    apdg = abs(ev.pdg)
     rows, ok = [], True
 
     print(f"closure test: {infile.name}, {n_ev} events, |eta| < {eta_max} "
