@@ -44,8 +44,11 @@ ROOT·PYTHIA는 이번 세션 환경에서 설치 불가 → WSL2로 이관.
 1. **Closure test가 핵심 결과.** 종류별로는 닫히고 inclusive로는 20σ 어긋난다는
    사실이, χ²/ndf가 좋아도 파라미터가 틀릴 수 있음을 정량적으로 보여준다.
    실험이 identified-particle spectra를 따로 내는 이유와 직결된다.
-2. Z 질량이 1.3σ 낮고 폭이 좁은 것은 $p_{\rm T}^\mu>20$ GeV 컷의 acceptance
-   sculpting. 보정 없는 "측정"이 어떻게 편향되는지의 최소 예제.
+2. ~~Z 질량이 1.3σ 낮고 폭이 좁은 것은 $p_{\rm T}^\mu>20$ GeV 컷의 acceptance
+   sculpting. 보정 없는 "측정"이 어떻게 편향되는지의 최소 예제.~~
+   **[2026-11-07 철회]** 틀린 설명이다. 컷 없는 truth fit도 같은 편차를 보이고,
+   acceptance는 질량과 함께 증가해 피크를 오히려 +0.010 GeV 올린다. 좁은 폭의 나머지는
+   Neyman χ²의 편향이었다. 오답노트 #15, 아래 Session 2026-11-09 참고.
 3. 다중도 RMS/평균 ≈ 0.73 ≫ Poisson 0.29 — centrality 정의가 왜 가능한지의 씨앗.
 
 ### Problems
@@ -135,6 +138,9 @@ pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WS
    `cumsum`(사각형 적분)으로, 기대값 계산은 사다리꼴로 하기 때문일 가능성이
    있다 (상대 ~2.5e-4). 통계 오차(0.5 %)보다 작아 지금은 무시하지만, 이벤트 수를
    100배 늘리면 보일 것이다 — 그때 샘플러를 사다리꼴 CDF로 바꾼다.
+   **[2026-11-09 확인]** 샘플러의 CDF로 직접 계산하면 효과는 상대 +8.5e-6(|η|<0.8),
+   +2.4e-5(|η|<0.5)로 추정보다 10배 이상 작고 부호도 반대다. −1σ는 통계적 요동이다.
+   샘플러의 실제 결함은 η = −6.0에 입자 ~20개를 쌓는 것이다(오답노트 #17).
 2. `invariant_mass` 테스트에서 pT = 50, η = 5(p ≈ 3.7 TeV)인 파이온의 질량이
    8자리까지만 맞는다. $E^2 - p^2$의 상쇄 때문이며 오답노트 #6의 정량적 예다.
 3. "스칼라 5개 일치"로는 arm 정합성을 주장할 수 없었다. 코드를 읽는 것만으로
@@ -182,3 +188,76 @@ pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WS
 `docs/next_steps.md` Step 1: WSL2에서 `run_all.sh` → `ARMS AGREE` 확인 →
 `results/` 재커밋. 이어서 Step 2: `m02_run_pythia.py --n-events 10`부터,
 그 다음 HEPData 표 provenance 채우기 → `m02_compare_data.py`.
+
+---
+
+## Session 2026-11-09 (GitHub 계열) — fit 방법 교정, 방법 검증·체계 오차, CI 실가동
+
+> **번호에 대해.** 이 노트의 Session 1–3과 이 항목은 GitHub 계열 기록이다. Notion
+> 작업 로그의 Session 3(2026-08-31, `d3379f8`)과 Session 4(2026-09-26)는 사용자 로컬
+> 저장소에만 있고 아직 push되지 않았다. 두 계열의 관계와 병합 방법은
+> `docs/next_steps.md` §3에 있다.
+
+### Question
+"지금까지 보완할 부분"을 고친다. 2026-11-05 점검(`docs/next_steps.md`)의 남은 항목이
+대상이다. 또 남아 있는 fit과 해석이 실제로 맞는지 다시 확인한다.
+
+### Physics
+binned Poisson likelihood와 χ² 근사의 차이(저통계 bin, bin 중심 근사), 상대론적
+Breit–Wigner, 두 뮤온 acceptance의 질량 의존성, NBD의 binomial thinning(k 보존),
+체계 오차와 통계 오차의 분리(Barlow, bootstrap).
+
+### Tool
+클라우드 컨테이너: Python 3.13, numpy 2.5.4, scipy 1.18.1, iminuit 2.33.0, uproot 5.7.7,
+awkward 2.14.0, matplotlib 3.11.2, particle 1.1.0. ROOT는 없다. conda-forge 바이너리와 PyPI의
+실험적 ROOT 휠 설치는 이 세션의 권한 정책에서 거부되었다. GitHub Actions의 Python 3.11은
+CI에서 쓴다.
+
+### Procedure
+1. 기준선 재현: 커밋된 표본과 수치가 비트 단위로 다시 나오는지 확인했다.
+2. 점검 결과 CI가 한 번도 테스트를 돌리지 않았음을 발견했다(11회 전부 설정 단계에서 실패, #14).
+3. pseudo-experiment로 fit 방법을 검사했다: Tsallis 종류별 300회, Z 1000회
+   (`analysis/m01_fit_validation.py`).
+4. 물리 fit을 binned Poisson likelihood로 바꿨다(`hicpy.fitting`). bin 중심 χ²는 세 arm
+   교차검증용으로만 남겼다.
+5. closure를 확장했다(NBD k, truth 수준 Z 선형, 참값은 파일 provenance, 결과 JSON).
+6. 체계 오차 틀(next_steps C2)을 만들었다: fit 범위·binning 변형과 bootstrap 유의성,
+   참 모형 대조군 포함(`analysis/m01_fit_systematics.py`).
+7. ROOT arm 코드를 검토하고 수정했다(실행은 못 함): use-after-free, float 연산, 버퍼,
+   provenance. `compare_arms`는 입력 동일성과 컷을 먼저 확인하고, arm이 빠지면 실패한다.
+8. `run_all.sh`(C3: 버전 기록은 `RECORD_ENV=1`에서만), `check_results_drift.py`, CI 수정.
+9. 테스트를 44개에서 65개로 늘렸다.
+
+### Result
+- **Tsallis 방법 편향**: 평균 T pull이 bin 중심 χ²에서 +0.85 / +0.74 / +0.65
+  (π/K/p, ±0.06)이고, Poisson LL에서 0.00 / +0.01 / 0.00이다. pull 폭은 0.97–1.02다.
+- **Z 방법 편향**: Neyman χ²의 Γ pull은 −0.81이고 질량 pull 폭은 1.12다. Poisson LL(신호만)의
+  Γ pull은 −0.10이고 폭은 0.97이다. 배경 ≥ 0 항을 넣으면 Γ pull이 −0.33이 된다.
+- **acceptance**: 질량에 대해 +0.23 %/GeV로 증가한다. 컷에 의한 피크 이동은 +0.010 ± 0.002 GeV다.
+- 결과(표본 seed 20260827, 표본 자체는 이전과 비트 단위로 같음):
+  - pT 스펙트럼 T = 147.6 ± 0.7 (stat) ± 3.5 (syst) MeV, n = 7.496 ± 0.057 ± 0.209
+  - Z: m = 91.057 ± 0.105, Γ = 2.28 ± 0.23 GeV (−2lnλ/ndf = 53.2/57)
+- closure(모두 4σ 안): ⟨N_ch⟩ −1.1σ, dN/dη −0.9σ, NBD k 2.206 ± 0.032(+0.2σ),
+  T pull +0.5/+0.2/−0.5, n pull +1.0/0.0/−0.4, truth Z m −0.6σ, Γ −2.1σ.
+- 재현성: 같은 기계에서 두 번 돌리면 결과 표 4개와 그림이 모두 같다. GitHub CI에서는 중심값이
+  1e-6 안에서 같고, MINUIT HESSE 오차는 기계마다 1e-5–2e-3 다르다(drift 허용치를 두 단계로 나눔).
+
+### Interpretation
+1. Session 1의 Z 해석은 틀렸다. 편차는 이 표본의 요동이고(truth에서도 보임), 컷은
+   반대 방향으로 미미하게 작용한다. 좁은 폭의 나머지는 fit 방법 탓이었다. **사용자의 로컬
+   Session 4도 독립적으로 같은 결론과 같은 값(91.057 ± 0.105, 2.28 ± 0.23)에 도달했다.**
+2. closure "통과"는 방법이 옳다는 증거가 아니다. 종류별 pull이 모두 양수였던 것은 실제
+   +0.85σ 편향이었다. 방법은 pseudo-experiment의 pull 분포로 검증한다.
+3. inclusive Tsallis 파라미터가 fit 범위에 따라 3.4 MeV 움직이는 것은, 참 모형이 아닌
+   형태로 맞춘 결과라는 사실이 체계 오차로 드러난 것이다. 참 모형 대조군은 움직이지 않는다.
+
+### Problems
+- ROOT arm은 여전히 실행 못 함. 이번 수정(#19)도 g++ 문법 검사까지만 했다.
+- 체계 오차 대조군의 거짓 양성 하한 0.2 MeV: 2σ 기준·변형 7개의 한계(#18).
+- 생성기 η 샘플러의 경계 결함(#17)은 표본을 다시 만들 때 고친다.
+- GitHub 계열과 사용자 로컬 계열이 갈라져 있다(`docs/next_steps.md` §3).
+
+### Next step
+1. 사용자 로컬 Session 3·4 작업과 이 브랜치를 합친다(`docs/next_steps.md` §3).
+2. WSL2에서 `bash scripts/run_all.sh` → `ARMS AGREE` → 결과 커밋(A1, A2).
+3. Module 2 PYTHIA 실행. Z 분석에는 배경 항이 필요하고, η 샘플러 수정도 함께 한다.

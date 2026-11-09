@@ -9,8 +9,16 @@ with the file on disk:
 
 * provenance blocks are skipped -- they record the machine, the time and the
   commit, which legitimately differ (keys in SKIP_KEYS);
-* floats must agree to 1e-6 relative (1e-9 absolute near zero): enough slack
-  for round-off between machines, far tighter than any physics change;
+* floats must agree to 1e-6 relative (1e-7 absolute near zero, for small
+  derived numbers such as a toy-averaged bias): enough slack for round-off
+  between machines, far tighter than any physics change;
+* EXCEPT uncertainty-derived floats (fit errors, covariance, correlation,
+  pulls, Barlow sigmas -- key names in UNCERTAINTY_KEYS): they come from
+  MINUIT's numerical second derivatives (HESSE), which depend on the exact
+  floating-point path and differ between machines by 1e-5 to 2e-3 relative
+  (first CI run, 2026-11-09; central values agreed to 1e-6).  They must agree
+  to 1e-2 relative -- a real change (wrong errordef, wrong weights) moves them
+  by tens of percent;
 * everything else (counts, strings, structure) must be identical.
 
 Figures are not compared byte by byte here: PNG rasterisation can change
@@ -26,7 +34,15 @@ import subprocess
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
 SKIP_KEYS = {"generator_provenance", "input_provenance"}
-REL_TOL, ABS_TOL = 1e-6, 1e-9
+REL_TOL, ABS_TOL = 1e-6, 1e-7
+UNCERTAINTY_REL_TOL = 1e-2
+# a path segment containing one of these marks an uncertainty-derived value
+UNCERTAINTY_KEYS = ("error", "_err", "covariance", "correlation", "pull",
+                    "barlow", "_sd", "mean_fit_error")
+
+
+def is_uncertainty(path):
+    return any(k in seg for seg in path.split("/") for k in UNCERTAINTY_KEYS)
 
 
 def walk(a, b, path, problems):
@@ -46,8 +62,11 @@ def walk(a, b, path, problems):
     elif isinstance(a, float) or isinstance(b, float):
         if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
             problems.append(f"{path}: {a!r} vs {b!r}")
-        elif abs(a - b) > max(REL_TOL * max(abs(a), abs(b)), ABS_TOL):
-            problems.append(f"{path}: {a!r} vs {b!r}")
+            return
+        rel = UNCERTAINTY_REL_TOL if is_uncertainty(path) else REL_TOL
+        if abs(a - b) > max(rel * max(abs(a), abs(b)), ABS_TOL):
+            tag = "uncertainty" if is_uncertainty(path) else "VALUE"
+            problems.append(f"{path}: {a!r} vs {b!r}  [{tag}]")
     elif a != b:
         problems.append(f"{path}: {a!r} vs {b!r}")
 
