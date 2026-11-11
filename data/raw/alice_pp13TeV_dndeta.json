@@ -1,0 +1,35 @@
+{
+  "_status": "UNVERIFIED -- identifiers below come from a web-search summary (2026-11-05), not from HEPData/INSPIRE themselves. Run scripts/m02_fetch_hepdata.py in an environment that can reach hepdata.net; it downloads the table, checks these identifiers against the record and sets verified=true. analysis/m02_compare_data.py refuses this file while verified is false.",
+  "verified": false,
+  "experiment": "ALICE",
+  "title": "Pseudorapidity and transverse-momentum distributions of charged particles in proton-proton collisions at sqrt(s) = 13 TeV",
+  "arxiv": "1509.08734",
+  "journal": "Phys. Lett. B 753 (2016) 319",
+  "doi_paper": "10.1016/j.physletb.2015.12.030",
+  "inspire_id": "1395253",
+  "hepdata": {
+    "record": "ins1395253",
+    "record_url": "https://www.hepdata.net/record/ins1395253",
+    "table": "Table 1",
+    "table_description": "Average pseudorapidity density of charged particles as a function of eta in pp collisions at sqrt(s) = 13 TeV (INEL and INEL>0)",
+    "doi": "10.17182/hepdata.70847.v1",
+    "version": 1
+  },
+  "system": "pp",
+  "sqrt_s_TeV": 13.0,
+  "observable": "dN_ch/deta",
+  "event_class": "INEL>0",
+  "selection": {
+    "eta_range": "|eta| < 1.8 (to be confirmed from the table)",
+    "pt_cut": "none (extrapolated to pT = 0)",
+    "primary_definition": "ALICE primary: produced in the collision incl. decay products of particles with c*tau < 1 cm (to be confirmed from the paper)"
+  },
+  "uncertainties": {
+    "stat": "stat column of the table",
+    "syst": "sys column of the table",
+    "correlated": "to be read from the paper (normalisation uncertainty largely correlated across eta)"
+  },
+  "downloaded_utc": null,
+  "file": "alice_pp13TeV_dndeta_table1.yaml",
+  "sha256": null
+}

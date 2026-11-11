@@ -1,0 +1,58 @@
+# ---------------------------------------------------------------------------
+# Module 2 configuration: the Module 1 ANALYSIS block, unchanged, applied to a
+# PYTHIA 8 sample.  Only the generator and paths blocks differ.
+#
+#   python scripts/m02_run_pythia.py --card generators/pythia_mb_13TeV.cmnd
+#   python analysis/m01_analysis_uproot.py --config config/analysis_m02_pythia.yaml \
+#          --figdir results/figures/m02 --tabdir results/tables/m02
+#
+# (--figdir/--tabdir because the Module 1 scripts name their outputs m01_*;
+#  without them the toy-MC results would be overwritten.)
+# ---------------------------------------------------------------------------
+generator:
+  name: pythia8
+  card: generators/pythia_mb_13TeV.cmnd   # every physics setting lives in the card
+  sqrt_s_TeV: 13.0                        # label on the figures (must match Beams:eCM)
+  n_events: 20000
+  seed: 20260827
+
+analysis:
+  # --- event selection ---
+  # The sample is SoftQCD:inelastic = INEL.  Experimental classes are applied
+  # here, not in the card:
+  #   INEL    : all events
+  #   INEL>0  : n_ch_eta1 > 0        (ALICE: >= 1 charged primary in |eta| < 1)
+  #   NSD     : process_code not in (103, 104)   (drop single diffraction)
+  # Module 1's analysis script ignores this key (it analyses all events); the
+  # Module 2 comparison script applies it.
+  event_selection: "INEL>0"
+  # --- track selection: identical to Module 1 ---
+  track_cuts:
+    pt_min: 0.15            # GeV/c
+    pt_max: 50.0            # GeV/c
+    eta_abs_max: 0.8
+    charged_only: true
+  muon_cuts:
+    pt_min: 20.0
+    eta_abs_max: 2.4
+  binning:
+    pt:   {type: log,    n_bins: 40, lo: 0.15, hi: 50.0}
+    eta:  {type: linear, n_bins: 60, lo: -6.0, hi: 6.0}
+    mult: {type: linear, n_bins: 60, lo: 0.0,  hi: 240.0}
+    mass: {type: linear, n_bins: 60, lo: 60.0, hi: 120.0}
+
+  # --- fits: ranges are part of the result ---
+  fits:
+    tsallis_pt_range: [0.15, 6.0]   # GeV/c; soft spectrum only (above: Z muons
+                                    # in the toy, hard-scattering tail in PYTHIA)
+
+# --- comparison with data (analysis/m02_compare_data.py) ---
+comparison:
+  data: data/raw/alice_pp13TeV_dndeta.json   # provenance JSON, NOT the table
+  dndeta_pt_min: 0.0        # published dN/deta is extrapolated to pT = 0;
+                            # Module 1's 0.15 GeV/c cut must NOT be applied here
+
+paths:
+  generated_file: data/generated/m02_pythia_mb_13TeV.root
+  figure_dir: results/figures/m02
+  table_dir: results/tables/m02

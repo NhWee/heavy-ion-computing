@@ -1,0 +1,579 @@
+{
+  "input_file": "m01_toy_events.root",
+  "significance_threshold": 2.0,
+  "n_bootstrap": 50,
+  "procedure": "significant if |delta| > threshold * bootstrap sd of delta (particles resampled, nominal and variation refitted on each replica); max significant |delta| per group, groups in quadrature. Barlow's sqrt(|sigma_v^2 - sigma_nom^2|) reported for comparison.",
+  "inclusive": {
+    "n_particles": 239974,
+    "variations": [
+      {
+        "group": "nominal",
+        "label": "nominal",
+        "fit_range_requested": [
+          0.15,
+          6.0
+        ],
+        "fit_range": [
+          0.15,
+          5.660965066109977
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.14759218454486633,
+        "T_err": 0.000652627600066194,
+        "n": 7.496392277058267,
+        "n_err": 0.0573411022887198,
+        "deviance": 25.580707371707497,
+        "ndf": 22
+      },
+      {
+        "group": "range_low",
+        "label": "fit from 0.3 GeV/c",
+        "fit_range_requested": [
+          0.3,
+          6.0
+        ],
+        "fit_range": [
+          0.3100638263957159,
+          5.660965066109977
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.14598351639772902,
+        "T_err": 0.0010598961484030306,
+        "n": 7.404389747828558,
+        "n_err": 0.07279661642877855,
+        "deviance": 21.129007131669454,
+        "ndf": 17,
+        "T_delta": -0.0016086681471373099,
+        "T_sigma_delta_bootstrap": 0.0007168491372764041,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.0008351389471407851,
+        "T_significant": true,
+        "T_significant_by_barlow": false,
+        "n_delta": -0.09200252922970886,
+        "n_sigma_delta_bootstrap": 0.039241295535175656,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.04484802506012147,
+        "n_significant": true,
+        "n_significant_by_barlow": true
+      },
+      {
+        "group": "range_low",
+        "label": "fit from 0.5 GeV/c",
+        "fit_range_requested": [
+          0.5,
+          6.0
+        ],
+        "fit_range": [
+          0.47936575775709134,
+          5.660965066109977
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.14422664467812968,
+        "T_err": 0.0017942035840675108,
+        "n": 7.319117933327416,
+        "n_err": 0.09648146503050636,
+        "deviance": 16.742598868125377,
+        "ndf": 14,
+        "T_delta": -0.0033655398667366554,
+        "T_sigma_delta_bootstrap": 0.0014480104807099742,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.001671300007991546,
+        "T_significant": true,
+        "T_significant_by_barlow": true,
+        "n_delta": -0.1772743437308515,
+        "n_sigma_delta_bootstrap": 0.06616063552956429,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.07759298346337377,
+        "n_significant": true,
+        "n_significant_by_barlow": true
+      },
+      {
+        "group": "range_high",
+        "label": "fit up to 3.0 GeV/c",
+        "fit_range_requested": [
+          0.15,
+          3.0
+        ],
+        "fit_range": [
+          0.15,
+          3.166668487787416
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.1485289500701495,
+        "T_err": 0.0007241510881350194,
+        "n": 7.607242484464009,
+        "n_err": 0.06966776834920907,
+        "deviance": 11.948443171044264,
+        "ndf": 18,
+        "T_delta": 0.0009367655252831564,
+        "T_sigma_delta_bootstrap": 0.0002511444297908875,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.0003138025080826673,
+        "T_significant": true,
+        "T_significant_by_barlow": true,
+        "n_delta": 0.11085020740574159,
+        "n_sigma_delta_bootstrap": 0.02982800364794809,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.039567612198281935,
+        "n_significant": true,
+        "n_significant_by_barlow": true
+      },
+      {
+        "group": "range_high",
+        "label": "fit up to 4.5 GeV/c",
+        "fit_range_requested": [
+          0.15,
+          4.5
+        ],
+        "fit_range": [
+          0.15,
+          4.233957922005825
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.14795500184147697,
+        "T_err": 0.0006774117689602593,
+        "n": 7.537323221536675,
+        "n_err": 0.06144780729488364,
+        "deviance": 19.938356573331376,
+        "ndf": 20,
+        "T_delta": 0.0003628172966106402,
+        "T_sigma_delta_bootstrap": 0.00014932594585857854,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.00018155968814058838,
+        "T_significant": true,
+        "T_significant_by_barlow": false,
+        "n_delta": 0.04093094447840784,
+        "n_sigma_delta_bootstrap": 0.016909964942861237,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.022086896786640886,
+        "n_significant": true,
+        "n_significant_by_barlow": false
+      },
+      {
+        "group": "range_high",
+        "label": "fit up to 8.0 GeV/c",
+        "fit_range_requested": [
+          0.15,
+          8.0
+        ],
+        "fit_range": [
+          0.15,
+          7.568928664396271
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.14763855271650295,
+        "T_err": 0.0006419677538499896,
+        "n": 7.501333279941669,
+        "n_err": 0.0559301479628278,
+        "deviance": 28.102901819146204,
+        "ndf": 24,
+        "T_delta": 4.6368171636612665e-05,
+        "T_sigma_delta_bootstrap": 0.0001400259966927674,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.00011747419880535146,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": 0.004941002883401602,
+        "n_sigma_delta_bootstrap": 0.015354989988547793,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.012642015683490365,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      },
+      {
+        "group": "binning",
+        "label": "20 log bins",
+        "fit_range_requested": [
+          0.15,
+          6.0
+        ],
+        "fit_range": [
+          0.15,
+          6.545795655000677
+        ],
+        "n_bins_total": 20,
+        "converged": true,
+        "T": 0.1475950692796946,
+        "T_err": 0.000654095356614301,
+        "n": 7.4954744940860625,
+        "n_err": 0.0571755562686711,
+        "deviance": 16.94052619794605,
+        "ndf": 10,
+        "T_delta": 2.8847348282623475e-06,
+        "T_sigma_delta_bootstrap": 0.00013375016563414545,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 4.3794419464464026e-05,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": -0.0009177829722046837,
+        "n_sigma_delta_bootstrap": 0.013320975241193024,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.004354052945641792,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      },
+      {
+        "group": "binning",
+        "label": "80 log bins",
+        "fit_range_requested": [
+          0.15,
+          6.0
+        ],
+        "fit_range": [
+          0.15,
+          6.0873245792263555
+        ],
+        "n_bins_total": 80,
+        "converged": true,
+        "T": 0.14755573802264432,
+        "T_err": 0.0006466821258221261,
+        "n": 7.493225471521269,
+        "n_err": 0.05657934312510582,
+        "deviance": 62.58096484782287,
+        "ndf": 48,
+        "T_delta": -3.644652222201117e-05,
+        "T_sigma_delta_bootstrap": 8.516976277996152e-05,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 8.789205032502035e-05,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": -0.0031668055369982184,
+        "n_sigma_delta_bootstrap": 0.009099468704401722,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.009315575302522569,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      }
+    ],
+    "summary": {
+      "T": {
+        "nominal": 0.14759218454486633,
+        "stat": 0.000652627600066194,
+        "syst": 0.0034934779581318118,
+        "syst_by_group": {
+          "range_low": 0.0033655398667366554,
+          "range_high": 0.0009367655252831564
+        },
+        "combination": "max significant |delta| per group, groups in quadrature"
+      },
+      "n": {
+        "nominal": 7.496392277058267,
+        "stat": 0.0573411022887198,
+        "syst": 0.20907884021846881,
+        "syst_by_group": {
+          "range_low": 0.1772743437308515,
+          "range_high": 0.11085020740574159
+        },
+        "combination": "max significant |delta| per group, groups in quadrature"
+      }
+    }
+  },
+  "pion_control": {
+    "n_particles": 198980,
+    "variations": [
+      {
+        "group": "nominal",
+        "label": "nominal",
+        "fit_range_requested": [
+          0.15,
+          6.0
+        ],
+        "fit_range": [
+          0.15,
+          5.660965066109977
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.1353698730077677,
+        "T_err": 0.0006735182348932001,
+        "n": 6.851946789268266,
+        "n_err": 0.051827684826839526,
+        "deviance": 11.702288429438132,
+        "ndf": 22
+      },
+      {
+        "group": "range_low",
+        "label": "fit from 0.3 GeV/c",
+        "fit_range_requested": [
+          0.3,
+          6.0
+        ],
+        "fit_range": [
+          0.3100638263957159,
+          5.660965066109977
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.13492734984827157,
+        "T_err": 0.0011424921979488467,
+        "n": 6.828574667131742,
+        "n_err": 0.06838804865460846,
+        "deviance": 10.865311587079496,
+        "ndf": 17,
+        "T_delta": -0.00044252315949613874,
+        "T_sigma_delta_bootstrap": 0.0009742989322453109,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.0009228551401169822,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": -0.023372122136523288,
+        "n_sigma_delta_bootstrap": 0.04759986560780065,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.04461856434573934,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      },
+      {
+        "group": "range_low",
+        "label": "fit from 0.5 GeV/c",
+        "fit_range_requested": [
+          0.5,
+          6.0
+        ],
+        "fit_range": [
+          0.47936575775709134,
+          5.660965066109977
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.1357889966057302,
+        "T_err": 0.001993970060642336,
+        "n": 6.859792262155944,
+        "n_err": 0.09495518832578176,
+        "deviance": 9.839074106461155,
+        "ndf": 14,
+        "T_delta": 0.0004191235979625063,
+        "T_sigma_delta_bootstrap": 0.0017267175220770973,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.0018767764358080452,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": 0.007845472887678007,
+        "n_sigma_delta_bootstrap": 0.07269431696936275,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.07956367811680445,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      },
+      {
+        "group": "range_high",
+        "label": "fit up to 3.0 GeV/c",
+        "fit_range_requested": [
+          0.15,
+          3.0
+        ],
+        "fit_range": [
+          0.15,
+          3.166668487787416
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.13548558120711718,
+        "T_err": 0.0007443039243236194,
+        "n": 6.864360307623259,
+        "n_err": 0.06134257689753175,
+        "deviance": 8.56747574246377,
+        "ndf": 18,
+        "T_delta": 0.00011570819934947352,
+        "T_sigma_delta_bootstrap": 0.0003255848319551497,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.0003167988621032094,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": 0.012413518354993158,
+        "n_sigma_delta_bootstrap": 0.03325126865922597,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.03281467394199407,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      },
+      {
+        "group": "range_high",
+        "label": "fit up to 4.5 GeV/c",
+        "fit_range_requested": [
+          0.15,
+          4.5
+        ],
+        "fit_range": [
+          0.15,
+          4.233957922005825
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.13534912402430802,
+        "T_err": 0.0006984916839716249,
+        "n": 6.849689568759059,
+        "n_err": 0.054965898949147274,
+        "deviance": 10.432789648588251,
+        "ndf": 20,
+        "T_delta": -2.0748983459689674e-05,
+        "T_sigma_delta_bootstrap": 0.00019868939668869865,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.00018510488876273497,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": -0.0022572205092066255,
+        "n_sigma_delta_bootstrap": 0.019703730061474547,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.0183068602654212,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      },
+      {
+        "group": "range_high",
+        "label": "fit up to 8.0 GeV/c",
+        "fit_range_requested": [
+          0.15,
+          8.0
+        ],
+        "fit_range": [
+          0.15,
+          7.568928664396271
+        ],
+        "n_bins_total": 40,
+        "converged": true,
+        "T": 0.1356049190523995,
+        "T_err": 0.000662029357887145,
+        "n": 6.874465945294474,
+        "n_err": 0.050696215758285756,
+        "deviance": 18.667983804515295,
+        "ndf": 24,
+        "T_delta": 0.00023504604463178702,
+        "T_sigma_delta_bootstrap": 9.069606275804813e-05,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 0.00012387066654049418,
+        "T_significant": true,
+        "T_significant_by_barlow": false,
+        "n_delta": 0.02251915602620791,
+        "n_sigma_delta_bootstrap": 0.008676804243209367,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.010770451350781493,
+        "n_significant": true,
+        "n_significant_by_barlow": true
+      },
+      {
+        "group": "binning",
+        "label": "20 log bins",
+        "fit_range_requested": [
+          0.15,
+          6.0
+        ],
+        "fit_range": [
+          0.15,
+          6.545795655000677
+        ],
+        "n_bins_total": 20,
+        "converged": true,
+        "T": 0.13548304302091052,
+        "T_err": 0.0006748636932265434,
+        "n": 6.86103815023173,
+        "n_err": 0.05174041079931824,
+        "deviance": 5.242437835805482,
+        "ndf": 10,
+        "T_delta": 0.00011317001314281594,
+        "T_sigma_delta_bootstrap": 0.00013683469557694471,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 4.259332931009559e-05,
+        "T_significant": false,
+        "T_significant_by_barlow": true,
+        "n_delta": 0.00909136096346419,
+        "n_sigma_delta_bootstrap": 0.01135302023821872,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.0030064605149584837,
+        "n_significant": false,
+        "n_significant_by_barlow": true
+      },
+      {
+        "group": "binning",
+        "label": "80 log bins",
+        "fit_range_requested": [
+          0.15,
+          6.0
+        ],
+        "fit_range": [
+          0.15,
+          6.0873245792263555
+        ],
+        "n_bins_total": 80,
+        "converged": true,
+        "T": 0.13538336468789686,
+        "T_err": 0.0006675829162430813,
+        "n": 6.853641364174531,
+        "n_err": 0.05120144416002903,
+        "deviance": 49.95114249346412,
+        "ndf": 48,
+        "T_delta": 1.3491680129151806e-05,
+        "T_sigma_delta_bootstrap": 7.849257147667477e-05,
+        "T_n_bootstrap": 50,
+        "T_barlow_sigma": 8.921806248756407e-05,
+        "T_significant": false,
+        "T_significant_by_barlow": false,
+        "n_delta": 0.0016945749062653448,
+        "n_sigma_delta_bootstrap": 0.006558765250663323,
+        "n_n_bootstrap": 50,
+        "n_barlow_sigma": 0.00803249839325479,
+        "n_significant": false,
+        "n_significant_by_barlow": false
+      }
+    ],
+    "summary": {
+      "T": {
+        "nominal": 0.1353698730077677,
+        "stat": 0.0006735182348932001,
+        "syst": 0.00023504604463178702,
+        "syst_by_group": {
+          "range_high": 0.00023504604463178702
+        },
+        "combination": "max significant |delta| per group, groups in quadrature"
+      },
+      "n": {
+        "nominal": 6.851946789268266,
+        "stat": 0.051827684826839526,
+        "syst": 0.02251915602620791,
+        "syst_by_group": {
+          "range_high": 0.02251915602620791
+        },
+        "combination": "max significant |delta| per group, groups in quadrature"
+      }
+    }
+  },
+  "generator_provenance": {
+    "generator": "hicpy.toy_generator",
+    "config_file": "analysis.yaml",
+    "config": {
+      "n_events": 20000,
+      "seed": 20260827,
+      "sqrt_s_TeV": 13.0,
+      "nbd_nbar": 60.0,
+      "nbd_k": 2.2,
+      "eta_plateau": 2.0,
+      "eta_sigma": 1.6,
+      "eta_max": 6.0,
+      "tsallis_T": 0.135,
+      "tsallis_n": 6.8,
+      "pt_min": 0.15,
+      "pt_max": 60.0,
+      "frac_pi": 0.83,
+      "frac_K": 0.12,
+      "frac_p": 0.05,
+      "z_fraction": 0.02,
+      "z_pt_scale": 8.0,
+      "z_y_sigma": 1.8
+    },
+    "produced_utc": "2026-11-09T04:42:01Z",
+    "git_commit": "c6d2c68",
+    "python": "3.13.18",
+    "platform": "Linux-6.18.44-fc-v310-x86_64-with-glibc2.39",
+    "versions": {
+      "numpy": "2.5.4",
+      "awkward": "2.14.0",
+      "uproot": "5.7.7"
+    }
+  }
+}

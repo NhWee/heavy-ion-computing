@@ -15,17 +15,23 @@
 
 ---
 
-## 1. 현재 상태 (2026-08-27)
+## 1. 현재 상태 (2026-11-09)
 
 | 모듈 | 내용 | 상태 |
 |---|---|---|
-| Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | 스크립트 작성 완료, **사용자 실행 대기** |
-| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | **완료** (uproot arm 실행·검증 완료 / ROOT arm 미실행) |
-| Module 2 | PYTHIA 8 | 예정 |
+| Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
+| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 완료: Poisson-likelihood fit, closure(생성기 성분 4종), pseudo-experiment 방법 검증, 체계 오차, 테스트 67개, CI 실가동 / **ROOT arm은 이 계열에서 실행 대기** |
+| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | 카드·생성 스크립트·설정 작성 완료, **WSL2 실행 대기** |
 | Module 3 | HepMC · PDG 이벤트 레코드 | 예정 |
 | Module 4 | FastJet | 예정 |
 
-자세한 로드맵: [`docs/roadmap.md`](docs/roadmap.md)
+자세한 로드맵: [`docs/roadmap.md`](docs/roadmap.md) ·
+보완 사항과 바로 다음 할 일: [`docs/next_steps.md`](docs/next_steps.md)
+
+> **주의 (2026-11-09).** 사용자 로컬 저장소에는 아직 push되지 않은 Session 3·4 작업이
+> 있습니다(Notion 작업 로그: ROOT arm 실행 `d3379f8`, 2026-09-26 독립 검증).
+> GitHub의 Claude 브랜치들은 그 작업을 모른 채 `main`에서 갈라져 나왔습니다.
+> 합치기 전에 [`docs/next_steps.md`](docs/next_steps.md) §3을 보세요.
 
 ---
 
@@ -77,16 +83,31 @@ LHAPDF PDF 값 평가. 결과는 `environment/versions_installed.txt`에 기록�
 
 ```bash
 micromamba activate hic
-bash scripts/run_all.sh
+bash scripts/run_all.sh                  # WSL2에서 환경 기록까지 갱신: RECORD_ENV=1 bash scripts/run_all.sh
+python scripts/check_results_drift.py    # 커밋된 결과 표가 그대로 재현됐는지
 ```
 
-수행 순서:
+수행 순서 (전체 출력은 `results/logs/run_all_<시각>.log`에도 남습니다):
 
-1. `environment/verify_environment.py` — 환경 검증 및 버전 기록
-2. `scripts/m01_make_toy_events.py` — toy 이벤트 20,000개 생성 → ROOT TTree
-3. `analysis/m01_analysis_uproot.py` — 관측량 4종 + fit → `results/`
-4. `analysis/m01_closure_test.py` — **closure test** (분석이 생성기 입력값을 되찾는지)
-5. ROOT가 설치되어 있으면 `m01_analysis_pyroot.py`와 `m01_analysis_root.C`도 실행
+1. `environment/verify_environment.py` — 환경 검증 (FAIL이면 중단). 버전 기록
+   `environment/versions_installed.txt`는 `RECORD_ENV=1`일 때만 다시 씁니다
+2. `pytest` — 단위·파이프라인·교차검증 판정 테스트 (`tests/`, 67건; `RUN_TESTS=0`이면 생략)
+3. `scripts/m01_make_toy_events.py` — toy 이벤트 20,000개 생성 → ROOT TTree
+4. `analysis/m01_analysis_uproot.py` — 관측량 4종 + Poisson-likelihood fit → `results/`
+5. `analysis/m01_closure_test.py` — **closure test**: 다중도 평균·NBD k, dN/dη, 종류별
+   Tsallis, truth 수준 Z 선형을 파일 provenance의 생성기 입력과 대조
+6. `analysis/m01_fit_validation.py` — pseudo-experiment로 fit **방법**의 편향과 오차 포함률 측정
+7. `analysis/m01_fit_systematics.py` — fit 범위·binning 변형으로 Tsallis 체계 오차
+   (통계 오차와 분리, 참 모형 대조군 포함)
+8. ROOT가 있으면 `m01_analysis_pyroot.py`와 `m01_analysis_root.C`(컷 값은 YAML에서 전달)를
+   실행하고, `analysis/m01_compare_arms.py`가 같은 입력·같은 컷인지 확인한 뒤 세 arm을
+   스칼라·bin별·fit으로 대조 (ROOT arm이 하나라도 빠지면 실패)
+
+GitHub Actions(`.github/workflows/ci.yml`)가 push마다 ROOT를 뺀 전 과정을 돌리고,
+커밋된 `results/tables/*.json`이 재현되는지 `scripts/check_results_drift.py`로 확인합니다
+(중심값 1e-6, 기계마다 흔들리는 수치 Hessian 오차는 1e-2, 수치적으로 불안정한 Barlow
+참고값은 비교 제외). 그림은 메타데이터를
+제거해 저장하므로 같은 기계·같은 seed면 **바이트까지 같습니다**.
 
 모든 물리 파라미터는 코드가 아니라 [`config/analysis.yaml`](config/analysis.yaml)에
 있습니다. 이 파일이 결과의 provenance입니다.
@@ -99,10 +120,11 @@ bash scripts/run_all.sh
 heavy-ion-computing/
 ├── config/analysis.yaml        # 모든 cut·binning·생성기 파라미터 (숫자는 여기에만)
 ├── environment/                # environment.yml, setup_wsl2.sh, verify_environment.py
-├── src/hicpy/                  # 재사용 라이브러리: style, kinematics, toy_generator
-├── scripts/                    # 이벤트 생성 / run_all.sh
-├── analysis/                   # 관측량 계산 (uproot arm, ROOT arm, closure test)
-├── generators/                 # (예정) PYTHIA·Angantyr 등 생성기 설정 카드
+├── src/hicpy/                  # 재사용 라이브러리: kinematics, events, histograms, fitting,
+│                               #   toy_generator, pdg(기준값), provenance, style
+├── scripts/                    # 이벤트 생성 / run_all.sh / check_results_drift.py
+├── analysis/                   # 관측량 계산 (uproot arm, ROOT arm, closure, 방법 검증, 체계 오차)
+├── generators/                 # PYTHIA 카드 (pythia_mb_13TeV.cmnd)
 ├── data/{raw,generated,processed}/
 ├── results/{figures,tables,logs}/
 ├── docs/                       # README 외 모든 문서
@@ -110,8 +132,9 @@ heavy-ion-computing/
 │   ├── roadmap.md              # 마일스톤
 │   ├── research_log.md         # 연구 노트 (세션별)
 │   ├── troubleshooting.md      # 오답노트 (오류·실패 기록)
-│   └── modules/module01_root.md
+│   └── modules/module0N_*.md   # 모듈별 코드·결과 설명
 ├── exercises/                  # 모듈별 연습문제
+├── tests/                      # pytest: kinematics, 생성기, fit, 교차검증 판정, 소규모 end-to-end
 └── notebooks/
 ```
 
@@ -148,3 +171,5 @@ heavy-ion-computing/
 - [`docs/troubleshooting.md`](docs/troubleshooting.md) — **오답노트**. 실제로 만난
   오류, 원인, 해결, 그리고 "왜 그런 오류가 나는지"의 물리적/소프트웨어적 이유
 - `docs/modules/moduleNN_*.md` — 각 모듈의 코드와 결과 설명
+- `docs/howto/*.md` — 따라 하기 가이드 (명령 → 무엇을 왜 하는지 → 화면에 보일 것).
+  첫 번째: [`fetch_hepdata.md`](docs/howto/fetch_hepdata.md) 실험 데이터 받아 MC와 비교하기

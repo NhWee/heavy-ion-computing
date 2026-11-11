@@ -12,6 +12,7 @@ variable-length branches instead of CSV.  Here we build such a TTree with
 
     px, py, pz, E   -- variable-length float32 arrays, one entry per particle
     pdg             -- variable-length int32 array (PDG Monte Carlo ID)
+    charge          -- variable-length int8 array (electric charge, units of e)
     n_particles     -- scalar int32
     has_z           -- scalar bool
 
@@ -26,7 +27,6 @@ import argparse
 import json
 import pathlib
 import platform
-import subprocess
 import sys
 import time
 
@@ -40,15 +40,12 @@ REPO = HERE.parent
 sys.path.insert(0, str(REPO / "src"))
 
 from hicpy.toy_generator import ToyConfig, generate  # noqa: E402
+from hicpy.provenance import git_describe  # noqa: E402
 
 
 def git_hash(repo: pathlib.Path) -> str:
-    try:
-        return subprocess.check_output(
-            ["git", "-C", str(repo), "rev-parse", "--short", "HEAD"],
-            stderr=subprocess.DEVNULL).decode().strip()
-    except Exception:
-        return "unknown"
+    """Commit hash with "-dirty" if code/config differ from it (hicpy.provenance)."""
+    return git_describe(repo)
 
 
 def main() -> int:
@@ -89,6 +86,7 @@ def main() -> int:
         "pz":  ak.values_astype(ak.Array(ev["pz"]),  np.float32),
         "E":   ak.values_astype(ak.Array(ev["E"]),   np.float32),
         "pdg": ak.values_astype(ak.Array(ev["pdg"]), np.int32),
+        "charge": ak.values_astype(ak.Array(ev["charge"]), np.int8),
     })
     arrays = {"particle": particle, "has_z": ev["has_z"]}
 

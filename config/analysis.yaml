@@ -59,6 +59,36 @@ analysis:
       lo: 60.0
       hi: 120.0
 
+  # --- fits: ranges are part of the result ---
+  fits:
+    tsallis_pt_range: [0.15, 6.0]   # GeV/c; soft spectrum only (above: Z muons
+                                    # in the toy, hard-scattering tail in PYTHIA)
+
+# ---------------------------------------------------------------------------
+# Systematic variations of the Tsallis fit (analysis/m01_fit_systematics.py).
+# One choice changed at a time; a change counts only if it exceeds
+# significance_threshold x its own statistical spread (bootstrap).
+# ---------------------------------------------------------------------------
+systematics:
+  tsallis:
+    range_low: [0.3, 0.5]          # GeV/c, alternative lower fit edges
+    range_high: [3.0, 4.5, 8.0]    # GeV/c, alternative upper fit edges
+    n_bins: [20, 80]               # alternative number of log bins (0.15-50 GeV/c)
+    significance_threshold: 2.0    # |delta| / (its bootstrap statistical spread)
+    n_bootstrap: 50                # particle-level bootstrap replicas
+    seed: 20261108
+
+# ---------------------------------------------------------------------------
+# Pseudo-experiments that validate the fit METHODS (analysis/m01_fit_validation.py):
+# bias and error coverage of each statistic, measured on toys drawn from the
+# generator's own model with the statistics of the real sample.
+# ---------------------------------------------------------------------------
+validation:
+  seed: 20261107
+  n_toys_pt: 300            # per species (pi, K, p), Tsallis methods
+  n_toys_z: 1000            # Z line-shape methods
+  n_z_acceptance: 2000000   # Z decays for the acceptance-vs-mass curve
+
 paths:
   generated_file: data/generated/m01_toy_events.root
   figure_dir: results/figures

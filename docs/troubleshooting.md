@@ -224,3 +224,266 @@ systemd 서비스(예: docker daemon)를 WSL 안에서 돌릴 때만 문제가 �
 conda-forge에서 C++ 라이브러리 이름과 Python 바인딩 이름이 다른 경우가 흔하다
 (`hepmc3` vs `pyhepmc`, `fastjet` vs `fastjet-cxx`). 검증 스크립트가 없었으면
 Module 3에 가서야 알았을 것이다.
+
+---
+
+## #10 같은 seed, 같은 숫자인데 그림 파일이 매번 달라진다
+
+**증상**
+`run_all.sh`를 다시 돌리면 `m01_fit_results.json`의 숫자는 그대로인데
+`git status`에 `results/figures/*.pdf|png` 8개가 전부 수정으로 뜬다.
+`cmp`로 보면 바이트가 다르다.
+
+**원인**
+matplotlib이 PDF에는 `/CreationDate`, `/ModDate`, `/Producer`를, PNG에는
+`Software` 텍스트 청크를 기본으로 심는다. 생성 **시각**과 matplotlib **버전**이
+파일 안에 들어가므로, 같은 데이터로 그려도 같은 파일이 되지 않는다.
+
+**해결**
+`hicpy.style.save_figure()`가 `metadata={"CreationDate": None, ...}`로 그 필드를
+비운다. 모든 분석 스크립트는 `fig.savefig()` 대신 이 함수를 쓴다.
+`tests/test_m01_pipeline.py::test_figures_are_byte_reproducible`가 두 번 그려
+바이트 비교로 이를 지킨다.
+
+**배운 점**
+"재현 가능"의 정의를 숫자에서 **파일**까지 넓히면 `git diff`가 곧 회귀 검출기가
+된다. 그림이 바뀌었다는 것은 코드·설정·seed 중 하나가 바뀌었다는 뜻이어야 한다.
+
+---
+
+## #11 arm마다 cut 집합이 달랐다 (`pt < pt_max`)
+
+**증상**
+실행 전 코드 대조에서 발견. uproot arm의 $N_{\rm ch}$는
+`pt_min < pT < pt_max`를, PyROOT arm과 C++ 매크로는 `pT > pt_min`만 적용하고
+있었다. 반대로 uproot arm의 $p_{\rm T}$ 스펙트럼은 pT cut 없이 |η|만 걸고 있었다.
+
+**원인**
+cut을 세 곳에 따로 썼기 때문. `config/analysis.yaml`에는 `pt_max: 50.0`이
+있지만 두 ROOT arm은 그 키를 읽지 않았다. 생성 범위가 60 GeV/c라
+50–60 GeV/c 사이 입자가 실제로 존재하므로 숫자가 달라졌을 것이다.
+
+**해결**
+세 arm 모두 track 선택을 "하전 하드론 ∧ |η| < 0.8 ∧ pt_min < pT < pt_max"로
+통일하고 $N_{\rm ch}$와 $p_{\rm T}$ 스펙트럼이 **같은 입자 집합**을 쓰게 했다.
+$dN/d\eta$는 세 arm 모두 pT 상한 없이 `pT > pt_min`만 적용한다.
+`m01_compare_arms.py`가 이제 네 히스토그램을 bin별로 비교하므로, 이런 차이는
+다음부터 자동으로 잡힌다.
+
+**배운 점**
+"같은 분석"을 두 언어로 쓰면 cut 하나가 빠지는 건 시간문제다. 스칼라 요약 몇 개가
+아니라 **히스토그램 전체**를 대조해야 하고, C++ 매크로처럼 설정 파일을 못 읽는
+코드는 기본 인자 옆에 "config와 같아야 함"을 적는 것으로는 부족하다 — 대조
+스크립트가 cut 값 자체를 비교해야 한다.
+
+---
+
+## #12 float32 가중치로 히스토그램을 채우면 희소한 bin의 오차가 0이 된다
+
+**증상**
+불변 $p_{\rm T}$ 수율의 6 GeV/c 위 bin들이 내용은 있는데 오차가 **정확히 0**.
+`do_fit`은 오차 0인 점을 제외하므로 Tsallis fit 범위가 "우연히" 6 GeV/c에서
+끝났고, 아무도 눈치채지 못했다. 내용 자체도 1/128의 배수로 양자화되어 있었다.
+
+**원인**
+ROOT 파일의 4-운동량은 float32로 저장된다(크기 때문; 맞는 선택). 그런데
+`pt = np.hypot(px, py)`, `w = 1/(2π pt Δη)`가 전부 **float32로 전파**됐다.
+`np.histogram(values, weights=w)`는 가중치를 정렬 후 **누적합**해서 bin 경계의
+차이로 bin 내용을 구한다. 누적합이 float32로 전체 합(큰 수)에 도달하면 꼬리 bin의
+차이는 그 수의 ulp 아래로 떨어진다. $w^2$는 더 작아서 꼬리에서 정확히 0.
+
+**해결**
+읽자마자 float64로 올린다 (`ak.values_astype(arr, np.float64)`), 그리고
+`hist_weighted` / `hist_with_errors`는 인자의 dtype을 믿지 않고 float64로 캐스팅한다.
+PyROOT arm의 `calcPt/calcEta`도 `RVec<double>`을 반환하도록 바꿨다 (C++ 매크로는
+처음부터 double이었다). fit 범위는 이제 `config/analysis.yaml`의
+`fits.tsallis_pt_range = [0.15, 6.0]`에 **명시**한다 — 범위가 "빈 bin이 나올 때까지"로
+암묵적으로 정해지면 이런 버그가 숨는다.
+
+**배운 점**
+저장 정밀도와 연산 정밀도는 다른 문제다. float32 저장은 괜찮지만 그 값으로 합·누적합·
+차이를 만들면 안 된다. 그리고 "fit이 잘 됐다"(χ²/ndf ≈ 1)는 fit에 **들어간 점들**에
+대한 말이다 — 어떤 점이 왜 빠졌는지 보지 않으면 좋은 χ²는 아무것도 보증하지
+않는다. 이 버그는 하전입자 정의를 바꾸다가(#11 다음 단계) 발견했다: 뮤온이 꼬리에
+들어왔는데도 fit 범위가 늘어나지 않는 것이 이상했다.
+
+---
+
+## #13 `can't open file 'scripts/...'` / `micromamba ... can't modify the parent shell`
+
+**증상 1**: `python scripts/m02_fetch_hepdata.py ...` → `No such file or directory`.
+**원인/해결**: 홈 디렉토리에서 실행함. 이 저장소의 모든 명령은 **저장소 루트**에서
+친다(상대 경로). WSL2의 저장소는 `/mnt/c/Users/Administrator/Claude/Projects/HIC analysis/heavy-ion-computing`.
+
+**증상 2**: `micromamba activate hic` → `'micromamba' is running as a subprocess and
+can't modify the parent shell`.
+**원인/해결**: 새 터미널에서 셸 hook이 안 읽힌 상태. `eval "$(micromamba shell hook
+--shell bash)"` 후 activate. 영구히 하려면 `micromamba shell init --shell bash
+--root-prefix=~/.local/share/mamba` 한 번.
+
+**배운 점**: 가이드에 "어디서", "어떤 환경에서"가 빠지면 첫 줄에서 막힌다.
+`docs/howto/*.md`는 이제 "시작 전에" 절로 시작한다.
+
+**증상 3**: `micromamba shell init --shell bash --root-prefix=~/.local/share/mamba` 실행 후
+새 터미널에서 `hic` 환경이 안 보임.
+**원인/해결**: root prefix는 **환경이 실제로 있는 곳**이어야 한다. `hic`는
+`~/micromamba/envs/hic`에 있으므로 `micromamba shell init --shell bash --root-prefix=~/micromamba`.
+(micromamba의 안내 메시지가 보여주는 기본값을 그대로 쓰면 안 된다 —
+`micromamba env list`로 위치를 먼저 확인.)
+
+---
+
+## #14 CI가 한 번도 테스트를 돌리지 않았다 (2026-11-07)
+
+**증상**
+`.github/workflows/ci.yml`을 추가한 뒤 2026-11-05에 push된 11번의 실행이 **전부 실패**했고,
+각각 8–16초 만에 끝났다. 같은 날 `docs/next_steps.md`는 CI를 ✅로 표시했다.
+
+**원인**
+`actions/setup-python@v5`의 `cache: pip`는 캐시 키로 쓸 의존성 파일
+(`requirements.txt`, `pyproject.toml`)을 찾는다. 저장소에 그런 파일이 없어서 설정 단계에서
+```
+##[error]No file in ... matched to [**/requirements.txt or **/pyproject.toml]
+```
+로 멈췄다. pytest는 한 번도 시작되지 않았다.
+
+**해결**
+`environment/requirements-ci.txt`(environment.yml의 PyPI 부분집합)를 만들고
+`cache-dependency-path`로 지정했다. 결과 비교는 `scripts/check_results_drift.py`로 옮겨,
+커밋된 `results/tables/*.json` 전부를 재생성 값과 1e-6 안에서 비교한다.
+
+**배운 점**
+"CI를 추가했다"와 "CI가 통과한다"는 다른 주장이다. 설정 파일을 쓴 뒤에는 **첫 실행의 로그를
+직접 열어** 테스트가 실제로 돌았는지 확인한다. 아무도 보지 않는 빨간 배지는 검사가 아니다.
+
+---
+
+## #15 240개짜리 Z 피크에 χ²를 쓰고, 그 편차를 acceptance sculpting으로 설명했다 (2026-11-07)
+
+**증상**
+Session 1의 Z fit은 m = 91.06 ± 0.09, Γ = 2.06 ± 0.23 GeV였다. PDG보다 1.3σ 낮고 폭이
+좁은 이유를 "pT > 20 GeV 컷이 낮은 질량 꼬리를 잘라내는 acceptance sculpting"이라고 적었다.
+
+**원인 — 두 가지 오류**
+1. **통계 방법.** count가 0–60인 bin에 $\sigma=\max(\sqrt N,1)$인 χ²(Neyman χ²)를 썼다.
+   아래로 요동한 bin일수록 오차가 작아져 가중이 커지므로 꼬리가 눌리고 폭이 좁아진다.
+   pseudo-experiment 1000회에서 Γ 편향은 −0.18 GeV(평균 pull −0.81)였다.
+   질량 오차도 12 % 과소평가되었다(pull 폭 1.12).
+2. **해석.** 검증하지 않은 설명을 붙였다. 확인해 보면 세 가지가 어긋난다.
+   - 같은 표본의 Z를 **컷 없이** fit해도 m = 91.14 ± 0.08, Γ = 2.14 ± 0.17이다.
+     편차는 컷 이전부터 있던 이 표본의 요동이다.
+   - 두 뮤온의 acceptance는 질량이 커질수록 **증가**한다(+0.23 %/GeV, Z 정지계에서
+     $p^*=m/2$이므로). 그러니 컷은 피크를 **위로** 옮긴다. 측정값은 +0.010 ± 0.002 GeV로
+     통계 오차의 1/10이다.
+
+**해결**
+binned Poisson likelihood(Baker–Cousins deviance, bin 적분 모형, `hicpy.fitting.fit_poisson`)를
+쓰고, toy에 배경이 없으므로 신호만으로 맞춘다. 결과는 m = 91.057 ± 0.105, Γ = 2.28 ± 0.23 GeV이다.
+`analysis/m01_fit_validation.py`가 매 실행마다 방법별 편향과 포함률을 다시 잰다.
+0 이상으로 제한한 배경 항을 넣으면 그 항이 BW 꼬리를 먹어 Γ가 −0.06 GeV 편향된다는 것도
+같이 측정된다.
+
+**배운 점**
+- count가 적은 히스토그램에는 Poisson likelihood를 쓴다. χ²는 bin마다 기대 count가 충분할 때의 근사다.
+- 1–2σ 편차에 물리적 이유를 붙이기 전에 그것이 요동인지부터 확인한다. 단일 표본으로는 알 수
+  없으므로 truth 비교나 pseudo-experiment를 쓴다.
+- 이 오류는 사용자의 로컬 Session 4(2026-09-26, 아직 push 전)에서도 독립적으로 발견되어 같은
+  값(91.057 ± 0.105, 2.28 ± 0.23)으로 고쳐졌다. 두 독립 구현이 같은 숫자를 낸 셈이다.
+
+---
+
+## #16 Tsallis fit을 bin 중심에서 평가해 T가 +0.85σ 편향됐다 (2026-11-07)
+
+**증상**
+종류별 closure pull이 T: 1.3 / 0.8 / 0.4σ, n: 0.7 / 0.2 / 0.4σ로 **모두 양수**였다.
+하나하나는 허용 범위지만 방향이 한쪽으로만 쏠려 있었다.
+
+**원인**
+불변 수율 히스토그램은 입자별 가중치 $1/(2\pi p_{\rm T})$로 채우므로, 각 bin 내용의 기댓값은
+**bin 평균** $\frac{1}{\Delta p_{\rm T}}\int f\,dp_{\rm T}$이다. fit은 그 값을 bin **중심**의
+함수값 $f(p_{\rm T,c})$와 비교했다. 로그 bin 폭이 15 %라 이 둘은 저-pT에서 0.04 %,
+고-pT에서 4.6 % 다르다. 스펙트럼이 실제보다 단단해 보이므로 T가 커진다. 데이터에서 잡은
+오차가 count 적은 bin을 왜곡하는 효과도 더해졌다.
+
+**해결**
+원시 count에 Poisson likelihood를 쓰고, 기대 count를 bin마다 Gauss–Legendre로 적분한다
+(해석적 적분과 1e-10 안에서 일치함을 `tests/test_fitting.py`가 검사한다). 종류별 300회 toy에서
+평균 T pull은 +0.85 / +0.74 / +0.65에서 0.00 / +0.01 / 0.00(±0.06)으로 바뀌었다.
+이전 χ² fit은 세 arm 교차검증용으로만 남긴다. ROOT arm들이 같은 알고리즘을 돌리기 때문이다.
+
+**배운 점**
+closure가 "4σ 안이라 통과"여도 pull의 **부호 패턴**을 본다. 편향을 확인하는 도구는 단일
+표본이 아니라 pseudo-experiment의 pull 분포(평균 0, 폭 1)다. 오답노트 #7의 "χ²/ndf가
+0.91 → 0.50으로 좋아졌으니 편향이 있었다"는 판단도 근거가 약했다. 사용자의 로컬 Session 3
+기록(Notion, 2026-08-31)에 따르면 그 변화는 #12의 float32 bin 누락 때문이었고, float64로
+고치면 0.91로 돌아온다. 편향의 증거는 χ²/ndf가 아니라 toy pull이다.
+
+---
+
+## #17 toy 생성기가 η = −6.0에 입자 ~20개를 정확히 쌓는다 (2026-11-09)
+
+**증상**
+η 정의를 `arctanh(pz/p · (1−1e-12))`에서 `asinh(pz/pT)`로 바꾸자 dN/dη 첫 bin
+[−6.0, −5.8]만 1599 → 1591개로 줄었다. 다른 bin과 관측량은 비트 단위로 같았다.
+
+**원인**
+`_sample_eta`의 CDF는 누적합(cumsum)이라 첫 격자점에서 이미 `pdf[0]/Σpdf > 0`이다.
+`np.interp`는 그보다 작은 난수를 전부 격자 끝 −6.0으로 보낸다. 120만 입자 중 약 20개가
+정확히 η = −6.0에 놓인다. float32로 저장된 운동량에서 η를 다시 계산하면 ±1e-7쯤 흔들린다.
+옛 공식의 축소 인자는 |η|를 4e-8 줄여 이들을 범위 안에 붙잡았지만, 정확한 asinh에서는
+절반가량이 −6.0 밖으로 나간다.
+
+**해결**
+지금은 고치지 않고 `_sample_eta`에 주석으로 남겼다. CDF를 0에서 시작하는 사다리꼴로 고치면
+모든 η가 미세하게 움직여 커밋된 모든 숫자가 바뀐다. 다음에 표본을 의도적으로 다시 만들 때
+같이 고친다. 영향은 가장자리 bin 하나(약 +1 %, 0.5σ)뿐이다.
+
+**배운 점**
+"정의를 정확하게 바꿨는데 숫자가 바뀌었다"는 대개 경계에 쌓인 무언가를 드러낸다. 역CDF
+샘플러는 CDF가 **0에서 시작해 1에서 끝나는지** 확인한다.
+
+---
+
+## #18 Barlow 근사가 re-binning의 통계 잡음을 "유의한 체계 오차"로 판정했다 (2026-11-08)
+
+**증상**
+`m01_fit_systematics.py` 첫 버전에서 참 모형인 파이온 대조군의 "20 log bins" 변형이
+T 2.7σ, n 3.0σ로 유의하게 나왔다.
+
+**원인**
+변형의 유의성을 $\sigma_B=\sqrt{|\sigma_v^2-\sigma_{\rm nom}^2|}$로 판정했다. 이 근사는 한 데이터가
+다른 데이터의 부분집합일 때(fit 범위 변경) 성립한다. 같은 데이터를 binning만 바꾸면 두 오차가
+거의 같아 $\sigma_B\to0$이 되고, 아주 작은 차이도 유의해 보인다.
+
+**해결**
+차이 Δ 자신의 통계적 퍼짐을 입자 bootstrap(50회, 매 복제본에서 기준과 모든 변형을 다시 fit)으로
+잰다. 같은 변형이 0.8σ로 바뀌었다. Barlow 값은 비교용으로 함께 기록한다. 두 오차 제곱의
+차이라 HESSE 오차의 기계 의존성(1e-3)이 ~10 %로 커지므로, CI의 결과 재현 비교에서도 제외했다.
+
+**배운 점**
+체계 오차 절차는 **참 모형 대조군**으로 시험한다. 대조군에서 "체계 오차"가 나오면 그것은
+물리가 아니라 절차의 결함이다. 남은 대조군 값 0.2 MeV는 변형 7개를 2σ로 볼 때의 거짓 양성 하한이다.
+결과를 본 뒤 기준을 바꾸지 않았다.
+
+---
+
+## #19 ROOT C++ 매크로: 첫 실행에서 터졌을 use-after-free (2026-11-07, 코드 검토)
+
+**증상**
+실행 전 코드 검토에서 발견했다(이 저장소 계열에서는 ROOT 미실행).
+`m01_analysis_root.C`는 `fin->Close()` **뒤에** JSON 요약을 쓰면서 `hPt`, `hEta` 등을 읽는다.
+
+**원인**
+`TFile::Open`은 gDirectory를 그 파일로 바꾼다. 그 뒤에 만든 `TH1`은 기본적으로 그 디렉터리에
+등록되고, 파일을 닫으면 **함께 삭제된다**. 같은 검토에서 두 가지를 더 찾았다.
+`Float_t * Float_t`는 double로 승격되기 전에 float로 계산된다. "C++ 매크로는 처음부터 double"이라던
+주석은 틀렸다. 또 입자 버퍼가 고정 크기 20000이라 Pb–Pb(Module 8) 이벤트에서 넘친다.
+
+**해결**
+`TH1::AddDirectory(kFALSE)`, `const Double_t x = px[i]` 후 계산, `GetMaximum("nparticle")`로
+크기를 정한 `std::vector` 버퍼, η = `TMath::ASinH(z/pT)`, 입력 provenance를 JSON에 복사.
+문법은 stub 헤더와 `g++ -fsyntax-only`로만 확인했으므로 **WSL2 첫 실행이 진짜 검증**이다.
+
+**배운 점**
+ROOT 객체의 소유권(누가 delete하는가)은 C++ 매크로에서 가장 흔한 함정이다. 파일에서 읽은
+것이 아닌 히스토그램은 `SetDirectory(nullptr)` 또는 `TH1::AddDirectory(kFALSE)`로 파일과 분리한다.

@@ -41,24 +41,41 @@ THE FOUR INGREDIENTS
 Optionally a Z -> mu+ mu- "signal" is embedded in a fraction of events, so that
 Module 1 also exercises invariant-mass reconstruction: the dimuon mass is drawn
 from a relativistic Breit-Wigner at m_Z = 91.1876 GeV, Gamma_Z = 2.4952 GeV
-(PDG 2024 values), and the decay is isotropic in the Z rest frame.
+(the long-standing LEP-era PDG values; the current RPP 2025/2026 averages are
+91.1880/91.1879 and 2.4955 GeV -- see hicpy.pdg), and the decay is isotropic in
+the Z rest frame.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 
 import numpy as np
 
-# --- PDG particle data actually used here (PDG 2024 central values, GeV) -----
+# --- Generator INPUTS (GeV).  Frozen on purpose: they define the closure truth
+# and every committed sample; changing one changes all results.  Checked on
+# 2026-11-07 against the RPP 2026 tables shipped with `particle` 1.1.0:
+# pi, K, mu identical; p differs by 1.3e-9 GeV (CODATA 2018 vs 2022);
+# Z mass/width are the older LEP-era values (RPP 2026: 91.1879 / 2.4955).
+# External reference values for comparisons live in hicpy.pdg.
 M_PI = 0.13957039     # pi+-
 M_K = 0.493677        # K+-
-M_P = 0.93827208816   # proton
+M_P = 0.93827208816   # proton (CODATA 2018)
 M_MU = 0.1056583755   # muon
-M_Z = 91.1876         # Z boson
-GAMMA_Z = 2.4952      # Z total width
+M_Z = 91.1876         # Z boson (LEP-era PDG value, NOT the current average)
+GAMMA_Z = 2.4952      # Z total width (idem)
 
 PDG = {"pi": 211, "K": 321, "p": 2212, "mu": 13}
 MASS = {211: M_PI, 321: M_K, 2212: M_P, 13: M_MU}
+# electric charge of the PARTICLE (positive pdg code); the antiparticle has the
+# opposite sign.  Note the PDG sign convention: 13 is the mu-, so its charge is -1.
+CHARGE = {211: +1, 321: +1, 2212: +1, 13: -1}
+
+
+def charge_of(pdg):
+    """Electric charge (in units of e) from a signed PDG code, vectorised."""
+    pdg = np.asarray(pdg)
+    base = np.vectorize(CHARGE.__getitem__, otypes=[np.int8])(np.abs(pdg))
+    return (base * np.sign(pdg)).astype(np.int8)
 
 
 @dataclass
@@ -111,7 +128,16 @@ def _eta_shape(eta, plateau, sigma):
 
 
 def _sample_eta(rng, n, cfg):
-    """Inverse-CDF sampling on a fine grid (fast, exact enough, no rejection loop)."""
+    """Inverse-CDF sampling on a fine grid (fast, exact enough, no rejection loop).
+
+    KNOWN ARTEFACT (troubleshooting #17): the CDF is a cumulative sum that
+    starts at pdf[0] / sum > 0, so every u < cdf[0] is mapped to exactly
+    -eta_max -- about 20 of the 1.2 million particles of the committed sample
+    sit exactly at eta = -6.0.  Only the outermost dN/deta bin notices (+1 %).
+    Not fixed here because any change to the mapping moves every eta and so
+    every committed number; fix it (CDF starting at 0, trapezoidal) together
+    with the next deliberate regeneration of the samples.
+    """
     grid = np.linspace(-cfg.eta_max, cfg.eta_max, 4001)
     pdf = _eta_shape(grid, cfg.eta_plateau, cfg.eta_sigma)
     cdf = np.cumsum(pdf)
@@ -146,6 +172,13 @@ def _sample_breit_wigner(rng, n, m0, gamma):
         num = trial ** 2 * gamma ** 2
         den = (trial ** 2 - m0 ** 2) ** 2 + m0 ** 2 * gamma ** 2
         w = (num / den) / (1.0 / (1.0 + ((trial - m0) / (0.5 * gamma)) ** 2))
+        # NOTE: normalising by the batch maximum instead of a global bound on
+        # f/g is not textbook rejection sampling.  f/g peaks at the upper
+        # truncation edge (m0 + 20 Gamma ~ 141 GeV), so only the far tail above
+        # ~130 GeV can be distorted; inside every analysis window (60-120 GeV)
+        # the accepted shape is exact (tests/test_fitting.py checks it).  Not
+        # changed, because any change alters the random stream and therefore
+        # every committed sample.
         w /= w.max()
         acc = trial[rng.random(trial.size) < w]
         take = min(acc.size, n - filled)
@@ -191,13 +224,67 @@ def _boost_z_decay(rng, m_zz, pt_z, phi_z, y_z):
     return mu_plus, mu_minus
 
 
+def sample_z_decays(rng, n, cfg):
+    """n Z -> mu+ mu- decays: true mass, then the two lab-frame muons.
+
+    Public so that pseudo-experiments (analysis/m01_fit_validation.py) use the
+    generator's own Z model.  The random-number calls are made in exactly the
+    order generate() always made them, so samples are unchanged.
+    Returns (m_true, mu_plus, mu_minus) with mu = (px, py, pz, E) arrays.
+    """
+    m_zz = _sample_breit_wigner(rng, n, M_Z, GAMMA_Z)
+    pt_z = rng.exponential(cfg.z_pt_scale, n)
+    phi_z = rng.uniform(-np.pi, np.pi, n)
+    y_z = rng.normal(0.0, cfg.z_y_sigma, n)
+    mup, mum = _boost_z_decay(rng, m_zz, pt_z, phi_z, y_z)
+    return m_zz, mup, mum
+
+
+def sample_pt(rng, n, mass, cfg):
+    """Public alias of the per-species Tsallis pT sampler (pseudo-experiments)."""
+    return _sample_pt(rng, n, mass, cfg)
+
+
+# --------------------------------------------------------------------------
+# analytic expectations (closure test, pseudo-experiments)
+# --------------------------------------------------------------------------
+def expected_mean_multiplicity(cfg):
+    """E[max(N, 1)] for N ~ NBD(nbar, k): nbar + P(N = 0) (the floor in generate)."""
+    k, nbar = cfg.nbd_k, cfg.nbd_nbar
+    return nbar + (k / (k + nbar)) ** k
+
+
+def eta_fraction(cfg, eta_abs_max):
+    """Fraction of the generated dN/deta shape inside |eta| < eta_abs_max."""
+    grid = np.linspace(-cfg.eta_max, cfg.eta_max, 400001)
+    pdf = _eta_shape(grid, cfg.eta_plateau, cfg.eta_sigma)
+    pdf /= np.trapezoid(pdf, grid)
+    inside = np.abs(grid) < eta_abs_max
+    return float(np.trapezoid(pdf[inside], grid[inside]))
+
+
+def pt_fraction(cfg, mass, pt_lo, pt_hi):
+    """Fraction of the generated Tsallis spectrum for `mass` inside (pt_lo, pt_hi)."""
+    g = np.geomspace(cfg.pt_min, cfg.pt_max, 200001)
+    d = _tsallis_dNdpt(g, mass, cfg.tsallis_T, cfg.tsallis_n)
+    inside = (g > pt_lo) & (g < pt_hi)
+    return float(np.trapezoid(d[inside], g[inside]) / np.trapezoid(d, g))
+
+
+def species_fractions(cfg):
+    """{pdg: fraction} of the generated hadron mix (normalised)."""
+    fr = np.array([cfg.frac_pi, cfg.frac_K, cfg.frac_p], dtype=float)
+    fr /= fr.sum()
+    return dict(zip((PDG["pi"], PDG["K"], PDG["p"]), fr.tolist()))
+
+
 # --------------------------------------------------------------------------
 # main entry point
 # --------------------------------------------------------------------------
 def generate(cfg: ToyConfig):
     """Generate the event sample.
 
-    Returns a dict of per-event lists (ragged): px, py, pz, E, pdg
+    Returns a dict of per-event lists (ragged): px, py, pz, E, pdg, charge
     plus per-event scalars: n_particles, has_z.
     """
     rng = np.random.default_rng(cfg.seed)
@@ -212,17 +299,13 @@ def generate(cfg: ToyConfig):
 
     # Z kinematics for the events that have one
     if n_z:
-        m_zz = _sample_breit_wigner(rng, n_z, M_Z, GAMMA_Z)
-        pt_z = rng.exponential(cfg.z_pt_scale, n_z)
-        phi_z = rng.uniform(-np.pi, np.pi, n_z)
-        y_z = rng.normal(0.0, cfg.z_y_sigma, n_z)
-        mup, mum = _boost_z_decay(rng, m_zz, pt_z, phi_z, y_z)
+        m_zz, mup, mum = sample_z_decays(rng, n_z, cfg)
 
     species = np.array([PDG["pi"], PDG["K"], PDG["p"]])
     weights = np.array([cfg.frac_pi, cfg.frac_K, cfg.frac_p], dtype=float)
     weights /= weights.sum()
 
-    px_l, py_l, pz_l, e_l, id_l = [], [], [], [], []
+    px_l, py_l, pz_l, e_l, id_l, q_l = [], [], [], [], [], []
     iz = 0
     for iev in range(cfg.n_events):
         n = mult[iev]
@@ -254,9 +337,10 @@ def generate(cfg: ToyConfig):
 
         px_l.append(px); py_l.append(py); pz_l.append(pz); e_l.append(e)
         id_l.append(pdg.astype(np.int32))
+        q_l.append(charge_of(pdg))
 
     return {
-        "px": px_l, "py": py_l, "pz": pz_l, "E": e_l, "pdg": id_l,
+        "px": px_l, "py": py_l, "pz": pz_l, "E": e_l, "pdg": id_l, "charge": q_l,
         "n_particles": np.array([len(a) for a in px_l], dtype=np.int32),
         "has_z": has_z.astype(bool),
     }
