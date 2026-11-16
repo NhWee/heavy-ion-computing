@@ -14,6 +14,9 @@ data/raw/*
 #     but the ROOT histogram dumps are large and regenerable
 results/tables/*.root
 results/logs/*.log
+# ROOT's PDF writer stamps the creation date, so this overview is never
+# byte-reproducible; the canonical figures are the matplotlib ones
+results/figures/m01_root_overview.pdf
 
 # --- python / build
 __pycache__/
@@ -22,6 +25,8 @@ __pycache__/
 *.so
 *.o
 *.d
+*.pcm
+*_ACLiC_dict*
 build/
 .venv/
 env/
@@ -31,3 +36,6 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
+# --- tests
+.pytest_cache/

@@ -1,0 +1,524 @@
+{
+  "input_file": "m01_toy_events.root",
+  "n_events": 20000,
+  "truth_from": "input file provenance",
+  "generator_config": {
+    "n_events": 20000,
+    "seed": 20260827,
+    "sqrt_s_TeV": 13.0,
+    "nbd_nbar": 60.0,
+    "nbd_k": 2.2,
+    "eta_plateau": 2.0,
+    "eta_sigma": 1.6,
+    "eta_max": 6.0,
+    "tsallis_T": 0.135,
+    "tsallis_n": 6.8,
+    "pt_min": 0.15,
+    "pt_max": 60.0,
+    "frac_pi": 0.83,
+    "frac_K": 0.12,
+    "frac_p": 0.05,
+    "z_fraction": 0.02,
+    "z_pt_scale": 8.0,
+    "z_y_sigma": 1.8
+  },
+  "tolerance_sigma": 4.0,
+  "passed": true,
+  "checks": [
+    {
+      "observable": "<N_ch> in acceptance",
+      "value": 11.98785,
+      "error": 0.062099782109294885,
+      "truth": 12.05881478206538,
+      "pull": -1.1427541233636282,
+      "ok": true
+    },
+    {
+      "observable": "dN/deta, |eta|<0.5",
+      "value": 7.50205,
+      "error": 0.04059097401188547,
+      "truth": 7.5367136165764315,
+      "pull": -0.8539735106204135,
+      "ok": true
+    },
+    {
+      "observable": "NBD k (accepted N_ch)",
+      "value": 2.206155503940931,
+      "error": 0.0320630837680047,
+      "truth": 2.2,
+      "pull": 0.19198103293711835,
+      "ok": true
+    },
+    {
+      "observable": "Tsallis T [pi+-]",
+      "value": 0.1353698730077677,
+      "error": 0.0006735182348932001,
+      "truth": 0.135,
+      "pull": 0.5491655438643718,
+      "ok": true
+    },
+    {
+      "observable": "Tsallis n [pi+-]",
+      "value": 6.851946789268266,
+      "error": 0.051827684826839526,
+      "truth": 6.8,
+      "pull": 1.0022980853152965,
+      "ok": true
+    },
+    {
+      "observable": "Tsallis T [K+-]",
+      "value": 0.1353047818217645,
+      "error": 0.0016729300989991452,
+      "truth": 0.135,
+      "pull": 0.18218443313730437,
+      "ok": true
+    },
+    {
+      "observable": "Tsallis n [K+-]",
+      "value": 6.805255776161121,
+      "error": 0.15574342161870325,
+      "truth": 6.8,
+      "pull": 0.03374637661415033,
+      "ok": true
+    },
+    {
+      "observable": "Tsallis T [p/pbar]",
+      "value": 0.13366866657321608,
+      "error": 0.0025687366172191944,
+      "truth": 0.135,
+      "pull": -0.5182833529368133,
+      "ok": true
+    },
+    {
+      "observable": "Tsallis n [p/pbar]",
+      "value": 6.695322082358865,
+      "error": 0.2566045590611261,
+      "truth": 6.8,
+      "pull": -0.407934753864602,
+      "ok": true
+    },
+    {
+      "observable": "Z mass (truth level)",
+      "value": 91.14162272581116,
+      "error": 0.07879994597644924,
+      "truth": 91.1876,
+      "pull": -0.5834683465720144,
+      "ok": true
+    },
+    {
+      "observable": "Z width (truth level)",
+      "value": 2.143496537402239,
+      "error": 0.1705266759344618,
+      "truth": 2.4952,
+      "pull": -2.062454221138578,
+      "ok": true
+    }
+  ],
+  "fits": {
+    "species": {
+      "pi+-": {
+        "label": "pi+-",
+        "function": "tsallis_invariant",
+        "method": "binned Poisson likelihood (Baker-Cousins deviance), model integrated over each bin",
+        "converged": true,
+        "accurate_covariance": true,
+        "at_limit": [],
+        "n_bins": 25,
+        "n_entries": 198927.0,
+        "names": [
+          "C",
+          "T",
+          "n"
+        ],
+        "p0": [
+          14.381236537877896,
+          0.13,
+          7.0
+        ],
+        "params": [
+          22.705678606938417,
+          0.1353698730077677,
+          6.851946789268266
+        ],
+        "errors": [
+          0.14746687325794028,
+          0.0006735182348932001,
+          0.051827684826839526
+        ],
+        "covariance": [
+          [
+            0.021746480208706412,
+            -8.991571204911826e-05,
+            -0.005407348644505146
+          ],
+          [
+            -8.991571204911826e-05,
+            4.536274455149069e-07,
+            3.143155680408986e-05
+          ],
+          [
+            -0.005407348644505146,
+            3.143155680408986e-05,
+            0.0026861184395517283
+          ]
+        ],
+        "correlation": [
+          [
+            1.0000000689873985,
+            -0.9052984097727231,
+            -0.7075026827701746
+          ],
+          [
+            -0.9052984097727231,
+            1.0000013949379476,
+            0.9004398868211954
+          ],
+          [
+            -0.7075026827701746,
+            0.9004398868211954,
+            1.00000354603697
+          ]
+        ],
+        "deviance": 11.702288429438132,
+        "ndf": 22,
+        "deviance_ndf": 0.531922201338097,
+        "multistart": {
+          "n_starts": 5,
+          "n_converged": 5,
+          "improved": false,
+          "max_delta_deviance": -1.744382416291046e-12,
+          "max_param_shift_sigma": 8.901324581233472e-07
+        }
+      },
+      "K+-": {
+        "label": "K+-",
+        "function": "tsallis_invariant",
+        "method": "binned Poisson likelihood (Baker-Cousins deviance), model integrated over each bin",
+        "converged": true,
+        "accurate_covariance": true,
+        "at_limit": [],
+        "n_bins": 25,
+        "n_entries": 28663.0,
+        "names": [
+          "C",
+          "T",
+          "n"
+        ],
+        "p0": [
+          1.216232021100894,
+          0.13,
+          7.0
+        ],
+        "params": [
+          1.4501607759247455,
+          0.1353047818217645,
+          6.805255776161121
+        ],
+        "errors": [
+          0.01874705082475081,
+          0.0016729300989991452,
+          0.15574342161870325
+        ],
+        "covariance": [
+          [
+            0.00035145602723725053,
+            -2.6621758497394116e-05,
+            -0.0018157296294019976
+          ],
+          [
+            -2.6621758497394116e-05,
+            2.7987192132609667e-06,
+            0.00022952692262017402
+          ],
+          [
+            -0.0018157296294019976,
+            0.00022952692262017402,
+            0.024256795523327972
+          ]
+        ],
+        "correlation": [
+          [
+            1.0000117017756607,
+            -0.8488402949546715,
+            -0.6218827523311831
+          ],
+          [
+            -0.8488402949546715,
+            1.0000086101281767,
+            0.8809395886225785
+          ],
+          [
+            -0.6218827523311831,
+            0.8809395886225785,
+            1.0000322454401158
+          ]
+        ],
+        "deviance": 28.944963508388653,
+        "ndf": 22,
+        "deviance_ndf": 1.3156801594722116,
+        "multistart": {
+          "n_starts": 5,
+          "n_converged": 5,
+          "improved": false,
+          "max_delta_deviance": 3.0021141128599993e-10,
+          "max_param_shift_sigma": 8.208840129981378e-06
+        }
+      },
+      "p/pbar": {
+        "label": "p/pbar",
+        "function": "tsallis_invariant",
+        "method": "binned Poisson likelihood (Baker-Cousins deviance), model integrated over each bin",
+        "converged": true,
+        "accurate_covariance": true,
+        "at_limit": [],
+        "n_bins": 25,
+        "n_entries": 12107.0,
+        "names": [
+          "C",
+          "T",
+          "n"
+        ],
+        "p0": [
+          0.3450704804053699,
+          0.13,
+          7.0
+        ],
+        "params": [
+          0.3614426135795069,
+          0.13366866657321608,
+          6.695322082358865
+        ],
+        "errors": [
+          0.006611625585452197,
+          0.0025687366172191944,
+          0.2566045590611261
+        ],
+        "covariance": [
+          [
+            4.3714800806787603e-05,
+            -1.4010417957405869e-05,
+            -0.0009949927857820853
+          ],
+          [
+            -1.4010417957405869e-05,
+            6.59854327380362e-06,
+            0.0005743343527600987
+          ],
+          [
+            -0.0009949927857820853,
+            0.0005743343527600987,
+            0.06585176036981427
+          ]
+        ],
+        "correlation": [
+          [
+            1.0000276326996218,
+            -0.8249417109415104,
+            -0.5864720401590041
+          ],
+          [
+            -0.8249417109415104,
+            1.0000205299770548,
+            0.8713263519570607
+          ],
+          [
+            -0.5864720401590041,
+            0.8713263519570607,
+            1.0000890053728972
+          ]
+        ],
+        "deviance": 22.941672460096598,
+        "ndf": 22,
+        "deviance_ndf": 1.0428032936407545,
+        "multistart": {
+          "n_starts": 5,
+          "n_converged": 5,
+          "improved": false,
+          "max_delta_deviance": 4.041282863909146e-10,
+          "max_param_shift_sigma": 1.784067196388323e-05
+        }
+      }
+    },
+    "inclusive_pion_mass_expected_not_to_close": {
+      "label": "inclusive",
+      "function": "tsallis_invariant",
+      "method": "binned Poisson likelihood (Baker-Cousins deviance), model integrated over each bin",
+      "converged": true,
+      "accurate_covariance": true,
+      "at_limit": [],
+      "n_bins": 25,
+      "n_entries": 239697.0,
+      "names": [
+        "C",
+        "T",
+        "n"
+      ],
+      "p0": [
+        15.94253903938416,
+        0.13,
+        7.0
+      ],
+      "params": [
+        24.30886483935176,
+        0.14759218454486633,
+        7.496392277058267
+      ],
+      "errors": [
+        0.13926631174700432,
+        0.000652627600066194,
+        0.0573411022887198
+      ],
+      "covariance": [
+        [
+          0.01939510650591565,
+          -8.179172549752804e-05,
+          -0.005607854060661853
+        ],
+        [
+          -8.179172549752804e-05,
+          4.259232999529824e-07,
+          3.3727124434999364e-05
+        ],
+        [
+          -0.005607854060661853,
+          3.3727124434999364e-05,
+          0.0032880150628005287
+        ]
+      ],
+      "correlation": [
+        [
+          1.0000000473470922,
+          -0.8999074758898484,
+          -0.7022384284136617
+        ],
+        [
+          -0.8999074758898484,
+          1.0000012105124245,
+          0.901255319753826
+        ],
+        [
+          -0.7022384284136617,
+          0.901255319753826,
+          1.0000039693148164
+        ]
+      ],
+      "deviance": 25.580707371707497,
+      "ndf": 22,
+      "deviance_ndf": 1.1627594259867045,
+      "multistart": {
+        "n_starts": 5,
+        "n_converged": 5,
+        "improved": false,
+        "max_delta_deviance": 9.440981330044451e-10,
+        "max_param_shift_sigma": 2.9114000899414254e-05
+      }
+    },
+    "z_truth": {
+      "label": "Z truth (no muon cuts)",
+      "function": "rel_breit_wigner",
+      "method": "binned Poisson likelihood (Baker-Cousins deviance), model integrated over each bin",
+      "converged": true,
+      "accurate_covariance": true,
+      "at_limit": [],
+      "n_bins": 60,
+      "n_entries": 380.0,
+      "names": [
+        "N",
+        "m0",
+        "gamma"
+      ],
+      "p0": [
+        380.0,
+        91.2,
+        2.5
+      ],
+      "params": [
+        380.0000044588158,
+        91.14162272581116,
+        2.143496537402239
+      ],
+      "errors": [
+        19.49359202408425,
+        0.07879994597644924,
+        0.1705266759344618
+      ],
+      "covariance": [
+        [
+          380.0001368722676,
+          -4.794650058487407e-08,
+          -2.1754199760116598e-07
+        ],
+        [
+          -4.794650058487407e-08,
+          0.006209561710894552,
+          -0.0004056179123817159
+        ],
+        [
+          -2.1754199760116598e-07,
+          -0.0004056179123817159,
+          0.02908707512073438
+        ]
+      ],
+      "correlation": [
+        [
+          1.0000000180811162,
+          -3.1213259497980155e-08,
+          -6.544235405013929e-08
+        ],
+        [
+          -3.1213259497980155e-08,
+          1.0000209721298206,
+          -0.030185535119828952
+        ],
+        [
+          -6.544235405013929e-08,
+          -0.030185535119828952,
+          1.0002657527152476
+        ]
+      ],
+      "deviance": 55.09933608360539,
+      "ndf": 57,
+      "deviance_ndf": 0.9666550190106208,
+      "multistart": {
+        "n_starts": 5,
+        "n_converged": 5,
+        "improved": false,
+        "max_delta_deviance": 5.486313625624462e-10,
+        "max_param_shift_sigma": 1.888672022314654e-05
+      }
+    }
+  },
+  "generator_provenance": {
+    "generator": "hicpy.toy_generator",
+    "config_file": "analysis.yaml",
+    "config": {
+      "n_events": 20000,
+      "seed": 20260827,
+      "sqrt_s_TeV": 13.0,
+      "nbd_nbar": 60.0,
+      "nbd_k": 2.2,
+      "eta_plateau": 2.0,
+      "eta_sigma": 1.6,
+      "eta_max": 6.0,
+      "tsallis_T": 0.135,
+      "tsallis_n": 6.8,
+      "pt_min": 0.15,
+      "pt_max": 60.0,
+      "frac_pi": 0.83,
+      "frac_K": 0.12,
+      "frac_p": 0.05,
+      "z_fraction": 0.02,
+      "z_pt_scale": 8.0,
+      "z_y_sigma": 1.8
+    },
+    "produced_utc": "2026-11-09T04:42:01Z",
+    "git_commit": "c6d2c68",
+    "python": "3.13.18",
+    "platform": "Linux-6.18.44-fc-v310-x86_64-with-glibc2.39",
+    "versions": {
+      "numpy": "2.5.4",
+      "awkward": "2.14.0",
+      "uproot": "5.7.7"
+    }
+  }
+}

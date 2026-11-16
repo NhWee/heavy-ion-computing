@@ -6,7 +6,7 @@
 
 Claude가 명령을 실행할 수 있는 곳은 두 곳이며, **둘 다 Windows 본체가 아닙니다.**
 
-| | (A) 클라우드 컨테이너 | (B) Cowork 로컬 리눅스 VM |
+| | 클라우드 컨테이너 (= 아래 Track B) | Cowork 로컬 리눅스 VM (채택 안 함) |
 |---|---|---|
 | OS | Ubuntu 24.04.4 LTS | Ubuntu 22.04.5 LTS |
 | 커널 | 6.18.44 | 6.8.0 |
@@ -63,7 +63,7 @@ gcc/g++ 13.3.0   cmake 3.28.3     git 2.43.0
 전체 기록: `environment/versions_installed.txt` (`verify_environment.py`가 생성).
 
 **Track B에서 안 되는 것**: ROOT, PYTHIA 8, LHAPDF, MadGraph, Delphes, Rivet.
-PYTHIA는 PyPI에 유지되는 바인딩이 없어(`numpythia` 빌드 실패, 오답노트 #3 참조)
+PYTHIA는 PyPI에 유지되는 바인딩이 없어(`numpythia` 빌드 실패, 오답노트 #4 참조)
 Module 2부터는 Track A가 필수입니다.
 
 ## 4. Track A 설치 시 확인할 것

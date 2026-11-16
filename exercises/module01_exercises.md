@@ -53,16 +53,25 @@ closure test에서 inclusive Tsallis fit이 $T$를 13 MeV 높게 준다는 것�
 
 ---
 
-## E1-4 (설계) — Z 질량의 편향 없애기
+## E1-4 (설계) — Z 질량의 편차: 요동인가, 편향인가
 
-측정된 $m_Z = 91.06 \pm 0.09$ GeV는 PDG 91.1876보다 낮습니다.
+Session 1의 χ² fit은 $m_Z = 91.06 \pm 0.09$ GeV로 생성기 입력 91.1876보다 1.4σ 낮았습니다.
+이를 "pT 컷의 acceptance sculpting"으로 설명했다가 철회했습니다(오답노트 #15).
+이 문제는 그 판단을 직접 다시 해 보는 것입니다.
 
-1. 뮤온 $p_{\rm T}$ 컷을 20 → 10 GeV/c로 낮추고 다시 fit하시오.
-   중심값은 PDG 쪽으로 움직이는가?
-2. `z_pt_scale`(Z의 $p_{\rm T}$ 분포 폭)을 8 → 2 GeV로 줄이면 어떻게 되는가?
-   실행 전에 예측하시오.
-3. 실험은 이 편향을 어떻게 처리하는가? (검색어: acceptance correction,
-   efficiency correction, template fit) 한 문단으로 정리하시오.
+1. `results/tables/m01_closure_test.json`의 truth 수준 Z(컷 없음)와
+   `m01_fit_results.json`의 `z_fit`(컷 있음)을 비교하시오. 편차는 컷 이전부터 있었는가?
+2. **실행 전에 예측하시오.** 뮤온 $p_{\rm T}$ 컷을 20 → 30 GeV/c로 올리면 acceptance의
+   질량 기울기(`m01_fit_validation.json`의 `relative_slope_per_GeV`)는 커지는가,
+   작아지는가? 힌트: Z 정지계에서 $p^* = m/2$이고, 두 뮤온이 모두 컷을 넘으려면
+   $\sin\theta^* > p_{\rm T}^{\rm cut}/p^*$이다. `config/analysis.yaml`의
+   `muon_cuts.pt_min`을 바꾸고 `python analysis/m01_fit_validation.py`로 확인하시오.
+   피크 이동(`peak_shift_from_cuts`)은 통계 오차와 비교해 언제 무시할 수 없게 되는가?
+3. 같은 파일에서 Neyman χ²와 Poisson likelihood의 Γ pull을 비교하시오.
+   `z_fraction`을 0.02 → 0.2로 올리면(후보 약 10배) 차이가 어떻게 될지 예측한 뒤 확인하시오.
+   χ²가 likelihood에 가까워지는 조건을 한 문장으로 쓰시오.
+4. 실험은 acceptance를 어떻게 다루는가? (검색어: acceptance correction, template fit,
+   unfolding) 한 문단으로 정리하시오.
 
 ---
 
