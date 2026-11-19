@@ -242,3 +242,32 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 2. 튠·colour reconnection을 바꿔 dN/dη 민감도 확인.
 3. 같은 ALICE 측정의 pT 스펙트럼·다중도 분포로 관측량 확대.
 4. Module 1 분석 코드(`m01_analysis_uproot.py`)를 PYTHIA 파일에 수정 없이 적용.
+
+---
+
+## Session 5 — 2026-11-19 · 6 % 원인, 관측량 확대, Module 3
+
+### 6 % 원인
+- 문헌: ALICE primary 정의 = strange 약붕괴 산물만 제외 → 카드 tau0Max = 10 mm와 일치.
+- 민감도 (클라우드, 8.318, 각 20k): CR off +37 %, 4C +7 %, pT0Ref +5 % → −3.4 %, 모든 붕괴 +9.5 %.
+- INEL 열 대조: 데이터 f(INEL>0) = 0.821, PYTHIA 0.860 → INEL에서만 +5 % 추가. INEL>0의 6 %와는 별개.
+- 결론: 정의·이벤트 클래스는 아님. MPI 튠(13 TeV 외삽)이 가장 유력. 상세: module02_pythia.md §7.
+
+### 관측량
+- `analysis/m02_compare_pt.py`: ALICE Table 2 (pT 불변 수율, |η| < 0.8, INEL>0) 비교 스크립트.
+  저 pT / 고 pT 비를 따로 보고 → 6 %가 soft 성분인지 판별용. 표는 HEPData 수동 다운로드 대기.
+- Module 1 분석이 PYTHIA 파일에 수정 없이 동작 확인. 빈 Z fit 버그(#19), 범례 문구 수정.
+
+### Module 3 (HepMC)
+- `src/hicpy/eventrecord.py`: PYTHIA → HepMC3 변환기 (PyPI PYTHIA에 Pythia8ToHepMC3 없음).
+  두 번 실패 후 완성 (#18): 엄마 집합 묶기 ✗, PYTHIA 번호순 쓰기 ✗ (ISR backward evolution으로
+  엄마가 뒤 번호), 위상 정렬 ✓.
+- 100 이벤트: 전역 4-운동량 1.5e-8, 전하 100/100, 개수 100/100. 꼭짓점별 보존은 붕괴 100 %,
+  강입자화 99.7 %, FSR 1 %, remnant 0.3 % → 원래 검증 기준이 PYTHIA에 맞지 않았음을 확인,
+  로드맵 기준 수정.
+- 테스트 51개 (Module 3 5개, pT 비교 2개 추가). CI에 pyhepmc 추가.
+
+### Next step
+1. ALICE Table 2 다운로드 → `m02_compare_pt.py` → 6 %가 soft 성분인지 확인.
+2. WSL2에서 Module 3 재현, `scripts/m02_run_variations.sh`로 민감도 재현 (8.312).
+3. Module 4 FastJet.

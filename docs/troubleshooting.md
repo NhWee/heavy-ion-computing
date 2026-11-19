@@ -415,3 +415,41 @@ float32)와 같은 계열의 실수가 C++ 쪽에 남아 있던 것.
 
 **배운 점**: "같은 정밀도 규칙"은 언어마다 따로 지켜야 한다. bin별 대조가 없었다면 중앙
 스칼라만 보고 일치한다고 결론냈을 것이다.
+
+---
+
+## #18 직접 만든 HepMC3 파일이 다시 읽히지 않음 / pyhepmc segfault
+
+**증상 1**: `pyhepmc`로 쓴 파일을 읽으면 `ReaderAscii: too few vertices were parsed
+(152 vs 159 expected)`, 이벤트 0개. 그런데 검사 스크립트는 "GLOBAL CHECKS PASSED"를 출력.
+**증상 2**: `f.read().particles[0]`의 속성을 읽는 순간 segfault.
+
+**원인 1**: PYTHIA 레코드 번호는 **시간 순서가 아니다**. ISR은 하드 산란에서 빔 쪽으로
+**역방향 진화**하므로, 하드 과정 파톤(3번)의 엄마가 7번에 있다. HepMC3 ASCII reader는
+입자가 생성 꼭짓점의 입력 입자들보다 뒤에 나와야 하는데, PYTHIA 순서대로 쓰면 앞선
+참조(forward reference)가 생겨 파싱이 실패한다. (그 전 시도 — 엄마 *집합*으로 꼭짓점을
+묶는 방식 — 은 HepMC의 "입자당 끝 꼭짓점 하나" 규칙과도 충돌했다.)
+**원인 2**: pyhepmc에서 입자·꼭짓점은 GenEvent가 소유한다. 임시 이벤트가 사라지면
+입자는 해제된 메모리를 가리킨다 (#16의 ROOT TH1 소유권과 같은 계열).
+**원인 3 (검사의 결함)**: 이벤트 0개면 모든 "이벤트별" 검사가 공허하게 참이 된다.
+
+**해결**: `hicpy.eventrecord.topological_order`로 엄마가 항상 먼저 오게 정렬해서 쓰고,
+꼭짓점 규칙은 Pythia8ToHepMC3와 같은 "첫 엄마의 끝 꼭짓점"으로. 읽을 때는 이벤트 객체를
+변수에 붙잡아 둔다. 검사 스크립트는 이벤트 0개면 FAIL.
+
+**배운 점**: 레코드의 "번호"와 물리적 "순서"는 다르다 — 그게 backward evolution이다.
+그리고 "모든 X에 대해 참"인 검사는 X가 비어 있으면 아무것도 말하지 않는다.
+
+---
+
+## #19 Module 1 분석을 PYTHIA 파일에 돌리면 Z fit이 빈 히스토그램에 "수렴"
+
+**증상**: `m01_analysis_uproot.py --config config/analysis_m02_pythia.yaml`이 수정 없이 끝까지
+돌지만 `Z peak m = 91.200 +- 1.3e10 GeV, chi2/ndf = 0.00` — converged = true. 그림 범례는
+"toy MC".
+**원인**: 최소 바이어스 PYTHIA에는 Z가 없다 (후보 0). curve_fit은 0인 bin들에 시작값
+그대로 "수렴"하고, 공분산이 발산한다. 범례·스탬프 문구는 toy 전제로 하드코딩돼 있었다.
+**해결**: 후보 20개 미만이면 fit을 시도하지 않고 사유를 기록 (`converged: false`,
+`error: "not attempted: 0 candidates < 20"`). 범례와 스탬프는 config의 생성기 이름에서.
+**배운 점**: "코드가 수정 없이 돈다"는 기준은 통과했지만, "돌았다"와 "의미 있는 결과를
+냈다"는 다르다. 실패해야 할 fit은 실패를 보고해야 한다.

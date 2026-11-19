@@ -1,0 +1,96 @@
+{
+  "eta_range": [
+    -0.4,
+    0.4
+  ],
+  "data": {
+    "dndeta_inel0": 6.4399999999999995,
+    "dndeta_inel0_sys": 0.19000000000000003,
+    "dndeta_inel": 5.284999999999999,
+    "f_inel0": 0.8206521739130435,
+    "source": {
+      "record": "ins1395253",
+      "record_url": "https://www.hepdata.net/record/ins1395253",
+      "table": "Table 1",
+      "table_description": "Average pseudorapidity density of charged particles as a function of eta in pp collisions at sqrt(s) = 13 TeV (INEL and INEL>0)",
+      "doi": "10.17182/hepdata.70847.v1",
+      "version": 1
+    }
+  },
+  "samples": [
+    {
+      "name": "nominal",
+      "file": "data/generated/m02_var_nominal.root",
+      "settings": [],
+      "pythia_version": "8.318",
+      "dndeta_inel0": 6.927134802069406,
+      "dndeta_inel0_err": 0.05213016845849795,
+      "ratio_inel0": 1.0756420500107775,
+      "f_inel0": 0.86015,
+      "dndeta_inel": 5.958374999999999,
+      "ratio_inel": 1.1274124881740777,
+      "rel_to_ref": 1.0
+    },
+    {
+      "name": "cr_off",
+      "file": "data/generated/m02_var_cr_off.root",
+      "settings": [
+        "ColourReconnection:reconnect = off"
+      ],
+      "pythia_version": "8.318",
+      "dndeta_inel0": 9.4860233138085,
+      "dndeta_inel0_err": 0.0803628078397941,
+      "ratio_inel0": 1.4729849866162268,
+      "f_inel0": 0.86215,
+      "dndeta_inel": 8.178374999999999,
+      "ratio_inel": 1.5474692526017029,
+      "rel_to_ref": 1.3694007096519407
+    },
+    {
+      "name": "tune4C",
+      "file": "data/generated/m02_var_tune4C.root",
+      "settings": [
+        "Tune:pp = 5"
+      ],
+      "pythia_version": "8.318",
+      "dndeta_inel0": 7.404207906465243,
+      "dndeta_inel0_err": 0.05460808909221876,
+      "ratio_inel0": 1.1497217246064042,
+      "f_inel0": 0.86385,
+      "dndeta_inel": 6.3961250000000005,
+      "ratio_inel": 1.2102412488174081,
+      "rel_to_ref": 1.0688701920819148
+    },
+    {
+      "name": "pt0ref240",
+      "file": "data/generated/m02_var_pt0ref240.root",
+      "settings": [
+        "MultipartonInteractions:pT0Ref = 2.40"
+      ],
+      "pythia_version": "8.318",
+      "dndeta_inel0": 6.689686124623582,
+      "dndeta_inel0_err": 0.049974577141618515,
+      "ratio_inel0": 1.0387711373639104,
+      "f_inel0": 0.8634,
+      "dndeta_inel": 5.775875,
+      "ratio_inel": 1.092880794701987,
+      "rel_to_ref": 0.9657219493729371
+    },
+    {
+      "name": "decay_all",
+      "file": "data/generated/m02_var_decay_all.root",
+      "settings": [
+        "ParticleDecays:limitTau0 = off"
+      ],
+      "pythia_version": "8.318",
+      "dndeta_inel0": 7.582786224372264,
+      "dndeta_inel0_err": 0.057158314003447466,
+      "ratio_inel0": 1.1774512770764387,
+      "f_inel0": 0.8682,
+      "dndeta_inel": 6.583374999999999,
+      "ratio_inel": 1.2456717123935668,
+      "rel_to_ref": 1.0946497276344311
+    }
+  ],
+  "note": "Produced in the cloud container with PyPI pythia8mc 8.318 (WSL2 nominal uses 8.312: MC/data 1.062 there vs 1.076 here, 1.3 sigma). Quote variations RELATIVE to the nominal of the same version (rel_to_ref). Reproduce: bash scripts/m02_run_variations.sh && python analysis/m02_sensitivity.py nominal=... (see the script's docstring)."
+}

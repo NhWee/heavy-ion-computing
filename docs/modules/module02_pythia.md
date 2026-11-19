@@ -134,3 +134,37 @@ $\langle N_{\rm ch}\rangle$, $dN/d\eta|_0$, $\langle p_{\rm T}\rangle$을 표로
 | `SoftQCD:nonDiffractive = on`만 | SD/DD가 빠져 저다중도 꼬리 감소 |
 
 실행 전 예측을 `docs/research_log.md`에 적고, 실행 후 대조합니다.
+
+---
+
+## 7. 결과와 원인 분석 (2026-11-19)
+
+**결과** (WSL2, PYTHIA 8.312, 20k): ALICE INEL>0 dN/dη, |η| < 0.4 —
+MC 6.84 ± 0.05, data 6.44 ± 0.19 → **MC/data = 1.06** (약 2σ). η 모양은 재현, 크기만 3–7 % 높음.
+
+**원인 좁히기** — `scripts/m02_run_variations.sh` + `analysis/m02_sensitivity.py`
+(클라우드, PYTHIA 8.318; 같은 버전 nominal 대비 상대값으로 읽을 것):
+
+| 변형 | MC/data (INEL>0) | nominal 대비 | 의미 |
+|---|---|---|---|
+| nominal (Monash) | 1.076 | — | |
+| colour reconnection off | 1.473 | +37 % | CR이 다중도를 크게 줄이는 손잡이 |
+| Tune 4C | 1.150 | +7 % | 이전 기본 튠은 더 나쁨 |
+| MPI pT0Ref 2.28 → 2.40 | 1.039 | −3.4 % | **+9 % 정도면 6 %가 사라짐** |
+| 모든 붕괴 허용 | 1.177 | +9.5 % | primary 정의를 틀렸다면 생겼을 차이 |
+
+1. **primary 정의**: ALICE (arXiv:1509.08734) = "충돌의 prompt 입자와 그 모든 붕괴 산물,
+   단 strange 입자의 약붕괴 산물 제외". 카드의 `tau0Max = 10 mm`가 정확히 이것
+   (K0S, Λ, Σ±, Ξ, Ω 모두 cτ ≥ 2.4 cm → 붕괴 안 함; 참·바닥 붕괴 산물은 포함). → 원인 아님.
+2. **이벤트 클래스**: INEL>0을 입자에서 직접 계산 → 정의 동일. 같은 표의 INEL 열과 비교하면
+   데이터가 스스로 f(INEL>0) = 5.285 / 6.44 = **0.821**을 정해 준다 (|η| < 1에서
+   dN/dη(INEL) = f × dN/dη(INEL>0)이 정확히 성립). PYTHIA는 0.86 → INEL 비교에는 회절 모델
+   차이로 약 5 %가 **따로** 더해진다 (1.076 × 0.860/0.821 = 1.128 vs 측정 1.127).
+3. **모델**: dN/dη는 MPI·CR에 매우 민감. Monash는 ≤ 7 TeV 데이터로 맞춘 뒤 pT0를 거듭제곱으로
+   13 TeV에 외삽한다. 6 %는 이 외삽의 오차로 자연스럽게 설명되는 크기다.
+   (아직 하지 않은 것: pT0Ref를 실제로 맞춰 보기 — 그것은 "튜닝"이고, 다른 관측량 없이
+   dN/dη 하나로 하면 과적합이다. pT 스펙트럼이 들어오면 함께.)
+
+**Module 1 분석 재사용**: `m01_analysis_uproot.py --config config/analysis_m02_pythia.yaml`
+이 수정 없이 끝까지 돈다 (로드맵 기준 충족). Tsallis χ²/ndf = 29는 물리(질량 혼합 + hard
+꼬리), Z fit은 후보 0개라 이제 시도하지 않는다 (#19).

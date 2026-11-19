@@ -49,7 +49,7 @@ micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4, 16 논리코어.
 
 ---
 
-## Module 3 — HepMC + PDG: 이벤트 레코드 해부
+## Module 3 ✅ HepMC + PDG: 이벤트 레코드 해부 (완료, 2026-11-19)
 
 **할 일**
 1. PYTHIA 출력을 HepMC3로 저장 (`pyhepmc`로 읽기)
@@ -57,9 +57,12 @@ micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4, 16 논리코어.
 3. status code, mother/daughter, vertex 구조를 그림으로 정리
 4. 보존량 검사: 각 vertex에서 4-운동량 보존, 전체 전하 보존
 
-**검증 기준**
-- 임의 이벤트 100개에서 vertex별 4-운동량 보존이 수치 오차(1e-6 상대) 이내
-- 최종상태 입자 수와 status==1 개수 일치
+**검증 기준** (실행 후 수정 — `docs/modules/module03_hepmc.md` §3)
+- ~~임의 이벤트 100개에서 vertex별 4-운동량 보존이 수치 오차(1e-6 상대) 이내~~
+  → PYTHIA 레코드에는 성립하지 않는 기준이었다: 샤워의 반동 처리 때문에 ISR/FSR/remnant
+  꼭짓점은 대부분 보존하지 않는다. **새 기준**: 이벤트 전체 4-운동량·전하 보존 (✅ 1.5e-8,
+  100/100), 붕괴 꼭짓점 100 % 보존 (✅), 강입자화 꼭짓점 > 99 % (✅)
+- 최종상태 입자 수와 status==1 개수 일치 (✅ 100/100)
 
 ---
 

@@ -151,6 +151,11 @@ def main() -> int:
     mcut = cfg["analysis"]["muon_cuts"]
     bins = cfg["analysis"]["binning"]
     sqrt_s = cfg["generator"]["sqrt_s_TeV"]
+    # labels follow the generator in the config, so the same code can be run
+    # on the toy sample and on PYTHIA without mislabelled figures
+    is_toy = str(cfg["generator"].get("name", "")).startswith("hicpy")
+    mc_label = "toy MC (this work)" if is_toy else "PYTHIA 8 (this work)"
+    sys_label = "toy pp" if is_toy else "pp"
 
     infile = pathlib.Path(args.infile) if args.infile else REPO / cfg["paths"]["generated_file"]
     figdir = pathlib.Path(args.figdir) if args.figdir else REPO / cfg["paths"]["figure_dir"]
@@ -206,11 +211,11 @@ def main() -> int:
 
     fig, ax = plt.subplots()
     ax.errorbar(ctr, prob, yerr=prob_err, fmt="o", color=OKABE_ITO[0],
-                label="toy MC (this work)")
+                label=mc_label)
     ax.set_yscale("log")
     ax.set_xlabel(r"$N_{\rm ch}$")
     ax.set_ylabel(r"$P(N_{\rm ch})$")
-    stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
+    stamp(ax, [f"{sys_label}, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
                rf"$|\eta| < {acut['eta_abs_max']}$",
                rf"$p_{{\rm T}} > {acut['pt_min']}$ GeV/$c$",
                rf"$\langle N_{{\rm ch}}\rangle$ = {nch.mean():.1f}"])
@@ -235,11 +240,11 @@ def main() -> int:
 
     fig, ax = plt.subplots()
     ax.errorbar(ctr, dndeta, yerr=dndeta_err, fmt="o", color=OKABE_ITO[0],
-                label="toy MC (this work)")
+                label=mc_label)
     ax.set_xlabel(r"$\eta$")
     ax.set_ylabel(r"$\mathrm{d}N_{\rm ch}/\mathrm{d}\eta$")
     ax.set_ylim(0, max(dndeta) * 1.45)
-    stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
+    stamp(ax, [f"{sys_label}, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
                rf"$p_{{\rm T}} > {acut['pt_min']}$ GeV/$c$, charged particles",
                rf"$\mathrm{{d}}N_{{\rm ch}}/\mathrm{{d}}\eta|_{{\eta\approx0}}$ = "
                rf"{dndeta_0:.2f}"], loc="upper left")
@@ -278,7 +283,7 @@ def main() -> int:
 
     fig, ax = plt.subplots()
     ax.errorbar(ctr, yld, yerr=yld_err, fmt="o", color=OKABE_ITO[0],
-                label="toy MC (this work)")
+                label=mc_label)
     if fit["converged"]:
         xs = np.geomspace(fr[0], fr[1], 300)
         ax.plot(xs, tsallis_invariant(xs, *fit["params"]), "-",
@@ -290,7 +295,7 @@ def main() -> int:
     ax.set_ylabel(r"$\frac{1}{2\pi p_{\rm T}N_{\rm ev}}\,"
                   r"\frac{\mathrm{d}^2N}{\mathrm{d}p_{\rm T}\mathrm{d}\eta}$"
                   r"  ($c^2$/GeV$^2$)")
-    stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
+    stamp(ax, [f"{sys_label}, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
                rf"$|\eta| < {acut['eta_abs_max']}$, charged particles",
                rf"$\chi^2/$ndf = {fit.get('chi2_ndf', float('nan')):.2f}"])
     ax.legend(loc="lower left")
@@ -312,24 +317,32 @@ def main() -> int:
     c, err = hist_with_errors(mass, edges)
     ctr, w = centers_widths(edges)
     h_mass = hist_record(edges, c, err)        # raw counts, not normalised
-    zfit = do_fit(bw_plus_linear, ctr, c, np.maximum(err, 1.0),
-                  p0=[c.max() * 1e4, 91.2, 2.5, 0.0, 0.0],
-                  bounds=([0, 80, 0.1, -1e3, -1e3], [np.inf, 100, 20, 1e3, 1e3]),
-                  label="Breit-Wigner + linear fit to m(mu+mu-)")
+    # A fit to (nearly) empty bins "converges" with meaningless errors -- seen
+    # on PYTHIA minimum bias, which has no Z.  Below MIN_Z_CANDIDATES the fit
+    # is not attempted and the reason is recorded instead.
+    MIN_Z_CANDIDATES = 20
+    if len(mass) >= MIN_Z_CANDIDATES:
+        zfit = do_fit(bw_plus_linear, ctr, c, np.maximum(err, 1.0),
+                      p0=[c.max() * 1e4, 91.2, 2.5, 0.0, 0.0],
+                      bounds=([0, 80, 0.1, -1e3, -1e3], [np.inf, 100, 20, 1e3, 1e3]),
+                      label="Breit-Wigner + linear fit to m(mu+mu-)")
+    else:
+        zfit = {"label": "Breit-Wigner + linear fit to m(mu+mu-)", "converged": False,
+                "error": f"not attempted: {len(mass)} candidates < {MIN_Z_CANDIDATES}"}
 
     fig, ax = plt.subplots(figsize=(6.2, 4.2))
     ax.errorbar(ctr, c, yerr=err, fmt="o", color=OKABE_ITO[0],
-                label="toy MC (this work)")
+                label=mc_label)
     if zfit["converged"]:
         xs = np.linspace(edges[0], edges[-1], 400)
         ax.plot(xs, bw_plus_linear(xs, *zfit["params"]), "-", color=OKABE_ITO[1],
                 label="Breit-Wigner + linear fit")
-    ax.set_ylim(0, c.max() * 2.2)           # headroom so stamp/legend never overlap data
+    ax.set_ylim(0, max(c.max(), 1.0) * 2.2)   # headroom so stamp/legend never overlap data
     ax.axvline(91.1876, ls=":", lw=1.2, color="0.4")
     ax.text(92.5, c.max() * 0.30, r"PDG $m_Z$", fontsize=10, color="0.4")
     ax.set_xlabel(r"$m_{\mu^+\mu^-}$ (GeV/$c^2$)")
     ax.set_ylabel(f"counts / {w[0]:.1f} GeV/$c^2$")
-    stamp(ax, [f"toy pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
+    stamp(ax, [f"{sys_label}, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
                rf"2 $\mu$, $p_{{\rm T}} > {mcut['pt_min']:.0f}$ GeV/$c$",
                rf"$|\eta_\mu| < {mcut['eta_abs_max']}$",
                f"{len(mass)} candidates",

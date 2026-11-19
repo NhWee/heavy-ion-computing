@@ -81,10 +81,19 @@ bash scripts/run_all.sh
 - [x] HEPData ALICE pp 13 TeV dN_ch/dη 표 확보 (ins1395253 v1 Table 1, 브라우저 수동 다운로드 →
       `--local` 검증, 2026-11-19). INEL>0 열 자동 선택, |η| < 1.8 18 bins
 - [x] PYTHIA 샘플로 `m02_compare_data.py` 실행 → MC/data = 1.062 (|η| < 0.4), ±15 % 기준 통과, 약 2σ
-- [ ] 6 % 초과의 원인: ALICE primary 정의 확인, 튠·colour reconnection 변화
+- [x] 6 % 초과의 원인 (2026-11-19, `results/tables/m02/m02_sensitivity.json`):
+      primary 정의는 ALICE와 일치(틀렸다면 +9.5 %), 이벤트 클래스도 일치. MPI pT0Ref +5 % → −3.4 %,
+      CR 끔 → +37 %, 4C → +7 %. **MPI 튠(13 TeV로의 pT0 외삽)이 유력.** 별개로 INEL 정규화에는
+      회절 모델 차이(f(INEL>0) MC 0.86 vs data 0.82)가 약 5 % 더해짐
+- [x] Module 1 분석 코드를 PYTHIA 파일에 수정 없이 실행 — 돌아감. 빈 히스토그램 Z fit "수렴" 버그 수정 (#19)
+- [ ] pT 스펙트럼 비교: `analysis/m02_compare_pt.py` 작성 완료, ALICE Table 2 수동 다운로드 대기
+      (`data/raw/alice_pp13TeV_pt.json`, verified = false)
 - [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.
 
+### Step 3 — Module 3 HepMC ✅ (2026-11-19)
+`docs/modules/module03_hepmc.md`. 남은 것: WSL2에서 같은 두 명령으로 재현 (pyhepmc 설치 확인).
+
 ### 그 다음
-로드맵 순서대로 Module 3 HepMC 이벤트 레코드 → Module 4 FastJet.
+Module 4 FastJet.

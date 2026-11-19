@@ -22,7 +22,7 @@
   "selection": {
     "eta_range": "-1.8 to 1.8 (18 bins, from the table)",
     "pt_cut": "none (extrapolated to pT = 0)",
-    "primary_definition": "ALICE primary: produced in the collision incl. decay products of particles with c*tau < 1 cm (to be confirmed from the paper)",
+    "primary_definition": "prompt particles incl. all decay products, except products of weak decays of strange particles (arXiv:1509.08734). Matched in MC by ParticleDecays:tau0Max = 10 mm: K0S, Lambda, Sigma+-, Xi, Omega (c tau >= 2.4 cm) are not decayed, charm/beauty decay products are kept.",
     "column": "D(N)/DETARAP"
   },
   "uncertainties": {

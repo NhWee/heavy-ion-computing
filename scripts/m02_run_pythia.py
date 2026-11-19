@@ -89,6 +89,10 @@ def main() -> int:
                     help="override Random:seed from the card (for independent samples)")
     ap.add_argument("--out", default=None,
                     help="output ROOT file (default data/generated/<card stem>.root)")
+    ap.add_argument("--set", action="append", default=[], metavar='"Key = value"',
+                    help="extra PYTHIA setting applied AFTER the card (repeatable); "
+                         "recorded in the provenance. For systematic variations, e.g. "
+                         "--set 'ColourReconnection:reconnect = off'")
     ap.add_argument("--hepmc", action="store_true",
                     help="also write a HepMC3 file next to the ROOT file (Module 3)")
     args = ap.parse_args()
@@ -121,6 +125,11 @@ def main() -> int:
     pythia.readString(f"Main:numberOfEvents = {n_events}")
     pythia.readString("Random:setSeed = on")
     pythia.readString(f"Random:seed = {seed}")
+    for extra in args.set:
+        if not pythia.readString(extra):
+            print(f"PYTHIA rejected --set {extra!r}")
+            return 1
+        print(f"[set] {extra}")
     if not pythia.init():
         print("PYTHIA init() failed -- see the log above")
         return 1
@@ -203,6 +212,7 @@ def main() -> int:
                               else pythia.settings.parm("Pythia:versionNumber")),
         "card_file": str(card.relative_to(REPO)) if card.is_relative_to(REPO) else str(card),
         "card_text": card_text,
+        "extra_settings": list(args.set),
         "config": {"n_events": n_acc, "seed": seed,
                    "eCM_GeV": float(card_value(card_text, "Beams:eCM", "nan")),
                    "tune_pp": card_value(card_text, "Tune:pp"),

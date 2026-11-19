@@ -49,6 +49,7 @@ analysis:
 # --- comparison with data (analysis/m02_compare_data.py) ---
 comparison:
   data: data/raw/alice_pp13TeV_dndeta.json   # provenance JSON, NOT the table
+  pt_data: data/raw/alice_pp13TeV_pt.json   # pT spectrum (Table 2)
   dndeta_pt_min: 0.0        # published dN/deta is extrapolated to pT = 0;
                             # Module 1's 0.15 GeV/c cut must NOT be applied here
 

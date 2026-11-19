@@ -142,3 +142,40 @@ def test_incomplete_provenance_is_refused(tmp_path):
                               "observable": "<fill>", "event_class": "INEL>0", "file": "x.yaml"}))
     with pytest.raises(ValueError, match="incomplete"):
         cmp.load_dataset(pj)
+
+
+# ---------------------------------------------------------------- pT spectrum
+import m02_compare_pt as cpt   # noqa: E402
+
+SCRIPT_PT = REPO / "analysis" / "m02_compare_pt.py"
+
+
+def test_pt_self_comparison_gives_ratio_one(small_sample, tmp_path):
+    """The MC invariant yield, dressed up as a HEPData table, must give
+    MC/data = 1 in every bin and for the integral."""
+    mc = cmp.read_mc(small_sample)
+    mask = cmp.select_events(mc, "INEL>0")
+    edges = np.geomspace(0.15, 5.0, 13)
+    y, e = cpt.invariant_yield(mc, mask, edges)
+    pj = _write_fake_dataset(tmp_path, edges, y, e, 0.05 * y)
+    r = subprocess.run([sys.executable, str(SCRIPT_PT), "--config", str(CFG), "--mc", str(small_sample),
+                        "--data", str(pj), "--figdir", str(tmp_path), "--tabdir", str(tmp_path)],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr + r.stdout
+    s = json.loads((tmp_path / "m02_compare_pt_summary.json").read_text())
+    np.testing.assert_allclose(s["ratio"]["per_bin"], 1.0, rtol=1e-12)
+    assert s["ratio"]["integral"] == pytest.approx(1.0, rel=1e-12)
+
+
+def test_pt_yield_integrates_to_dndeta(small_sample):
+    """Integral of 2 pi pT x invariant yield over pT = dN/deta in |eta| < 0.8
+    (exact per-particle Jacobian: use fine bins so the bin-centre factor is ~1)."""
+    import awkward as ak
+    mc = cmp.read_mc(small_sample)
+    mask = cmp.select_events(mc, "INEL")
+    edges = np.geomspace(0.15, 60.0, 4001)
+    y, _ = cpt.invariant_yield(mc, mask, edges)
+    ctr = 0.5 * (edges[1:] + edges[:-1])
+    integral = np.sum(y * 2 * np.pi * ctr * np.diff(edges))
+    n = ak.to_numpy(ak.sum(mc["charged"] & (abs(mc["eta"]) < 0.8), axis=1)).mean() / 1.6
+    assert integral == pytest.approx(n, rel=2e-3)
