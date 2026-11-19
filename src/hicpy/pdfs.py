@@ -40,8 +40,10 @@ def pythia_module():
     The conda-forge `pythia8` bindings (WSL2 hic env) do NOT expose LHAGrid1 /
     EPS09; the PyPI wheel `pythia8mc` does.  Both can be installed side by side
     (different module names): `pip install pythia8mc` (troubleshooting #22).
+    pythia8mc is tried FIRST, so the conda library is not loaded into the
+    same process as the PyPI one only to be rejected.
     """
-    for name in ("pythia8", "pythia8mc"):
+    for name in ("pythia8mc", "pythia8"):
         try:
             mod = __import__(name)
         except ImportError:
