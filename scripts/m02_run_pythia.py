@@ -94,8 +94,13 @@ def main() -> int:
     args = ap.parse_args()
 
     try:
-        import pythia8
+        import pythia8                       # conda-forge `pythia8` (WSL2 hic env)
     except ImportError:
+        try:
+            import pythia8mc as pythia8      # PyPI wheel `pythia8mc` (same API)
+        except ImportError:
+            pythia8 = None
+    if pythia8 is None:
         print("pythia8 Python bindings not found -- run inside the WSL2 `hic` "
               "environment (environment/setup_wsl2.sh)")
         return 2

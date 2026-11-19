@@ -330,3 +330,22 @@ can't modify the parent shell`.
 `~/micromamba/envs/hic`에 있으므로 `micromamba shell init --shell bash --root-prefix=~/micromamba`.
 (micromamba의 안내 메시지가 보여주는 기본값을 그대로 쓰면 안 된다 —
 `micromamba env list`로 위치를 먼저 확인.)
+
+---
+
+## #14 PYTHIA 카드의 `Next:numberShowEvent = 0`이 무시되고 첫 이벤트가 통째로 출력됨
+
+**증상**: WSL2에서 `m02_run_pythia.py --n-events 10` 실행 시 첫 이벤트의 Info / hard
+process / complete event listing이 stdout에 찍힘. 시작 시 "changes only" 설정표에도
+`Next:*` 항목이 없음 (0으로 바꿨으면 기본값 1과 달라 표에 나와야 함).
+
+**원인**: `Print:quiet`은 **상위 스위치**다. `on`이든 `off`든 설정하는 순간 모든
+`Init:show*`, `Next:show*`를 자기 기본값으로 되돌린다. 카드에서 `Print:quiet = off`가
+`Next:*` 뒤에 있어서 방금 0으로 바꾼 값을 1로 되돌렸다. 한 줄씩 `readString`으로 넣어
+값을 추적해 확인함 (PYTHIA 8.318: 75번 줄에서 0, 77번 줄 `Print:quiet` 뒤에 다시 1).
+
+**해결**: `Print:quiet`을 `Next:*` **앞**으로 옮김. 카드에 이유를 주석으로 남김.
+
+**배운 점**: PYTHIA 설정은 순서가 의미를 갖는 경우가 있다 (`Print:quiet`, `Tune:pp`처럼
+다른 설정을 한꺼번에 바꾸는 스위치). 시작 시 출력되는 "changes only" 표가 카드의
+의도와 맞는지 보는 것이 가장 싼 검사다.

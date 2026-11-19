@@ -200,3 +200,20 @@ pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WS
 
 ### Next step
 WSL2에서 PYTHIA 8 생성 → `python analysis/m02_compare_data.py` → 판정 (±15 %).
+
+### PYTHIA 첫 실행 (같은 날)
+- WSL2 (PYTHIA 8.312), 10 이벤트: 정상 종료. sigma_gen = 78.05 mb (ND 56.4, SD 6.4 × 2,
+  DD 8.8 mb). INEL>0 5/10 — 10개 중 6개가 회절이라 통계 요동.
+- 첫 이벤트가 stdout에 출력됨 → 카드 줄 순서 문제 발견·수정 (오답노트 #14).
+- 클라우드 컨테이너에서 PyPI `pythia8mc` (**8.318**, WSL2와 버전 다름)로 2,000 이벤트
+  예비 실행: INEL>0 85.5 %, process mix ND 72 / SD 17 / DD 11 %.
+  ALICE INEL>0 비교 (|η| < 0.4): MC 7.08 ± 0.17 vs data 6.44 ± 0.19 → **MC/data = 1.10**
+  (±15 % 기준 안). η 전 구간에서 MC가 1–13 % 높음.
+  **예비값**: 버전·통계가 정식 조건이 아님. 결과는 커밋하지 않음.
+- 10 % 높은 원인 후보 (확인 전): primary 정의 차이 (tau0Max = 10 mm에서 Σ±, Ξ±, Ω± 등
+  cτ > 1 cm 하전 입자가 그대로 남아 세어짐 — ALICE 정의와 일치하는지 논문 확인 필요),
+  Monash 튠 자체의 과대 예측, 통계.
+
+### Next step
+WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data.py` →
+정식 결과 커밋. 이어서 primary 정의를 논문과 대조.

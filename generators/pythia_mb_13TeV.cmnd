@@ -67,6 +67,12 @@ Random:setSeed = on
 Random:seed = 20260827           ! same convention as Module 1 (date of Session 1)
 
 ! --- run control -------------------------------------------------------------
+! Print:quiet is a SUPER-SWITCH: setting it (on OR off) resets every Init:show*
+! and Next:show* setting to its own default.  It must therefore come BEFORE
+! the Next:* lines, or it silently undoes them (docs/troubleshooting.md #14:
+! with it last, the first event was dumped to stdout despite numberShow* = 0).
+Print:quiet = off                ! keep the banner + the final cross-section
+                                 ! table in the log: that is the bookkeeping
 Main:numberOfEvents = 20000      ! overridable with --n-events (10 -> 1000 -> 20000)
 Main:timesAllowErrors = 10       ! abort if PYTHIA fails to generate > 10 events
 Next:numberCount = 1000          ! progress line every 1000 events
@@ -74,5 +80,3 @@ Next:numberShowInfo = 0          ! no per-event dumps in the log
 Next:numberShowProcess = 0
 Next:numberShowEvent = 0         ! (Module 3 reads single events from the
                                  !  HepMC file instead of the stdout dump)
-Print:quiet = off                ! keep the banner + the final cross-section
-                                 ! table in the log: that is the bookkeeping
