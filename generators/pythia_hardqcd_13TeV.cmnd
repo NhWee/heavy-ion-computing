@@ -1,0 +1,55 @@
+! ---------------------------------------------------------------------------
+! Module 4 : PYTHIA 8 hard QCD (dijets) in pp at sqrt(s) = 13 TeV
+!
+!   python scripts/m02_run_pythia.py --card generators/pythia_hardqcd_13TeV.cmnd \
+!          --out data/generated/m04_hardqcd_13TeV.root
+!
+! Same tune, PDF, primary definition and seed convention as the minimum-bias
+! card (pythia_mb_13TeV.cmnd); only the PROCESS changes.  Every setting that
+! matters is written out, default or not.
+! ---------------------------------------------------------------------------
+
+! --- beams -------------------------------------------------------------------
+Beams:idA = 2212
+Beams:idB = 2212
+Beams:eCM = 13000.               ! GeV
+
+! --- process: all 2 -> 2 QCD processes ---------------------------------------
+SoftQCD:inelastic = off
+HardQCD:all = on                 ! gg->gg, qg->qg, qq->qq, gg->qqbar, ...
+PhaseSpace:pTHatMin = 20.        ! GeV: hard-scattering pT cut.  Jets below
+                                 ! ~30 GeV are BIASED by it (ISR/FSR and MPI
+                                 ! smear the jet pT around pTHat) -- the
+                                 ! analysis only trusts jets well above it.
+                                 ! Events are unweighted; sigma_gen in the
+                                 ! provenance converts counts to a cross section.
+
+! --- tune and PDF (as in the minimum-bias card) --------------------------------
+Tune:pp = 14                     ! Monash 2013
+Tune:ee = 7
+PDF:pSet = 13                    ! NNPDF2.3 QCD+QED LO
+
+! --- underlying event and hadronization ON: these are particle-level jets ----
+PartonLevel:MPI = on             ! the underlying event that jet areas measure
+PartonLevel:ISR = on
+PartonLevel:FSR = on
+HadronLevel:Hadronize = on
+HadronLevel:Decay = on
+ColourReconnection:reconnect = on
+
+! --- primary particles, ALICE-style (Module 2) --------------------------------
+ParticleDecays:limitTau0 = on
+ParticleDecays:tau0Max = 10.     ! mm/c
+
+! --- random numbers ----------------------------------------------------------
+Random:setSeed = on
+Random:seed = 20260827
+
+! --- run control (Print:quiet BEFORE Next:*, troubleshooting #14) -------------
+Print:quiet = off
+Main:numberOfEvents = 5000
+Main:timesAllowErrors = 10
+Next:numberCount = 1000
+Next:numberShowInfo = 0
+Next:numberShowProcess = 0
+Next:numberShowEvent = 0

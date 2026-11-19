@@ -66,7 +66,7 @@ micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4, 16 논리코어.
 
 ---
 
-## Module 4 — FastJet: 제트 재구성 첫 단계
+## Module 4 ✅ FastJet: 제트 재구성 첫 단계 (완료, 2026-11-19)
 
 **할 일**
 1. PYTHIA hard QCD 이벤트(pTHat > 20 GeV) 생성
@@ -75,9 +75,11 @@ micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4, 16 논리코어.
 4. 같은 이벤트에 toy underlying event를 얹어 제트 pT가 어떻게 오염되는지 →
    jet area 기반 배경 차감의 필요성 확인
 
-**검증 기준**
+**검증 기준** (결과: `docs/modules/module04_fastjet.md` §3)
 - anti-kT 제트가 "원형"이고 kT/CA는 불규칙 — jet area 분포로 정량 확인
+  ✅ anti-kT 96 %가 πR² ± 10 % 안 (C/A 21 %, kT 4 %)
 - 배경을 넣기 전/후 leading jet pT 차이가 $\rho \cdot A$ 예측과 일치
+  ✅ 7.24 ± 0.17 vs 7.57 GeV (−4 %); ρA 차감 후 −0.71 ± 0.17 GeV, 폭은 Poisson 예측과 일치
 
 **배우는 것**: sequential recombination의 거리 척도 $d_{ij}$, IRC safety,
 중이온 환경에서 제트 정의가 왜 까다로운지 (Module 10의 전제).

@@ -1,5 +1,6 @@
 # --- generated data: regenerable from scripts + config + seed, never committed
 data/generated/*.root
+data/generated/scan/
 data/generated/*.hepmc
 data/generated/*.lhe
 data/processed/*.parquet

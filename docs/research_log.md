@@ -279,3 +279,27 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - 변형: pT0Ref는 크기만 (⟨pT⟩ −0.8 %), CR off는 모양 (⟨pT⟩ −14 %). 4C도 모양 개선 없음.
 - **결론: 6 % dN/dη 초과는 0.3–1 GeV/c 벌크 영역의 초과 + 스펙트럼 모양 차이. 손잡이 하나(pT0Ref)로는
   dN/dη만 맞고 pT 모양은 못 맞춘다 → MPI와 CR을 함께 다시 맞춰야 함.**
+
+---
+
+## Session 6 — 2026-11-19 · 2차원 스캔, Module 4 (FastJet)
+
+### 2차원 스캔 (pT0Ref × CR range, 20점 × 10k, 클라우드 8.318)
+- 계통 상관: 논문에서 확인되는 것은 INEL>0 정규화 1.2 %뿐 → uncorr / corr 두 극단으로 χ².
+- dN/dη 최적: 두 모형 모두 pT0Ref 2.52, CR range 1.4 (MC/data 0.999). Monash는 χ² 61/18.
+- pT 모양: 어디서도 안 맞음 (corr에서 χ² ≥ 738/47). → 다음 손잡이는 StringPT:sigma 등.
+
+### Module 4
+- 카드: HardQCD, pT̂ > 20 GeV, Monash; σ = 0.722 mb; 5k 이벤트.
+- 면적 (R = 0.4): anti-kT 0.507 (96 % within 10 % of πR²), C/A 0.565, kT 1.027.
+- embedding (ρ_true = 15): δpT 7.24 ± 0.17 vs ρA 7.57; median ρ = 18.15 (= 15 + PYTHIA UE 2.4 + 4 %);
+  차감 후 −0.71 ± 0.17, 68 % 폭 2.57 vs Poisson 2.75.
+- 버그/함정: 첫 비교에서 신호 제트의 UE 차감을 빠뜨려 −2.7 GeV; FastJet ClusterSequence 수명,
+  고스트 seed (#20).
+- 테스트 56개. CI에 fastjet.
+- WSL2 재현 스크립트: `scripts/run_all_pythia.sh`.
+
+### Next step
+1. WSL2: `bash scripts/run_all_pythia.sh` → git diff로 8.318 vs 8.312 비교 후 커밋.
+2. pT 모양: StringPT:sigma 1차원 스캔.
+3. 로드맵 Module 5 (LHAPDF, nPDF).

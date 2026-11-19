@@ -88,7 +88,9 @@ bash scripts/run_all.sh
 - [x] Module 1 분석 코드를 PYTHIA 파일에 수정 없이 실행 — 돌아감. 빈 히스토그램 Z fit "수렴" 버그 수정 (#19)
 - [x] pT 스펙트럼 비교 (ALICE Table 2, 2026-11-19): ⟨pT⟩ MC/data 1.03, MC/data 0.86 (0.15 GeV/c) →
       1.24 (0.5 GeV/c). pT0Ref는 크기만, CR은 모양을 움직임 → MPI·CR 동시 튜닝 필요 (module02 §8)
-- [ ] (선택) pT0Ref × CR range 2차원 스캔 + 결합 χ² — 그 전에 계통 오차의 bin 간 상관 확인
+- [x] pT0Ref × CR range 2차원 스캔 (module02 §9): dN/dη 최적 (2.52, 1.4), 두 상관 모형 모두.
+      pT 모양은 격자 밖 → 다음 후보 `StringPT:sigma`
+- [ ] WSL2에서 `bash scripts/run_all_pythia.sh` (Module 2–4 결과를 PYTHIA 8.312로 재생성)
 - [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.
@@ -96,5 +98,9 @@ bash scripts/run_all.sh
 ### Step 3 — Module 3 HepMC ✅ (2026-11-19)
 `docs/modules/module03_hepmc.md`. 남은 것: WSL2에서 같은 두 명령으로 재현 (pyhepmc 설치 확인).
 
+### Step 4 — Module 4 FastJet ✅ (2026-11-19)
+`docs/modules/module04_fastjet.md`.
+
 ### 그 다음
-Module 4 FastJet.
+로드맵: Module 5 LHAPDF·nPDF → 6 Glauber MC → 7 Angantyr p–Pb/Pb–Pb (Module 4 배경 차감을
+실제 중이온 배경으로).

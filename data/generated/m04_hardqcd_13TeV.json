@@ -1,0 +1,31 @@
+{
+  "generator": "pythia8",
+  "pythia_version": "8.318",
+  "card_file": "generators/pythia_hardqcd_13TeV.cmnd",
+  "card_text": "! ---------------------------------------------------------------------------\n! Module 4 : PYTHIA 8 hard QCD (dijets) in pp at sqrt(s) = 13 TeV\n!\n!   python scripts/m02_run_pythia.py --card generators/pythia_hardqcd_13TeV.cmnd \\\n!          --out data/generated/m04_hardqcd_13TeV.root\n!\n! Same tune, PDF, primary definition and seed convention as the minimum-bias\n! card (pythia_mb_13TeV.cmnd); only the PROCESS changes.  Every setting that\n! matters is written out, default or not.\n! ---------------------------------------------------------------------------\n\n! --- beams -------------------------------------------------------------------\nBeams:idA = 2212\nBeams:idB = 2212\nBeams:eCM = 13000.               ! GeV\n\n! --- process: all 2 -> 2 QCD processes ---------------------------------------\nSoftQCD:inelastic = off\nHardQCD:all = on                 ! gg->gg, qg->qg, qq->qq, gg->qqbar, ...\nPhaseSpace:pTHatMin = 20.        ! GeV: hard-scattering pT cut.  Jets below\n                                 ! ~30 GeV are BIASED by it (ISR/FSR and MPI\n                                 ! smear the jet pT around pTHat) -- the\n                                 ! analysis only trusts jets well above it.\n                                 ! Events are unweighted; sigma_gen in the\n                                 ! provenance converts counts to a cross section.\n\n! --- tune and PDF (as in the minimum-bias card) --------------------------------\nTune:pp = 14                     ! Monash 2013\nTune:ee = 7\nPDF:pSet = 13                    ! NNPDF2.3 QCD+QED LO\n\n! --- underlying event and hadronization ON: these are particle-level jets ----\nPartonLevel:MPI = on             ! the underlying event that jet areas measure\nPartonLevel:ISR = on\nPartonLevel:FSR = on\nHadronLevel:Hadronize = on\nHadronLevel:Decay = on\nColourReconnection:reconnect = on\n\n! --- primary particles, ALICE-style (Module 2) --------------------------------\nParticleDecays:limitTau0 = on\nParticleDecays:tau0Max = 10.     ! mm/c\n\n! --- random numbers ----------------------------------------------------------\nRandom:setSeed = on\nRandom:seed = 20260827\n\n! --- run control (Print:quiet BEFORE Next:*, troubleshooting #14) -------------\nPrint:quiet = off\nMain:numberOfEvents = 5000\nMain:timesAllowErrors = 10\nNext:numberCount = 1000\nNext:numberShowInfo = 0\nNext:numberShowProcess = 0\nNext:numberShowEvent = 0\n",
+  "extra_settings": [],
+  "config": {
+    "n_events": 5000,
+    "seed": 20260827,
+    "eCM_GeV": 13000.0,
+    "tune_pp": "14",
+    "pdf_pSet": "13",
+    "process": "SoftQCD:inelastic",
+    "tau0Max_mm": 10.0
+  },
+  "cross_section_mb": {
+    "sigma_gen": 0.7217800084075132,
+    "sigma_err": 0.005748636159032116,
+    "n_tried": 5000,
+    "n_accepted": 5000
+  },
+  "produced_utc": "2026-11-19T08:42:29Z",
+  "git_commit": "3a90f79",
+  "python": "3.13.18",
+  "platform": "Linux-6.18.44-fc-v653-x86_64-with-glibc2.39",
+  "versions": {
+    "numpy": "2.5.3",
+    "awkward": "2.14.0",
+    "uproot": "5.7.7"
+  }
+}

@@ -453,3 +453,20 @@ float32)와 같은 계열의 실수가 C++ 쪽에 남아 있던 것.
 `error: "not attempted: 0 candidates < 20"`). 범례와 스탬프는 config의 생성기 이름에서.
 **배운 점**: "코드가 수정 없이 돈다"는 기준은 통과했지만, "돌았다"와 "의미 있는 결과를
 냈다"는 다르다. 실패해야 할 fit은 실패를 보고해야 한다.
+
+---
+
+## #20 FastJet Python: "ClusterSequence has gone out of scope" / 고스트 seed를 못 넘김
+
+**증상 1**: `cluster(...)[0][0].area()` → `FastJetError: you requested information about the
+internal structure of a jet, but its associated ClusterSequence has gone out of scope`.
+**원인**: 제트의 면적·구성 입자 정보는 ClusterSequence가 들고 있다. 결과 튜플에서 제트만
+꺼내고 시퀀스를 버리면 Python이 시퀀스를 해제한다. #16(ROOT TH1), #18(pyhepmc)과 같은 계열 —
+**C++ 객체의 수명은 Python 변수의 수명을 따른다.**
+**해결**: `jets, cs = cluster(...)`로 시퀀스를 변수에 붙잡아 둔다.
+
+**증상 2**: `GhostedAreaSpec.set_random_status([s1, s2])` → `TypeError: argument 2 of type
+'std::vector<int>'`. PyPI `fastjet` SWIG 바인딩에 정수 벡터 래퍼(`vectori`)가 없음.
+**결과**: 고스트 위치가 실행마다 다르다 → 제트 면적이 ~1e-3 수준에서 흔들리고, Module 4
+그림은 바이트 단위로 재현되지 않는다 (숫자 결론에는 영향 없음). `hicpy.jets.area_definition`은
+바인딩이 받아 주면 seed를 쓰고, 아니면 그냥 넘어간다.
