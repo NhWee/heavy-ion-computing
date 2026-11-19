@@ -179,3 +179,40 @@ def test_pt_yield_integrates_to_dndeta(small_sample):
     integral = np.sum(y * 2 * np.pi * ctr * np.diff(edges))
     n = ak.to_numpy(ak.sum(mc["charged"] & (abs(mc["eta"]) < 0.8), axis=1)).mean() / 1.6
     assert integral == pytest.approx(n, rel=2e-3)
+
+
+# ---------------------------------------------------------------- identified
+import m02_compare_identified as cid   # noqa: E402
+
+
+@pytest.mark.parametrize("invariant,average", [(False, False), (True, True)])
+def test_identified_self_comparison(small_sample, tmp_path, invariant, average):
+    """MC pion spectrum dressed up as a table in either form must come back
+    with ratio 1: checks y (not eta), the per-INEL>0 normalisation and the
+    form handling (invariant / average of charges)."""
+    mc = cid.read_mc(small_sample)
+    edges = np.array([0.2, 0.4, 0.6, 1.0, 2.0])
+    form = {"invariant": invariant, "average": average}
+    y, e = cid.mc_spectrum(mc, "pi", edges, form)
+    header = ("(1/(2*PI*PT)) * D2(N)/DYRAP/DPT" if invariant else "D2(N)/DYRAP/DPT")
+    if average:
+        header = "(PI+ + PI-)/2 " + header
+    table = {"independent_variables": [{"header": {"name": "PT"}, "values": [
+                {"low": float(lo), "high": float(hi)} for lo, hi in zip(edges[:-1], edges[1:])]}],
+             "dependent_variables": [{"header": {"name": header}, "qualifiers": [
+                {"name": "EVENT CLASS", "value": "INEL>0"}], "values": [
+                {"value": float(v), "errors": [{"symerror": float(s), "label": "stat"},
+                                               {"symerror": float(0.05 * v), "label": "sys"}]}
+                for v, s in zip(y, e)]}]}
+    (tmp_path / "pi.yaml").write_text(yaml.safe_dump(table))
+    (tmp_path / "pi.json").write_text(json.dumps({"experiment": "SYNTHETIC", "sqrt_s_TeV": 13.0,
+        "observable": "pi spectrum", "event_class": "INEL>0", "file": "pi.yaml", "verified": True,
+        "hepdata": {"record": "test"}}))
+    det = cid.detect_form(tmp_path / "pi.json")
+    assert det["invariant"] == invariant and det["average"] == average
+    r = subprocess.run([sys.executable, str(REPO / "analysis" / "m02_compare_identified.py"), "--mc",
+                        str(small_sample), "--data", f"pi={tmp_path / 'pi.json'}", "--figdir", str(tmp_path),
+                        "--tabdir", str(tmp_path)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr + r.stdout
+    s = json.loads((tmp_path / "m02_identified_summary.json").read_text())
+    np.testing.assert_allclose(s["species"]["pi"]["ratio"], 1.0, rtol=1e-12)

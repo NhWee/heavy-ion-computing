@@ -21,10 +21,11 @@
 |---|---|---|
 | Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
 | Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | **완료** — closure 통과, uproot · PyROOT · C++ 세 arm이 WSL2에서 bin 단위 일치 |
-| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | **완료** — ALICE dN/dη 대비 MC/data = 1.06; MPI pT0Ref 2.40이면 1.003. pT 스펙트럼 모양은 σ_pT로 일부만 해결 → identified 스펙트럼 필요 |
+| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | **완료** — ALICE dN/dη 대비 MC/data = 1.06; MPI pT0Ref 2.40이면 1.003. pT 스펙트럼 모양은 σ_pT로 일부만 해결 → identified π/K/p 비교 스크립트 준비됨 (ALICE 표 대기) |
 | Module 3 | HepMC · PDG 이벤트 레코드 | **완료** — PYTHIA history → HepMC3 변환기, 전역 보존 검사 통과, 꼭짓점별 보존은 단계에 따라 다름 |
 | Module 4 | FastJet | **완료** — anti-kT/kT/CA, 제트 면적, 배경 삽입·ρA 차감 (중이온 동기) |
 | Module 5 | 양성자·핵 PDF (PYTHIA 내장 NNPDF2.3, EPS09) | **완료** — 합 규칙, LHC x 영역, 납의 shadowing |
+| Module 6 | Monte Carlo Glauber (Pb–Pb, p–Pb 5.02 TeV) | **완료** — σ_PbPb 7.64 b (ALICE 측정 7.67 ± 0.25), ALICE 중심도 표와 0.2–1.4 % 일치, 계통 불확실성 |
 
 자세한 로드맵: [`docs/roadmap.md`](docs/roadmap.md) ·
 보완 사항과 바로 다음 할 일: [`docs/next_steps.md`](docs/next_steps.md)

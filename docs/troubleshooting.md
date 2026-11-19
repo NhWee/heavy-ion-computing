@@ -484,3 +484,33 @@ pT 비교는 데이터 없이 MC만으로 덮어써졌다.
 아무것도 실행·변경하지 않고 복사 명령을 출력. 단계 선택 (`bash scripts/run_all_pythia.sh compare scan m03 m04`)
 으로 이미 끝난 생성을 다시 돌리지 않게. 지워진 파일은 `git checkout -- results/`로 복구.
 **배운 점**: 결과를 지우는 단계는 그 결과를 다시 만들 수 있다는 것이 확인된 뒤에만.
+
+---
+
+## #22 WSL2에서 Module 5: `module 'pythia8' has no attribute 'LHAGrid1'`
+
+**증상**: `bash scripts/run_all_pythia.sh m05` → `AttributeError: module 'pythia8' has no attribute 'LHAGrid1'`.
+**원인**: conda-forge `pythia8`의 Python 바인딩은 이벤트 생성용 클래스만 노출하고 PDF 클래스
+(`LHAGrid1`, `EPS09`, …)는 노출하지 않는다. 클라우드에서 쓴 PyPI `pythia8mc` 휠은 전부 노출한다.
+**해결**: 두 패키지는 모듈 이름이 달라 같은 환경에 공존한다 → `pip install pythia8mc`.
+`hicpy.pdfs.pythia_module()`은 PDF 클래스가 있는 모듈을 골라 쓴다 (생성은 그대로 conda PYTHIA).
+**배운 점**: "같은 PYTHIA"라도 바인딩마다 노출하는 API가 다르다. import가 성공했다고 필요한 클래스가
+있는 것은 아니다 — 필요한 속성으로 확인한다.
+
+---
+
+## #23 Glauber 계통오차: 모든 변형이 같은 방향으로 움직임 (σ_NN +와 −도)
+
+**증상**: `analysis/m06_glauber.py` 첫 실행에서 R±, a±, σ_NN±, d_min 변형 8개가 전부 30–40 %
+⟨N_part⟩를 +2–6 %, 70–80 %를 +3–15 % 올렸다. σ_NN을 올려도 내려도 같은 부호 — 물리일 수 없다.
+**원인**: 기준(10k, seed 300)과 변형(각각 다른 seed)이 **독립 표본**이었다. 중심도 경계는 b의
+percentile이라 그 자체가 통계 요동한다: 10k 표본 두 개의 40 % 경계가 10.01 fm vs 9.85 fm.
+주변부에서 N_part(b)가 가파르기 때문에 0.1 fm는 ⟨N_part⟩ 3–13 %. 기준 표본 하나가 우연히 낮게
+나오면 모든 변형이 "올라간" 것처럼 보인다. 독립 seed 두 개의 명목 표본끼리 비교해 확인했다
+(30–40 %: 126.3 vs 130.3, 70–80 %: 14.7 vs 16.6).
+**해결**: **같은 난수열(common random numbers)**: 기준과 모든 변형이 같은 seed를 쓴다. b가 먼저
+뽑히므로 b는 완전히 같고, 핵자 위치도 거의 같은 난수에서 나온다 → 차이에 남는 것은 입력의 효과.
+σ_NN ±0.6 mb가 N_coll을 ±0.8 %로 대칭으로 움직이는 것(N_coll ∝ σ_NN 기대와 일치)으로 확인.
+독립 seed 표본 하나를 "stat" 행으로 남겨, 이전 방식의 잡음 크기를 함께 기록한다.
+**배운 점**: 작은 계통 효과는 두 독립 표본의 차이로 재지 않는다 — 잡음이 효과보다 크면 부호까지
+틀린다. 표본을 늘리거나(√N) 같은 난수를 쓴다(상관된 차이). 먼저 "명목 vs 명목"의 차이를 본다.

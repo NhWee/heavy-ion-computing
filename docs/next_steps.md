@@ -111,5 +111,15 @@ bash scripts/run_all.sh
 `docs/modules/module05_pdfs.md`. 남은 것: WSL2 재현 (`bash scripts/run_all_pythia.sh stringpt m05`),
 LHAPDF로 EPPS21 교체.
 
+### Step 6 — Module 6 Glauber ✅ (2026-11-19)
+`docs/modules/module06_glauber.md`. σ_PbPb 7.64 b, ALICE 중심도 표와 일치.
+남은 것: 변형당 40k로 계통 재계산, 다중도(NBD) 기반 중심도.
+
+### Step 7 — identified π/K/p (Module 2 마무리)
+`analysis/m02_compare_identified.py` 준비됨. 필요: HEPData ins1784041 "Download All → YAML"을
+`data/raw/ins1784041/`에 풀고 provenance JSON 3개 작성 (`docs/howto/fetch_hepdata.md` 부록) →
+`bash scripts/run_all_pythia.sh identified`. 질문: 0.4–0.8 GeV/c의 +11–12 %는 어느 종류에서 오는가.
+
 ### 그 다음
-Module 6: Glauber Monte Carlo 직접 구현 (N_part, N_coll, 중심도).
+Module 7: PYTHIA Angantyr p–Pb / Pb–Pb — Module 6의 N_part 분포와 비교, Module 4 배경 차감을
+실제 중이온 배경으로.

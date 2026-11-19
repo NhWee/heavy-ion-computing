@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reproduce every PYTHIA-based result (Modules 2-4) in the WSL2 `hic` environment.
+# Reproduce every PYTHIA-based result (Modules 2-6) in the WSL2 `hic` environment.
 #
 #   bash scripts/run_all_pythia.sh                 # all stages (~30 min on 4 cores)
 #   bash scripts/run_all_pythia.sh compare scan m03 m04   # only these stages
@@ -13,7 +13,10 @@
 #   stringpt    StringPT:sigma scan at pT0Ref 2.40 (6 x 20k) + fit
 #   m03         HepMC event record (Module 3)
 #   m04         hard-QCD sample + jets (Module 4)
-#   m05         proton and nuclear PDFs (Module 5; no generation)
+#   m05         proton and nuclear PDFs (Module 5; no generation; needs `pip install pythia8mc`, #22)
+#   m06         Monte Carlo Glauber, Pb-Pb and p-Pb (Module 6; numpy only, ~10 min on 4 cores)
+#   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
+#               ins1784041 tables, docs/howto/fetch_hepdata.md appendix)
 #
 # Before anything runs, the ALICE tables (HEPData payloads, NOT in git) are
 # checked: present, and with the sha256 recorded in their provenance JSON.
@@ -26,7 +29,7 @@ PY="${PYTHON:-python}"
 G=data/generated
 mkdir -p results/logs
 
-ALL="nominal compare variations sensitivity scan stringpt m03 m04 m05"
+ALL="nominal compare variations sensitivity scan stringpt m03 m04 m05 m06"
 STAGES="${*:-$ALL}"
 want() { [[ " $STAGES " == *" $1 "* ]]; }
 
@@ -54,7 +57,15 @@ if bad:
 print("preflight: ALICE tables present, sha256 match")
 EOF
 fi
-for s in compare; do
+if want identified; then
+    for sp in pi k p; do
+        j=data/raw/alice_pp13TeV_$sp.json
+        if [[ ! -f $j ]] || [[ ! -f data/raw/$("$PY" -c "import json;print(json.load(open('$j'))['file'])" 2>/dev/null) ]]; then
+            echo "preflight: $j or its HEPData table is missing -- see docs/howto/fetch_hepdata.md (ins1784041)"; exit 1
+        fi
+    done
+fi
+for s in compare identified; do
     if want "$s" && ! want nominal && [[ ! -f $G/m02_pythia_mb_13TeV.root ]]; then
         echo "stage '$s' needs $G/m02_pythia_mb_13TeV.root -- add the 'nominal' stage"; exit 1
     fi
@@ -108,5 +119,13 @@ fi
 if want m05; then
     echo "### Module 5: proton and nuclear PDFs"
     $PY analysis/m05_pdfs.py
+fi
+if want m06; then
+    echo "### Module 6: Monte Carlo Glauber"
+    $PY analysis/m06_glauber.py > results/logs/m06_glauber.log 2>&1; grep -E "^\[" results/logs/m06_glauber.log || tail -5 results/logs/m06_glauber.log
+fi
+if want identified; then
+    echo "### Module 2: identified pi/K/p vs ALICE"
+    $PY analysis/m02_compare_identified.py
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

@@ -1,7 +1,8 @@
 # Module 5 — 양성자 PDF와 핵 PDF: LHC가 보는 x, 납이 바꾸는 것
 
 상태(2026-11-19): **완료** — 클라우드 컨테이너 (PYTHIA 8.318 내장 격자). WSL2 재현:
-`python analysis/m05_pdfs.py` (conda `pythia8`에도 같은 격자가 있다).
+`pip install pythia8mc` 후 `python analysis/m05_pdfs.py` — conda `pythia8`에도 같은 격자 파일은 있지만
+Python 바인딩이 `LHAGrid1`·`EPS09`를 노출하지 않는다 (troubleshooting #22).
 
 ---
 

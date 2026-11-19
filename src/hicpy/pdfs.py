@@ -35,11 +35,20 @@ PROTON_SET = "NNPDF23_lo_as_0130_qed_0000.dat"     # the PDF the Monash tune use
 
 
 def pythia_module():
-    try:
-        import pythia8
-    except ImportError:
-        import pythia8mc as pythia8
-    return pythia8
+    """A PYTHIA Python module that exposes the PDF classes.
+
+    The conda-forge `pythia8` bindings (WSL2 hic env) do NOT expose LHAGrid1 /
+    EPS09; the PyPI wheel `pythia8mc` does.  Both can be installed side by side
+    (different module names): `pip install pythia8mc` (troubleshooting #22).
+    """
+    for name in ("pythia8", "pythia8mc"):
+        try:
+            mod = __import__(name)
+        except ImportError:
+            continue
+        if hasattr(mod, "LHAGrid1") and hasattr(mod, "EPS09"):
+            return mod
+    raise ImportError("no PYTHIA Python module with LHAGrid1/EPS09; run `pip install pythia8mc`")
 
 
 def pdfdata_path() -> str:

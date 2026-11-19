@@ -165,3 +165,19 @@ primary 정의(`tau0Max`), 하전입자 정의, pT cut 여부.
 - 커밋: `data/raw/*.json`(verified = true가 된 것), `results/tables/m02/*.json`,
   `results/figures/m02/*`, 연구 노트
 - 커밋 안 함: `data/raw/*.yaml|csv`(payload), `data/generated/*.root`
+
+---
+
+## 부록: 여러 표가 있는 레코드 — ALICE π/K/p (ins1784041)
+
+종류별 스펙트럼 레코드(arXiv:2003.02394, HEPData `ins1784041`)는 종(π, K, p) × 다중도 구간마다 표가
+있어 어느 표가 INEL>0인지 표 번호만으로는 모른다. 그래서 **레코드 전체를 받는다**:
+
+1. https://www.hepdata.net/record/ins1784041 → 페이지 위쪽 **Download All** → **YAML** (zip)
+2. WSL2에서 압축을 풀어 `data/raw/ins1784041/`에 둔다 (gitignore 대상):
+   ```bash
+   mkdir -p data/raw/ins1784041 && unzip -o "/mnt/c/Users/Administrator/Downloads/HEPData-ins1784041-v1-yaml.zip" -d data/raw/ins1784041
+   ```
+3. 각 표의 qualifier(입자 종, 이벤트 클래스, rapidity)를 읽어 INEL>0의 π, K, p 표를 고르고
+   provenance JSON(`data/raw/alice_pp13TeV_{pi,k,p}.json`)을 만든 뒤 `--local`로 검증한다.
+4. `python analysis/m02_compare_identified.py`
