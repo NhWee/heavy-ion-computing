@@ -115,10 +115,10 @@ LHAPDF로 EPPS21 교체.
 `docs/modules/module06_glauber.md`. σ_PbPb 7.64 b, ALICE 중심도 표와 일치.
 남은 것: 변형당 40k로 계통 재계산, 다중도(NBD) 기반 중심도.
 
-### Step 7 — identified π/K/p (Module 2 마무리)
-`analysis/m02_compare_identified.py` 준비됨. 필요: HEPData ins1784041 "Download All → YAML"을
-`data/raw/ins1784041/`에 풀고 provenance JSON 3개 작성 (`docs/howto/fetch_hepdata.md` 부록) →
-`bash scripts/run_all_pythia.sh identified`. 질문: 0.4–0.8 GeV/c의 +11–12 %는 어느 종류에서 오는가.
+### Step 7 — identified π/K/p ✅ (2026-11-19)
+module02 §12. 0.4–0.8 GeV/c 초과의 95 %가 π. K/π 0.92, K·p는 0.8 GeV/c 위에서 15–25 % 부족.
+남은 것: WSL2 재현 (`bash scripts/run_all_pythia.sh identified`), π를 붕괴 출처별(1차 끈 vs ρ/ω/K*)로
+나눠 봉우리 위치 원인 확인, 다중도별 K/π·⟨pT⟩ (Table 17, 20)와 비교 (V0M 수용 범위로 MC 클래스 정의).
 
 ### 그 다음
 Module 7: PYTHIA Angantyr p–Pb / Pb–Pb — Module 6의 N_part 분포와 비교, Module 4 배경 차감을

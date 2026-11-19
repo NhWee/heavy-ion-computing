@@ -16,7 +16,8 @@
 #   m05         proton and nuclear PDFs (Module 5; no generation; needs `pip install pythia8mc`, #22)
 #   m06         Monte Carlo Glauber, Pb-Pb and p-Pb (Module 6; numpy only, ~10 min on 4 cores)
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
-#               ins1784041 tables, docs/howto/fetch_hepdata.md appendix)
+#               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
+#               sample; generates one 20k tuned sample)
 #
 # Before anything runs, the ALICE tables (HEPData payloads, NOT in git) are
 # checked: present, and with the sha256 recorded in their provenance JSON.
@@ -58,10 +59,10 @@ print("preflight: ALICE tables present, sha256 match")
 EOF
 fi
 if want identified; then
-    for sp in pi k p; do
-        j=data/raw/alice_pp13TeV_$sp.json
-        if [[ ! -f $j ]] || [[ ! -f data/raw/$("$PY" -c "import json;print(json.load(open('$j'))['file'])" 2>/dev/null) ]]; then
-            echo "preflight: $j or its HEPData table is missing -- see docs/howto/fetch_hepdata.md (ins1784041)"; exit 1
+    for n in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        if [[ ! -f data/raw/ins1784041/Table_$n.yaml ]]; then
+            echo "preflight: data/raw/ins1784041/Table_$n.yaml missing -- unpack the HEPData ins1784041"
+            echo "           'Download All -> YAML' archive there (docs/howto/fetch_hepdata.md, appendix)"; exit 1
         fi
     done
 fi
@@ -126,6 +127,11 @@ if want m06; then
 fi
 if want identified; then
     echo "### Module 2: identified pi/K/p vs ALICE"
-    $PY analysis/m02_compare_identified.py
+    $PY scripts/m02_derive_identified_inel0.py
+    $PY analysis/m02_compare_identified.py --label Monash
+    $PY scripts/m02_run_pythia.py --set "MultipartonInteractions:pT0Ref = 2.40" --set "StringPT:sigma = 0.31" \
+        --out $G/m02_id_pt0240_sig031.root > results/logs/id_gen_best.log 2>&1; tail -n 1 results/logs/id_gen_best.log
+    $PY analysis/m02_compare_identified.py --mc $G/m02_id_pt0240_sig031.root \
+        --label "pT0Ref 2.40, sigma 0.31" --tag _pt0240_sig031
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

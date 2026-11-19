@@ -168,16 +168,24 @@ primary 정의(`tau0Max`), 하전입자 정의, pT cut 여부.
 
 ---
 
-## 부록: 여러 표가 있는 레코드 — ALICE π/K/p (ins1784041)
+## 부록: 표에 없는 관측량을 유도하기 — ALICE π/K/p (ins1784041)
 
-종류별 스펙트럼 레코드(arXiv:2003.02394, HEPData `ins1784041`)는 종(π, K, p) × 다중도 구간마다 표가
-있어 어느 표가 INEL>0인지 표 번호만으로는 모른다. 그래서 **레코드 전체를 받는다**:
+종류별 스펙트럼 레코드(arXiv:2003.02394, HEPData `ins1784041`)는 **다중도 의존성** 논문이라
+INEL>0 스펙트럼 표가 없다. 있는 것은 V0M 다중도 클래스 I–X의 스펙트럼(Table 1–6)과
+"클래스 / INEL>0" 비(Table 7–12)다. 그래서 레코드 전체를 받아 INEL>0을 유도한다.
 
-1. https://www.hepdata.net/record/ins1784041 → 페이지 위쪽 **Download All** → **YAML** (zip)
-2. WSL2에서 압축을 풀어 `data/raw/ins1784041/`에 둔다 (gitignore 대상):
+1. https://www.hepdata.net/record/ins1784041 → 페이지 위쪽 **Download All** → **YAML**
+   (tar.gz 하나, 안에 `HEPData-ins1784041-v1-yaml/Table_1.yaml … Table_24.yaml`)
+2. `data/raw/ins1784041/`에 푼다 (gitignore 대상):
    ```bash
-   mkdir -p data/raw/ins1784041 && unzip -o "/mnt/c/Users/Administrator/Downloads/HEPData-ins1784041-v1-yaml.zip" -d data/raw/ins1784041
+   mkdir -p data/raw/ins1784041 && tar xzf /mnt/c/Users/<you>/Downloads/HEPData-ins1784041-v1-yaml.tar.gz --strip-components=1 -C data/raw/ins1784041
    ```
-3. 각 표의 qualifier(입자 종, 이벤트 클래스, rapidity)를 읽어 INEL>0의 π, K, p 표를 고르고
-   provenance JSON(`data/raw/alice_pp13TeV_{pi,k,p}.json`)을 만든 뒤 `--local`로 검증한다.
-4. `python analysis/m02_compare_identified.py`
+3. `python scripts/m02_derive_identified_inel0.py` — 두 방법으로 INEL>0 스펙트럼을 만들고 서로 확인한다.
+   - (A) 비 방법: 클래스마다 S_i / R_i. 10개 클래스가 같은 값을 줘야 한다 (실제: 차이 0.00 %).
+   - (B) 가중합: Σ f_i S_i, f_i는 논문의 클래스 백분위. (B)/(A) = 0.98–1.00 (계통오차 4–10 %보다 작음).
+   - 출력: `data/raw/alice_pp13TeV_{pi,k,p}_inel0.yaml`(유도된 표, gitignore)와 provenance JSON
+     (`data/raw/alice_pp13TeV_{pi,k,p}.json`, 커밋) — 입력 표 6개씩의 sha256과 유도 방법을 기록.
+4. `python analysis/m02_compare_identified.py` (또는 `bash scripts/run_all_pythia.sh identified`)
+
+배운 점: 원하는 관측량이 표로 없을 때도, 표들 사이의 관계(비, 분할)로 다시 만들 수 있다. 그때는
+**독립된 두 경로**로 만들어 일치를 확인하고, 유도 과정을 provenance에 남긴다.

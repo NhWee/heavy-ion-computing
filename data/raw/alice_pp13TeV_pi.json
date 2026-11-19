@@ -1,0 +1,59 @@
+{
+  "_status": "Derived by scripts/m02_derive_identified_inel0.py from the HEPData 'Download All -> YAML' archive of ins1784041 (downloaded by hand by the user, 2026-11-19). The record has no INEL>0 spectrum table; see the script docstring.",
+  "verified": true,
+  "experiment": "ALICE",
+  "title": "Multiplicity dependence of pi, K, and p production in pp collisions at sqrt(s) = 13 TeV",
+  "arxiv": "2003.02394",
+  "journal": "Eur. Phys. J. C 80 (2020) 693",
+  "inspire_id": "1784041",
+  "hepdata": {
+    "record": "ins1784041",
+    "record_url": "https://www.hepdata.net/record/ins1784041",
+    "table": "derived from Tables 1, 2, 7, 8",
+    "version": 1
+  },
+  "system": "pp",
+  "sqrt_s_TeV": 13.0,
+  "observable": "1/N d2N/(dy dpT), pi+ + pi-",
+  "event_class": "INEL>0",
+  "selection": {
+    "y_range": "|y| < 0.5",
+    "pt_range": "0.1-10.0 GeV/c",
+    "primary_definition": "ALICE primary: excludes weak-decay products of strange hadrons",
+    "form": "sum of charges, not invariant (no 1/(2 pi pT))"
+  },
+  "derivation": {
+    "central": "mean over V0M classes I-X of S_i / R_i",
+    "check": "sum_i f_i S_i with f_i from the paper's class percentiles",
+    "class_percentiles": [
+      0,
+      0.92,
+      4.6,
+      9.2,
+      13.8,
+      18.4,
+      27.6,
+      36.8,
+      46,
+      64.5,
+      100
+    ],
+    "max_class_spread": 1.1871933197999234e-06,
+    "weighted_sum_over_central": [
+      0.988728660447976,
+      0.9986621615330655
+    ],
+    "stat": "sqrt(sum f_i^2 stat_i^2)",
+    "sys": "sum f_i fullsys_i (linear)"
+  },
+  "inputs_sha256": {
+    "ins1784041/Table_1.yaml": "b34a720be832c72ee6f7b32d10797a33f6fc5ca8e6c1c77723e8e68417248051",
+    "ins1784041/Table_2.yaml": "c40da36bc1331eae58ff9b3956eec80e726fc2bce34013f84ae8e5929021f239",
+    "ins1784041/Table_7.yaml": "f562f403e819f92a5bd9f4dd6a0fbfbf8342bc21456ea0d198bd49e6767c0db5",
+    "ins1784041/Table_8.yaml": "505dff25eb1b8426351ba0790d316f6e74f22290c8887eab37963073bb57a4ee"
+  },
+  "derived_utc": "2026-11-19T11:39:30Z",
+  "file": "alice_pp13TeV_pi_inel0.yaml",
+  "sha256": "026ac9ed79a17ebacfa5908059ca845f38107701ac5e6f78a24eb04992c42a20",
+  "dependent_index": 0
+}

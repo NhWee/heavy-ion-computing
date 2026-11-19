@@ -353,3 +353,12 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 1. ALICE ins1784041 표 → identified 비교로 0.4–0.8 GeV/c 초과의 출처 확인.
 2. WSL2: `pip install pythia8mc` → `bash scripts/run_all_pythia.sh m05 m06`.
 3. Module 7: Angantyr.
+
+### identified π/K/p 결과 (같은 날, 이어서)
+- ins1784041에는 INEL>0 표가 없음 → V0M 클래스 스펙트럼 / (클래스/INEL>0 비)로 유도
+  (`scripts/m02_derive_identified_inel0.py`). 10개 클래스 일치 0.00 %, 클래스 비율 가중합과 0.98–1.00.
+- 0.4–0.8 GeV/c 초과: π +18 % (Monash) / +12 % (pT0Ref 2.40 + σ 0.31); K −2 %, p +11–13 %.
+  데이터 구성(π 81 %)으로 가중하면 π가 +14.6 % 중 거의 전부. π+K+p 합 1.152 = 하전입자 비교 1.15.
+- π: 최저 pT −17 %, 0.4–0.8 +18 % → MC 봉우리가 높은 pT 쪽. K, p: 0.8 GeV/c 위 15–25 % 부족 (질량 순서).
+- K/π 이중비 0.92, p/π 0.99.
+- 다음: π 출처 분해 (공명 붕괴), 다중도 의존성.
