@@ -91,7 +91,8 @@ bash scripts/run_all.sh
 - [x] pT0Ref × CR range 2차원 스캔 (module02 §9): dN/dη 최적 (2.52, 1.4), 두 상관 모형 모두.
       pT 모양은 격자 밖 → 다음 후보 `StringPT:sigma`
 - [x] WSL2에서 `bash scripts/run_all_pythia.sh` — Module 2–4 전부 PYTHIA 8.312로 재생성 (`1cc643e`)
-- [ ] pT 모양: `StringPT:sigma` 스캔
+- [x] pT 모양: `StringPT:sigma` 스캔 (module02 §11) — σ ≈ 0.31이 ⟨pT⟩를 맞추지만 0.4–0.8 GeV/c 초과는 남음
+- [ ] ALICE pp 13 TeV identified π/K/p 스펙트럼과 비교 (0.4–0.8 GeV/c 초과의 원인 판별)
 - [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.
@@ -105,3 +106,10 @@ bash scripts/run_all.sh
 ### 그 다음
 로드맵: Module 5 LHAPDF·nPDF → 6 Glauber MC → 7 Angantyr p–Pb/Pb–Pb (Module 4 배경 차감을
 실제 중이온 배경으로).
+
+### Step 5 — Module 5 PDF ✅ (2026-11-19)
+`docs/modules/module05_pdfs.md`. 남은 것: WSL2 재현 (`bash scripts/run_all_pythia.sh stringpt m05`),
+LHAPDF로 EPPS21 교체.
+
+### 그 다음
+Module 6: Glauber Monte Carlo 직접 구현 (N_part, N_coll, 중심도).

@@ -10,8 +10,10 @@
 #   variations  generate the one-setting variations (5 x 20k)
 #   sensitivity sensitivity table from the variations
 #   scan        pT0Ref x CR-range scan (20 x 10k) + fit
+#   stringpt    StringPT:sigma scan at pT0Ref 2.40 (6 x 20k) + fit
 #   m03         HepMC event record (Module 3)
 #   m04         hard-QCD sample + jets (Module 4)
+#   m05         proton and nuclear PDFs (Module 5; no generation)
 #
 # Before anything runs, the ALICE tables (HEPData payloads, NOT in git) are
 # checked: present, and with the sha256 recorded in their provenance JSON.
@@ -24,13 +26,13 @@ PY="${PYTHON:-python}"
 G=data/generated
 mkdir -p results/logs
 
-ALL="nominal compare variations sensitivity scan m03 m04"
+ALL="nominal compare variations sensitivity scan stringpt m03 m04 m05"
 STAGES="${*:-$ALL}"
 want() { [[ " $STAGES " == *" $1 "* ]]; }
 
 # ---------------------------------------------------------------- preflight
 need_data=0
-for s in compare sensitivity scan; do want "$s" && need_data=1; done
+for s in compare sensitivity scan stringpt; do want "$s" && need_data=1; done
 if [[ $need_data == 1 ]]; then
     "$PY" - <<'EOF'
 import hashlib, json, pathlib, sys
@@ -86,6 +88,12 @@ if want scan; then
     $PY analysis/m02_tune_scan.py generate --n-events 10000
     $PY analysis/m02_tune_scan.py fit
 fi
+if want stringpt; then
+    echo "### Module 2: StringPT:sigma scan (6 points x 20k)"
+    rm -f results/tables/m02/stringpt/stringpt_*.json
+    $PY analysis/m02_stringpt_scan.py generate --n-events 20000
+    $PY analysis/m02_stringpt_scan.py fit
+fi
 if want m03; then
     echo "### Module 3: HepMC event record"
     $PY scripts/m03_write_hepmc.py --n-events 100
@@ -96,5 +104,9 @@ if want m04; then
     $PY scripts/m02_run_pythia.py --card generators/pythia_hardqcd_13TeV.cmnd \
         --out $G/m04_hardqcd_13TeV.root > results/logs/m04_gen.log 2>&1; tail -2 results/logs/m04_gen.log
     $PY analysis/m04_jets.py
+fi
+if want m05; then
+    echo "### Module 5: proton and nuclear PDFs"
+    $PY analysis/m05_pdfs.py
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

@@ -310,3 +310,19 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - 정식 결론: **pT0Ref 2.28 → 2.40 (CR 그대로)이면 dN/dη MC/data 1.003–1.004** (변형·스캔 독립 일치).
   pT 모양은 미해결. Module 3·4 수치는 클라우드와 일치 (module03/04 문서 "정식 결과").
 - pyhepmc를 WSL2 hic 환경에 설치 (`micromamba install -n hic -c conda-forge pyhepmc`).
+
+---
+
+## Session 7 — 2026-11-19 · StringPT 스캔, Module 5 (PDF)
+
+### StringPT:sigma (pT0Ref 2.40, 클라우드 8.318, 6 × 20k)
+- σ 0.335 → 0.31: ⟨pT⟩ MC/data 1.022 → 0.995, 최저 pT 0.88 → 0.92, χ² 152 → 126 / 39.
+- 0.4–0.8 GeV/c의 +12–14 %는 σ·pT0Ref·CR 어느 것으로도 안 움직임 → identified 스펙트럼 필요.
+
+### Module 5
+- LHAPDF 불가 (PyPI 없음, 세트 서버 차단) → PYTHIA 내장 격자 (NNPDF2.3 LO, EPS09 LO Pb).
+- 합 규칙: u_v 2.003, d_v 1.001, s_v 0.000, 운동량 1.000 (Q² = 10), 0.997 (10⁴). 글루온 몫 0.47 → 0.50.
+- LHC x: 저 pT 하드론 1.5e-4 (pp 13) / 4e-4 (Pb-Pb 5.02); Z 7e-3 / 1.8e-2; 100 GeV 제트 1.5e-2 / 4e-2.
+- EPS09 R_g^Pb: 하드론 영역 0.67 ± 0.28 (90 % CL), Z 1.06 ± 0.03, 제트 1.09 ± 0.06.
+  → 저 pT 억제의 일부는 냉핵물질(PDF)만으로도 가능, 불확실성 큼; 제트 억제는 PDF로 설명 불가.
+- 테스트 5개 추가 (합 규칙, 동위스핀, shadowing 부호). CI에 pythia8mc.
