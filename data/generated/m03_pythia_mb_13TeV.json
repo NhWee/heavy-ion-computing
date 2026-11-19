@@ -1,12 +1,12 @@
 {
   "generator": "pythia8",
-  "pythia_version": 8.318,
-  "module": "pythia8mc",
+  "pythia_version": 8.312,
+  "module": "pythia8",
   "card_file": "generators/pythia_mb_13TeV.cmnd",
   "seed": 20260827,
   "n_events": 100,
   "converter": "hicpy.eventrecord.to_hepmc (one vertex per mother set)",
   "pyhepmc": "2.16.1",
-  "git_commit": "618d589",
-  "produced_utc": "2026-11-19T07:56:55Z"
+  "git_commit": "da99142",
+  "produced_utc": "2026-11-19T10:49:03Z"
 }

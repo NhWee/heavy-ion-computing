@@ -1,119 +1,119 @@
 {
-  "input": "/home/user/heavy-ion-computing/data/generated/m03_pythia_mb_13TeV.hepmc",
+  "input": "/home/uno/projects/heavy-ion-computing/data/generated/m03_pythia_mb_13TeV.hepmc",
   "rel_tol": 1e-06,
   "global": {
     "n_events": 100,
-    "max_p4_rel_diff": 1.533227777354813e-08,
+    "max_p4_rel_diff": 3.602912189447894e-09,
     "charge_ok": 100,
     "count_ok": 100,
     "dangling": 0,
     "mother_conflicts": 0,
-    "n_vertices": 30609,
-    "n_particles": 54124
+    "n_vertices": 27833,
+    "n_particles": 48919
   },
   "per_stage": [
     {
       "stage": "1",
       "label": "beams",
-      "n": 66,
-      "conserved": 22,
-      "worst": 0.2828100722238819,
-      "fraction": 0.3333333333333333
+      "n": 88,
+      "conserved": 28,
+      "worst": 0.4530797372369411,
+      "fraction": 0.3181818181818182
     },
     {
       "stage": "2",
       "label": "hard process",
-      "n": 223,
-      "conserved": 179,
-      "worst": 0.9996085710162651,
-      "fraction": 0.8026905829596412
+      "n": 217,
+      "conserved": 177,
+      "worst": 0.9999397955802671,
+      "fraction": 0.815668202764977
     },
     {
       "stage": "2+4",
       "label": "hard process + ISR",
       "n": 77,
       "conserved": 0,
-      "worst": 1507.4707957446399,
+      "worst": 222.21433823102478,
       "fraction": 0.0
     },
     {
       "stage": "2+6",
       "label": "hard process + beam remnants",
-      "n": 7,
-      "conserved": 7,
-      "worst": 1.7630578149952828e-09,
+      "n": 12,
+      "conserved": 12,
+      "worst": 2.6702007408084083e-09,
       "fraction": 1.0
     },
     {
       "stage": "3",
       "label": "MPI",
-      "n": 727,
-      "conserved": 549,
-      "worst": 0.9999695592368703,
-      "fraction": 0.7551581843191196
+      "n": 623,
+      "conserved": 472,
+      "worst": 0.9999525701628983,
+      "fraction": 0.7576243980738363
     },
     {
       "stage": "3+4",
       "label": "MPI + ISR",
-      "n": 227,
+      "n": 199,
       "conserved": 0,
-      "worst": 28534.43536557606,
+      "worst": 25962.628044220306,
       "fraction": 0.0
     },
     {
       "stage": "4",
       "label": "ISR",
-      "n": 5222,
-      "conserved": 429,
-      "worst": 25515.45976202947,
-      "fraction": 0.08215243201838376
+      "n": 4505,
+      "conserved": 392,
+      "worst": 234.20912489160364,
+      "fraction": 0.08701442841287459
     },
     {
       "stage": "4+5",
       "label": "ISR + FSR",
-      "n": 71,
+      "n": 49,
       "conserved": 0,
-      "worst": 0.5436864208148543,
+      "worst": 14.517877216767921,
       "fraction": 0.0
     },
     {
       "stage": "5",
       "label": "FSR",
-      "n": 5269,
-      "conserved": 67,
-      "worst": 171.7208158536778,
-      "fraction": 0.012715885367242361
+      "n": 4957,
+      "conserved": 48,
+      "worst": 295.0681993298018,
+      "fraction": 0.00968327617510591
     },
     {
       "stage": "6",
       "label": "beam remnants",
-      "n": 4487,
-      "conserved": 14,
-      "worst": 4016.3799777056593,
-      "fraction": 0.0031201248049922
+      "n": 4149,
+      "conserved": 12,
+      "worst": 1251.7166915159335,
+      "fraction": 0.0028922631959508315
     },
     {
       "stage": "7",
       "label": "hadronization prep",
-      "n": 4737,
-      "conserved": 4725,
-      "worst": 1.7224246480337145e-06,
-      "fraction": 0.9974667511082964
+      "n": 4376,
+      "conserved": 4373,
+      "worst": 1.0805608511464383e-05,
+      "fraction": 0.9993144424131627
     },
     {
       "stage": "8",
       "label": "primary hadrons",
-      "n": 549,
-      "conserved": 547,
-      "worst": 4.3037914870588386e-05,
-      "fraction": 0.9963570127504554
+      "n": 507,
+      "conserved": 504,
+      "worst": 0.0025700787784868184,
+      "fraction": 0.9940828402366864
     },
     {
       "stage": "9",
       "label": "decays",
-      "n": 8947,
-      "conserved": 8947,
-      "worst": 4.427955300125081e-16,
+      "n": 8074,
+      "conserved": 8074,
+      "worst": 4.771009612854341e-16,
       "fraction": 1.0
     }
   ],
@@ -130,11 +130,11 @@
       ],
       [
         "(ud)0",
-        -71
+        -63
       ],
       [
-        "(ud)0",
-        -63
+        "p_diffr",
+        -15
       ],
       [
         "p",

@@ -1,0 +1,33 @@
+{
+  "generator": "pythia8",
+  "pythia_version": "8.312",
+  "card_file": "generators/pythia_mb_13TeV.cmnd",
+  "card_text": "! ---------------------------------------------------------------------------\n! Module 2 : PYTHIA 8 minimum-bias pp at sqrt(s) = 13 TeV\n!\n!   python scripts/m02_run_pythia.py --card generators/pythia_mb_13TeV.cmnd\n!\n! Rule of this repository: NOTHING that affects the physics is left to a\n! default.  Every line below is either a physics choice (with the reason) or a\n! bookkeeping setting.  If a value is the PYTHIA default it is still written\n! out, so that a reader of this card does not need the PYTHIA manual to know\n! what was run.  \"!\" starts a comment.\n! ---------------------------------------------------------------------------\n\n! --- beams -------------------------------------------------------------------\nBeams:idA = 2212                 ! proton\nBeams:idB = 2212                 ! proton\nBeams:eCM = 13000.               ! GeV; LHC Run 2 pp.  ALICE/CMS/ATLAS 13 TeV data\n\n! --- process selection -------------------------------------------------------\n! \"Minimum bias\" is not a PYTHIA switch; it is an experimental trigger class.\n! The closest generator-level definition is the total INELASTIC cross section:\n!   non-diffractive (ND)  +  single diffractive (SD)  +  double diffractive (DD)\n!   (+ central diffractive, CD, which SoftQCD:inelastic also includes)\n! The ALICE \"INEL\" class is exactly this; \"INEL>0\" (at least one charged\n! particle in |eta| < 1) and \"NSD\" are SELECTIONS applied afterwards in the\n! analysis, never here, so that one sample serves every event class.\nSoftQCD:inelastic = on           ! ND + SD + DD + CD\nHardQCD:all = off                ! no separate hard sample: MPI inside SoftQCD\n                                 ! already generates the hard tail (Module 4\n                                 ! will switch this on with a pTHat cut)\n\n! --- tune and PDF ------------------------------------------------------------\n! Monash 2013 (Skands, Carrazza, Rojo, arXiv:1404.5630) is the PYTHIA 8.2/8.3\n! default.  It fixes the PDF (NNPDF2.3 QCD+QED LO, alpha_s(M_Z) = 0.130),\n! the MPI pT0 regulator, the Lund string parameters and the colour\n! reconnection model all at once; changing the PDF alone breaks the tune.\nTune:pp = 14                     ! Monash 2013\nTune:ee = 7                      ! Monash 2013 e+e- fragmentation (part of 14)\nPDF:pSet = 13                    ! NNPDF2.3 QCD+QED LO alpha_s(M_Z)=0.130\n                                 ! (the value Monash was tuned with; written\n                                 ! out so it is visible, not inherited)\n\n! --- what counts as a \"final-state\" particle -----------------------------\n! Experiments define PRIMARY charged particles as those produced in the\n! collision plus the decay products of particles with c*tau < 1 cm, so that\n! K0S, Lambda, Sigma etc. decay (their daughters are primaries) but\n! pi+-, K+-, p, and also the weakly decaying but long-lived muons do not.\n! PYTHIA implements that boundary with tau0Max (in mm/c).  The analysis\n! therefore sees a particle list comparable to ALICE's primary definition.\nParticleDecays:limitTau0 = on\nParticleDecays:tau0Max = 10.     ! mm/c  (= 1 cm, ALICE primary definition)\n\n! --- physics switches that are ON by default but matter here ------------\n! Written out because Module 2's exercise is to turn them OFF one at a time\n! and watch dN/deta and the pT spectrum change (see docs/modules/module02_pythia.md).\nPartonLevel:MPI = on             ! multiparton interactions: the main source\n                                 ! of the multiplicity at LHC energies\nPartonLevel:ISR = on             ! initial-state radiation\nPartonLevel:FSR = on             ! final-state radiation\nHadronLevel:Hadronize = on       ! Lund string fragmentation\nHadronLevel:Decay = on           ! unstable-hadron decays (within tau0Max)\nColourReconnection:reconnect = on ! part of the Monash tune; affects <pT>(Nch)\n\n! --- random numbers ----------------------------------------------------------\n! The seed is the provenance of the sample.  It is also written into the\n! output file.  Different seeds for different samples; never reuse.\nRandom:setSeed = on\nRandom:seed = 20260827           ! same convention as Module 1 (date of Session 1)\n\n! --- run control -------------------------------------------------------------\n! Print:quiet is a SUPER-SWITCH: setting it (on OR off) resets every Init:show*\n! and Next:show* setting to its own default.  It must therefore come BEFORE\n! the Next:* lines, or it silently undoes them (docs/troubleshooting.md #14:\n! with it last, the first event was dumped to stdout despite numberShow* = 0).\nPrint:quiet = off                ! keep the banner + the final cross-section\n                                 ! table in the log: that is the bookkeeping\nMain:numberOfEvents = 20000      ! overridable with --n-events (10 -> 1000 -> 20000)\nMain:timesAllowErrors = 10       ! abort if PYTHIA fails to generate > 10 events\nNext:numberCount = 1000          ! progress line every 1000 events\nNext:numberShowInfo = 0          ! no per-event dumps in the log\nNext:numberShowProcess = 0\nNext:numberShowEvent = 0         ! (Module 3 reads single events from the\n                                 !  HepMC file instead of the stdout dump)\n",
+  "extra_settings": [
+    "MultipartonInteractions:pT0Ref = 2.40"
+  ],
+  "config": {
+    "n_events": 20000,
+    "seed": 20260827,
+    "eCM_GeV": 13000.0,
+    "tune_pp": "14",
+    "pdf_pSet": "13",
+    "process": "SoftQCD:inelastic",
+    "tau0Max_mm": 10.0
+  },
+  "cross_section_mb": {
+    "sigma_gen": 78.04850079494015,
+    "sigma_err": 2.4680258616061145e-07,
+    "n_tried": 20000,
+    "n_accepted": 20000
+  },
+  "produced_utc": "2026-11-19T10:28:17Z",
+  "git_commit": "1794c22",
+  "python": "3.11.16",
+  "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "versions": {
+    "numpy": "2.4.6",
+    "awkward": "2.13.0",
+    "uproot": "5.7.6"
+  }
+}

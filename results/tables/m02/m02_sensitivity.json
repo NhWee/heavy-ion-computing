@@ -33,19 +33,19 @@
       "name": "nominal",
       "file": "data/generated/m02_var_nominal.root",
       "settings": [],
-      "pythia_version": "8.318",
-      "dndeta_inel0": 6.927134802069406,
-      "dndeta_inel0_err": 0.05213016845849795,
-      "ratio_inel0": 1.0756420500107775,
-      "f_inel0": 0.86015,
-      "dndeta_inel": 5.958374999999999,
-      "ratio_inel": 1.1274124881740777,
-      "mean_pt": 0.6665278449672208,
-      "mean_pt_ratio": 1.0296495026157353,
+      "pythia_version": "8.312",
+      "dndeta_inel0": 6.838963181660299,
+      "dndeta_inel0_err": 0.05124722991849033,
+      "ratio_inel0": 1.0619508046056365,
+      "f_inel0": 0.8637,
+      "dndeta_inel": 5.9068125,
+      "ratio_inel": 1.11765610217597,
+      "mean_pt": 0.6699812460669082,
+      "mean_pt_ratio": 1.0349843025816703,
       "pt_region_ratio": {
-        "0.15-0.25": 0.9045789138515461,
-        "0.4-0.8": 1.19093340210864,
-        "1.0-4.0": 1.1527363613858614
+        "0.15-0.25": 0.8842325285269972,
+        "0.4-0.8": 1.1819044191878847,
+        "1.0-4.0": 1.1645919912816534
       },
       "rel_to_ref": 1.0
     },
@@ -55,21 +55,21 @@
       "settings": [
         "ColourReconnection:reconnect = off"
       ],
-      "pythia_version": "8.318",
-      "dndeta_inel0": 9.4860233138085,
-      "dndeta_inel0_err": 0.0803628078397941,
-      "ratio_inel0": 1.4729849866162268,
-      "f_inel0": 0.86215,
-      "dndeta_inel": 8.178374999999999,
-      "ratio_inel": 1.5474692526017029,
-      "mean_pt": 0.5556757446012265,
-      "mean_pt_ratio": 0.8584056290587816,
+      "pythia_version": "8.312",
+      "dndeta_inel0": 9.502805395662538,
+      "dndeta_inel0_err": 0.08047240052730162,
+      "ratio_inel0": 1.475590899947599,
+      "f_inel0": 0.85995,
+      "dndeta_inel": 8.171937499999999,
+      "ratio_inel": 1.546251182592242,
+      "mean_pt": 0.5617805643116767,
+      "mean_pt_ratio": 0.8678363297052533,
       "pt_region_ratio": {
-        "0.15-0.25": 1.4096792631651183,
-        "0.4-0.8": 1.7070110375248362,
-        "1.0-4.0": 0.7636512369715027
+        "0.15-0.25": 1.4057903183722895,
+        "0.4-0.8": 1.6958874280225,
+        "1.0-4.0": 0.8220263281086163
       },
-      "rel_to_ref": 1.3694007096519407
+      "rel_to_ref": 1.3895096585906077
     },
     {
       "name": "tune4C",
@@ -77,21 +77,21 @@
       "settings": [
         "Tune:pp = 5"
       ],
-      "pythia_version": "8.318",
-      "dndeta_inel0": 7.404207906465243,
-      "dndeta_inel0_err": 0.05460808909221876,
-      "ratio_inel0": 1.1497217246064042,
-      "f_inel0": 0.86385,
-      "dndeta_inel": 6.3961250000000005,
-      "ratio_inel": 1.2102412488174081,
-      "mean_pt": 0.6654595176498311,
-      "mean_pt_ratio": 1.0279991549231566,
+      "pythia_version": "8.312",
+      "dndeta_inel0": 7.286084701815039,
+      "dndeta_inel0_err": 0.053531826240786666,
+      "ratio_inel0": 1.1313796120830806,
+      "f_inel0": 0.86775,
+      "dndeta_inel": 6.3225,
+      "ratio_inel": 1.1963103122043521,
+      "mean_pt": 0.6730405897783005,
+      "mean_pt_ratio": 1.0397103642976973,
       "pt_region_ratio": {
-        "0.15-0.25": 0.9859862636165955,
-        "0.4-0.8": 1.237588658656937,
-        "1.0-4.0": 1.2098482400667845
+        "0.15-0.25": 0.9554650159033967,
+        "0.4-0.8": 1.2236610577004328,
+        "1.0-4.0": 1.2298440230293874
       },
-      "rel_to_ref": 1.0688701920819148
+      "rel_to_ref": 1.0653785534850901
     },
     {
       "name": "pt0ref240",
@@ -99,21 +99,21 @@
       "settings": [
         "MultipartonInteractions:pT0Ref = 2.40"
       ],
-      "pythia_version": "8.318",
-      "dndeta_inel0": 6.689686124623582,
-      "dndeta_inel0_err": 0.049974577141618515,
-      "ratio_inel0": 1.0387711373639104,
-      "f_inel0": 0.8634,
-      "dndeta_inel": 5.775875,
-      "ratio_inel": 1.092880794701987,
-      "mean_pt": 0.661792378851024,
-      "mean_pt_ratio": 1.0223341738293805,
+      "pythia_version": "8.312",
+      "dndeta_inel0": 6.456354263206673,
+      "dndeta_inel0_err": 0.048013580591979806,
+      "ratio_inel0": 1.0025394818643902,
+      "f_inel0": 0.8632,
+      "dndeta_inel": 5.573124999999999,
+      "ratio_inel": 1.0545175023651845,
+      "mean_pt": 0.660093414045977,
+      "mean_pt_ratio": 1.0197096199121105,
       "pt_region_ratio": {
-        "0.15-0.25": 0.8836672990869787,
-        "0.4-0.8": 1.1483972526361477,
-        "1.0-4.0": 1.0724768931817157
+        "0.15-0.25": 0.8382690174249686,
+        "0.4-0.8": 1.113469244048155,
+        "1.0-4.0": 1.0439026024028955
       },
-      "rel_to_ref": 0.9657219493729371
+      "rel_to_ref": 0.944054543314453
     },
     {
       "name": "decay_all",
@@ -121,22 +121,21 @@
       "settings": [
         "ParticleDecays:limitTau0 = off"
       ],
-      "pythia_version": "8.318",
-      "dndeta_inel0": 7.582786224372264,
-      "dndeta_inel0_err": 0.057158314003447466,
-      "ratio_inel0": 1.1774512770764387,
-      "f_inel0": 0.8682,
-      "dndeta_inel": 6.583374999999999,
-      "ratio_inel": 1.2456717123935668,
-      "mean_pt": 0.6510748845208781,
-      "mean_pt_ratio": 1.0057778322006758,
+      "pythia_version": "8.312",
+      "dndeta_inel0": 7.465704961589556,
+      "dndeta_inel0_err": 0.056629883937419044,
+      "ratio_inel0": 1.1592709567685646,
+      "f_inel0": 0.86565,
+      "dndeta_inel": 6.4626874999999995,
+      "ratio_inel": 1.2228358561967834,
+      "mean_pt": 0.6569136394251395,
+      "mean_pt_ratio": 1.0147975170172396,
       "pt_region_ratio": {
-        "0.15-0.25": 1.0436978132316042,
-        "0.4-0.8": 1.2682322141518656,
-        "1.0-4.0": 1.1667856591280583
+        "0.15-0.25": 1.0162133042844141,
+        "0.4-0.8": 1.2541251114004215,
+        "1.0-4.0": 1.177400210874719
       },
-      "rel_to_ref": 1.0946497276344311
+      "rel_to_ref": 1.0916428065602048
     }
-  ],
-  "note": "Produced in the cloud container with PyPI pythia8mc 8.318 (WSL2 nominal uses 8.312: dN/deta MC/data 1.062 there vs 1.076 here, 1.3 sigma). Quote variations RELATIVE to the nominal of the same version (rel_to_ref). Reproduce: bash scripts/m02_run_variations.sh && python analysis/m02_sensitivity.py nominal=... (see the script's docstring)."
+  ]
 }
