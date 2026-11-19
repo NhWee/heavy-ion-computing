@@ -90,7 +90,8 @@ bash scripts/run_all.sh
       1.24 (0.5 GeV/c). pT0Ref는 크기만, CR은 모양을 움직임 → MPI·CR 동시 튜닝 필요 (module02 §8)
 - [x] pT0Ref × CR range 2차원 스캔 (module02 §9): dN/dη 최적 (2.52, 1.4), 두 상관 모형 모두.
       pT 모양은 격자 밖 → 다음 후보 `StringPT:sigma`
-- [ ] WSL2에서 `bash scripts/run_all_pythia.sh` (Module 2–4 결과를 PYTHIA 8.312로 재생성)
+- [x] WSL2에서 `bash scripts/run_all_pythia.sh` — Module 2–4 전부 PYTHIA 8.312로 재생성 (`1cc643e`)
+- [ ] pT 모양: `StringPT:sigma` 스캔
 - [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.

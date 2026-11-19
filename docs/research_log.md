@@ -303,3 +303,10 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 1. WSL2: `bash scripts/run_all_pythia.sh` → git diff로 8.318 vs 8.312 비교 후 커밋.
 2. pT 모양: StringPT:sigma 1차원 스캔.
 3. 로드맵 Module 5 (LHAPDF, nPDF).
+
+### WSL2 정식 재생성 (같은 날, `1cc643e`)
+- `run_all_pythia.sh` 첫 실행이 Table 2 원본 부재로 중단 + 스캔 결과 삭제 → preflight·단계 선택 추가 (#21).
+- 스캔 χ²에서 빈 고 pT MC bin이 χ²를 ~100씩 부풀림 → pT χ²를 < 5 GeV/c로 제한.
+- 정식 결론: **pT0Ref 2.28 → 2.40 (CR 그대로)이면 dN/dη MC/data 1.003–1.004** (변형·스캔 독립 일치).
+  pT 모양은 미해결. Module 3·4 수치는 클라우드와 일치 (module03/04 문서 "정식 결과").
+- pyhepmc를 WSL2 hic 환경에 설치 (`micromamba install -n hic -c conda-forge pyhepmc`).
