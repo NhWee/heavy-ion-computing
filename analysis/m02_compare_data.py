@@ -271,13 +271,26 @@ def main() -> int:
         print("warning: data bins are not contiguous; MC is histogrammed with the "
               "data's low edges + last high edge")
     y_mc, e_mc = dndeta(mc, mask, edges, pt_min)
-    c_mc, ce_mc = central_density(mc, mask, pt_min)
-    print(f"[mc]   dN_ch/deta (|eta|<0.5, pT > {pt_min:g}) = {c_mc:.3f} +- {ce_mc:.3f}")
+
+    # The central value is averaged over the data bins that lie fully inside
+    # |eta| < 0.5, and the MC over EXACTLY the eta range those bins cover.
+    # With 0.2-wide bins that range is |eta| < 0.4, not 0.5: comparing an MC
+    # average over |eta| < 0.5 with a data average over |eta| < 0.4 would put a
+    # shape difference into the verdict.
+    eta_half = 0.5
+    if data is not None:
+        central = (data["xlo"] >= -0.5 - 1e-9) & (data["xhi"] <= 0.5 + 1e-9)
+        if not central.any():
+            central = np.zeros(len(data["x"]), bool)
+            central[np.argmin(np.abs(data["x"]))] = True
+        eta_half = float(max(np.abs(data["xlo"][central]).max(),
+                             np.abs(data["xhi"][central]).max()))
+    c_mc, ce_mc = central_density(mc, mask, pt_min, eta_half=eta_half)
+    print(f"[mc]   dN_ch/deta (|eta|<{eta_half:g}, pT > {pt_min:g}) = {c_mc:.3f} +- {ce_mc:.3f}")
 
     # ---- verdict ----
     verdict = None
     if data is not None:
-        central = np.abs(data["x"]) < 0.5
         if central.any():
             w = (data["xhi"] - data["xlo"])[central]
             c_data = np.sum(data["y"][central] * w) / np.sum(w)
@@ -287,11 +300,12 @@ def main() -> int:
             i = np.argmin(np.abs(data["x"]))
             c_data, c_data_err, c_data_sys = data["y"][i], data["stat"][i], data["sys"][i]
         ratio = c_mc / c_data
-        verdict = {"mc": c_mc, "mc_err": ce_mc, "data": c_data, "data_stat": c_data_err,
+        verdict = {"eta_range": [-eta_half, eta_half],
+                   "mc": c_mc, "mc_err": ce_mc, "data": c_data, "data_stat": c_data_err,
                    "data_sys": c_data_sys, "ratio": ratio,
                    "tolerance": VERDICT_TOLERANCE,
                    "within_tolerance": bool(abs(ratio - 1.0) <= VERDICT_TOLERANCE)}
-        print(f"[cmp]  data {c_data:.3f} +- {c_data_err:.3f} (stat) +- {c_data_sys:.3f} (sys); "
+        print(f"[cmp]  |eta| < {eta_half:g}: data {c_data:.3f} +- {c_data_err:.3f} (stat) +- {c_data_sys:.3f} (sys); "
               f"MC/data = {ratio:.3f}  -> "
               + ("WITHIN" if verdict["within_tolerance"] else "OUTSIDE")
               + f" +-{100 * VERDICT_TOLERANCE:.0f} %")
@@ -326,7 +340,7 @@ def main() -> int:
     axr.set_xlabel(r"$\eta$")
     stamp(ax, [f"pp, $\\sqrt{{s}}$ = {sqrt_s:.0f} TeV",
                "charged primaries" + (f", $p_{{\\rm T}} > {pt_min:g}$ GeV/$c$" if pt_min > 0 else ""),
-               (rf"MC/data$|_{{|\eta|<0.5}}$ = {verdict['ratio']:.3f}" if verdict else "MC only")],
+               (rf"MC/data$|_{{|\eta|<{eta_half:g}}}$ = {verdict['ratio']:.3f}" if verdict else "MC only")],
           loc="upper left")
     ax.legend(loc="lower center", ncol=2, fontsize=9)
     save_figure(fig, figdir / "m02_dndeta_vs_data")

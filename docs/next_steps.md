@@ -78,8 +78,9 @@ bash scripts/run_all.sh
 - [ ] WSL2에서 10 → 1,000 → 20,000 이벤트 생성 (스크립트는 **미실행**, API drift 가능)
 - [ ] Module 1 분석 코드를 **수정 없이** 실행 — 안 되면 인터페이스 설계 문제로 기록
 - [x] "하전입자" 정의 → `particle_charge ≠ 0` (module02_pythia.md §5; 부수적으로 오답노트 #12 발견)
-- [ ] HEPData에서 ALICE pp 13 TeV dN_ch/dη (INEL>0) 표를 받아 비교
-      (DOI·표 번호·선택 조건을 `data/raw/<dataset>.json`에 먼저 기록)
+- [x] HEPData ALICE pp 13 TeV dN_ch/dη 표 확보 (ins1395253 v1 Table 1, 브라우저 수동 다운로드 →
+      `--local` 검증, 2026-11-19). INEL>0 열 자동 선택, |η| < 1.8 18 bins
+- [ ] PYTHIA 샘플로 `m02_compare_data.py` 실행 → 판정 (toy로는 체인 동작만 확인: 의미 없음)
 - [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.

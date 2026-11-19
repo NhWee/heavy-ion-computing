@@ -182,3 +182,21 @@ pytest. ROOT 없음 → ROOT arm은 코드만 수정, 실행은 다음 세션(WS
 `docs/next_steps.md` Step 1: WSL2에서 `run_all.sh` → `ARMS AGREE` 확인 →
 `results/` 재커밋. 이어서 Step 2: `m02_run_pythia.py --n-events 10`부터,
 그 다음 HEPData 표 provenance 채우기 → `m02_compare_data.py`.
+
+---
+
+## Session 4 — 2026-11-19 · ALICE dN/dη 표 확보
+
+- HEPData가 자동 요청(urllib·curl 모두)을 Cloudflare 403으로 막아, 사용자가 브라우저로
+  `HEPData-ins1395253-v1-Table_1.yaml`을 받음 → `data/raw/alice_pp13TeV_dndeta_table1.yaml`
+  (payload는 gitignore) → `m02_fetch_hepdata.py --local`로 sha256 기록·`verified: true`.
+- 표 내용: 열 2개(INEL, INEL>0), |η| < 1.8에서 0.2 폭 18 bins. INEL>0 열(index 1) 자동 선택.
+  오차는 점마다 **라벨 없는 대칭 오차 하나** → 비교 스크립트는 계통 오차로 취급(stat = 0).
+- INEL>0, |η| < 0.4 (중앙 4 bins) 평균: **6.44 ± 0.19**.
+- 발견: 판정용 "|η| < 0.5" 중앙값이 데이터 쪽에서는 bin 경계 때문에 실제로 |η| < 0.4였고,
+  MC는 |η| < 0.5로 평균 → 범위 불일치. MC도 데이터 bin이 덮는 범위로 맞추도록 수정
+  (`verdict.eta_range`에 기록).
+- toy 파일로 체인 동작 확인: MC/data = 1.18. **물리적 의미 없음** (toy는 데이터에 맞춘 적이 없음).
+
+### Next step
+WSL2에서 PYTHIA 8 생성 → `python analysis/m02_compare_data.py` → 판정 (±15 %).

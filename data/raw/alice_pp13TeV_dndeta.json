@@ -1,6 +1,6 @@
 {
-  "_status": "UNVERIFIED -- identifiers below come from a web-search summary (2026-11-05), not from HEPData/INSPIRE themselves. Run scripts/m02_fetch_hepdata.py in an environment that can reach hepdata.net; it downloads the table, checks these identifiers against the record and sets verified=true. analysis/m02_compare_data.py refuses this file while verified is false.",
-  "verified": false,
+  "_status": "Table 1 (YAML) downloaded BY HAND by the user from https://www.hepdata.net/record/ins1395253 (file name HEPData-ins1395253-v1-Table_1.yaml) and copied into the repo on 2026-11-19; record id and version taken from that file name; header checked by scripts/m02_fetch_hepdata.py --local. Title, arXiv and journal fields were NOT read from HEPData here.",
+  "verified": true,
   "experiment": "ALICE",
   "title": "Pseudorapidity and transverse-momentum distributions of charged particles in proton-proton collisions at sqrt(s) = 13 TeV",
   "arxiv": "1509.08734",
@@ -20,16 +20,19 @@
   "observable": "dN_ch/deta",
   "event_class": "INEL>0",
   "selection": {
-    "eta_range": "|eta| < 1.8 (to be confirmed from the table)",
+    "eta_range": "-1.8 to 1.8 (18 bins, from the table)",
     "pt_cut": "none (extrapolated to pT = 0)",
-    "primary_definition": "ALICE primary: produced in the collision incl. decay products of particles with c*tau < 1 cm (to be confirmed from the paper)"
+    "primary_definition": "ALICE primary: produced in the collision incl. decay products of particles with c*tau < 1 cm (to be confirmed from the paper)",
+    "column": "D(N)/DETARAP"
   },
   "uncertainties": {
-    "stat": "stat column of the table",
-    "syst": "sys column of the table",
-    "correlated": "to be read from the paper (normalisation uncertainty largely correlated across eta)"
+    "as_published": "ONE symmetric error per point, no stat/sys label (HEPData symerror)",
+    "used_as": "systematic (analysis/m02_compare_data.py puts unlabeled errors in 'sys', stat = 0)",
+    "correlated": "not stated in the table; to be read from the paper"
   },
-  "downloaded_utc": null,
+  "downloaded_utc": "2026-11-19T06:24:22Z",
   "file": "alice_pp13TeV_dndeta_table1.yaml",
-  "sha256": null
+  "sha256": "615ed1bfa4f3ac5203ffbe3091262a764688f27a2a13475085670d2c6ec5d8e6",
+  "dependent_index": 1,
+  "downloaded_utc_note": "time the file was copied into data/raw/, not the browser download time"
 }
