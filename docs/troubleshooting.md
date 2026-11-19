@@ -470,3 +470,17 @@ internal structure of a jet, but its associated ClusterSequence has gone out of 
 **결과**: 고스트 위치가 실행마다 다르다 → 제트 면적이 ~1e-3 수준에서 흔들리고, Module 4
 그림은 바이트 단위로 재현되지 않는다 (숫자 결론에는 영향 없음). `hicpy.jets.area_definition`은
 바인딩이 받아 주면 seed를 쓰고, 아니면 그냥 넘어간다.
+
+---
+
+## #21 `run_all_pythia.sh`가 중간에 멈추면서 기존 스캔 결과를 지움
+
+**증상**: WSL2에서 실행 중 2차원 스캔 단계에서 `FileNotFoundError: data/raw/alice_pp13TeV_pt_table2.yaml`.
+그 직전에 `rm -f results/tables/m02/scan/pt0_*.json`가 실행돼 커밋된 스캔 결과 20개가 지워졌고,
+pT 비교는 데이터 없이 MC만으로 덮어써졌다.
+**원인**: HEPData 원본(YAML)은 커밋하지 않는다(`.gitignore`). 클라우드 세션에 업로드한 표는 WSL2
+디스크에는 없다. 스크립트는 필요한 입력을 **처음에** 확인하지 않고, 결과를 지운 **뒤에** 실패했다.
+**해결**: 시작 시 preflight — 두 ALICE 표가 있고 sha256이 provenance JSON과 같은지 확인, 아니면
+아무것도 실행·변경하지 않고 복사 명령을 출력. 단계 선택 (`bash scripts/run_all_pythia.sh compare scan m03 m04`)
+으로 이미 끝난 생성을 다시 돌리지 않게. 지워진 파일은 `git checkout -- results/`로 복구.
+**배운 점**: 결과를 지우는 단계는 그 결과를 다시 만들 수 있다는 것이 확인된 뒤에만.
