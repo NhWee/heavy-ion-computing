@@ -82,6 +82,11 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
                        Double_t muPtMin = 20.0, Double_t muEtaMax = 2.4,
                        Double_t fitPtLo = 0.15, Double_t fitPtHi = 6.0) {
    gStyle->SetOptStat(0);
+   // Histograms must NOT belong to the input file (troubleshooting #16):
+   // a TH1 created while a TFile is open is owned by it, and fin->Close()
+   // deletes it -- the JSON writer below then read freed memory and the
+   // macro died with a segfault, leaving an empty summary file.
+   TH1::AddDirectory(kFALSE);
 
    TFile *fin = TFile::Open(infile, "READ");
    if (!fin || fin->IsZombie()) { std::cerr << "cannot open " << infile << "\n"; return; }
@@ -174,7 +179,7 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
    fTsallis->SetParLimits(2, 1.0, 50.0);
    fTsallis->FixParameter(3, 0.13957039);              // pion mass, fixed
    fTsallis->SetParNames("C", "T", "n", "m0");
-   TFitResultPtr fr = hPt->Fit(fTsallis, "R Q S");
+   TFitResultPtr fr = hPt->Fit(fTsallis, "R Q S 0");   // 0: do not draw (no stray canvas)
    std::cout << "[fit] T = " << fTsallis->GetParameter(1) * 1000.0 << " +- "
              << fTsallis->GetParError(1) * 1000.0 << " MeV, n = "
              << fTsallis->GetParameter(2) << " +- " << fTsallis->GetParError(2)

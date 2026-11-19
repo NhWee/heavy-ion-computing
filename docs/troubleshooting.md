@@ -372,3 +372,24 @@ Tsallis fit만 T = 0.0559 GeV (uproot 0.1482), n = 10.45, χ²/ndf = 10876.
 
 (같은 실행에서 C++ 매크로의 `m01_root_summary.json`은 첫 글자부터 JSON이 아니었음 —
 원인 조사 중. `m01_compare_arms.py`가 그 지점에서 traceback으로 죽던 것은 FAIL로 보고하도록 수정.)
+
+**#15 확인**: C 범위 제한을 뺀 뒤 C++ 매크로 fit = T 148.193 ± 0.66 MeV, n 7.4786, χ²/ndf 1.0847
+→ uproot arm과 일치. 진단이 맞았음.
+
+---
+
+## #16 C++ 매크로가 끝에서 segfault, `m01_root_summary.json`이 0 바이트
+
+**증상**: `[out] histograms -> ...` 직후 `*** Break *** segmentation violation`. 요약 JSON은
+생성은 됐지만 비어 있음 → `m01_compare_arms.py`에서 "Expecting value: line 1 column 1".
+
+**원인**: ROOT 객체 소유권. 입력 `TFile`을 연 **뒤에** 만든 `TH1`은 그 파일(gDirectory)에
+소속된다. `fin->Close()`가 소속 히스토그램을 지우고, 그 뒤의 JSON 작성 코드가 해제된
+메모리를 읽다가 죽었다. `std::ofstream`의 버퍼는 flush 전에 프로세스가 죽어 0 바이트.
+
+**해결**: 히스토그램 생성 전에 `TH1::AddDirectory(kFALSE)` — 히스토그램을 파일에 소속시키지
+않는다(쓰기는 `fout`이 열린 상태에서 `Write()`로 그대로 됨). 덤으로 `Fit` 옵션에 `0`을
+넣어 batch에서 불필요한 기본 캔버스 `c1`이 생기지 않게 함.
+
+**배운 점**: PyROOT/C++에서 "객체를 만든 순간 어느 디렉터리에 붙는가"는 Python 쪽
+(uproot)에는 없는 함정이다. 요약 파일이 비어 있으면 쓰기 도중에 죽었다는 신호다.
