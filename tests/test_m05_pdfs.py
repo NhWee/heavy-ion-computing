@@ -1,12 +1,13 @@
 """hicpy.pdfs against facts that do not depend on any fit: sum rules, isospin,
 and the sign pattern of nuclear modifications."""
-import importlib.util
-
 import numpy as np
 import pytest
 
-if importlib.util.find_spec("pythia8") is None and importlib.util.find_spec("pythia8mc") is None:
-    pytest.skip("no PYTHIA Python bindings", allow_module_level=True)
+try:
+    from hicpy.pdfs import pythia_module
+    pythia_module()
+except ImportError:
+    pytest.skip("no PYTHIA Python module with PDF classes (pip install pythia8mc)", allow_module_level=True)
 
 from hicpy.pdfs import ProtonPDF, NuclearRatio, integrate_logx   # noqa: E402
 

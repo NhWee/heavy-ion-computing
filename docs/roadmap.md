@@ -88,7 +88,8 @@ micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4, 16 논리코어.
 
 ## 그 다음 (개요)
 
-Module 5 ✅ PDF·nuclear PDF (2026-11-19, `docs/modules/module05_pdfs.md`) → 6 Glauber MC 직접 구현 → 7 Angantyr/HIJING/AMPT로
+Module 5 ✅ PDF·nuclear PDF (2026-11-19, `docs/modules/module05_pdfs.md`) → 6 ✅ Glauber MC 직접 구현
+(2026-11-19, `docs/modules/module06_glauber.md`) → 7 Angantyr/HIJING/AMPT로
 pPb·PbPb → 8 CERN Open Data / HEPData 실측 재현 → 9 jet quenching(R_AA,
 dijet asymmetry) → 10 JETSCAPE/JEWEL/MUSIC.
 

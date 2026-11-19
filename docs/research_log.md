@@ -326,3 +326,30 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - EPS09 R_g^Pb: 하드론 영역 0.67 ± 0.28 (90 % CL), Z 1.06 ± 0.03, 제트 1.09 ± 0.06.
   → 저 pT 억제의 일부는 냉핵물질(PDF)만으로도 가능, 불확실성 큼; 제트 억제는 PDF로 설명 불가.
 - 테스트 5개 추가 (합 규칙, 동위스핀, shadowing 부호). CI에 pythia8mc.
+
+---
+
+## Session 8 — 2026-11-19 · Module 6 (Glauber), identified 준비, WSL2 StringPT
+
+### WSL2 StringPT (8.312, pT0Ref 2.40)
+- 결론 동일: ⟨pT⟩는 σ ≈ 0.31에서 맞음 (1.001), 0.4–0.8 GeV/c +11–12 %는 모든 σ에서 남음.
+- dN/dη는 8.312에서 2–4 % 낮음 (Monash 1.003 vs 클라우드 1.039). module02 §11a.
+- m05는 WSL2에서 실패: conda `pythia8` 바인딩에 PDF 클래스 없음 → `pip install pythia8mc` (#22).
+
+### identified π/K/p
+- `analysis/m02_compare_identified.py`: |y| < 0.5 (rapidity), HEPData 헤더에서 invariant/평균 여부 자동 판별,
+  측정 범위 수율과 K/π, p/π 이중비. 자기 비교 테스트 2개. ALICE 표(ins1784041)는 네트워크 차단 → 사용자 다운로드 대기.
+
+### Module 6 Glauber
+- numpy로 직접 구현 (WS + hard core, black disk). σ_PbPb 7.644 ± 0.031 b (ALICE 측정 7.67 ± 0.25),
+  σ_pPb 2.10 ± 0.03 b (CMS 2.061 ± 0.080).
+- ALICE-PUBLIC-2018-011 대비: 4–5 % N_part 362.3 vs 362.9, N_coll 1596 vs 1593; 0–1 % +0.8 % / +1.4 %
+  (b 순서 vs 다중도 순서 차이; N_part 순서로 +0.5 %).
+- 계통: 처음 결과는 모든 변형이 같은 방향 → 독립 seed 잡음 (#23). 같은 난수열로 다시: 중심 N_part ±0.3 %,
+  N_coll ±2–3 %, 주변부 ±3–4 %, σ_PbPb ±0.22 b (d_min 지배).
+- 테스트 6개 추가 (총 69 통과). `run_all_pythia.sh`에 m06, identified 단계.
+
+### Next step
+1. ALICE ins1784041 표 → identified 비교로 0.4–0.8 GeV/c 초과의 출처 확인.
+2. WSL2: `pip install pythia8mc` → `bash scripts/run_all_pythia.sh m05 m06`.
+3. Module 7: Angantyr.
