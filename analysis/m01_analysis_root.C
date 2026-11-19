@@ -138,10 +138,15 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
 
       for (Int_t i = 0; i < nparticle; ++i) {
          const Int_t ap = TMath::Abs(pdg[i]);
-         const Double_t pt = TMath::Sqrt(px[i] * px[i] + py[i] * py[i]);
-         const Double_t p  = TMath::Sqrt(pt * pt + pz[i] * pz[i]);
+         // Promote to double BEFORE multiplying (troubleshooting #17): px[i]*px[i]
+         // on Float_t is a float32 product, and in the forward region p - pz
+         // cancels, so eta moved by enough to change bins in 19 of 60 dN/deta
+         // bins relative to the float64 arms.
+         const Double_t dpx = px[i], dpy = py[i], dpz = pz[i];
+         const Double_t pt = TMath::Sqrt(dpx * dpx + dpy * dpy);
+         const Double_t p  = TMath::Sqrt(pt * pt + dpz * dpz);
          if (p <= 0) continue;
-         const Double_t eta = 0.5 * TMath::Log((p + pz[i]) / (p - pz[i]));
+         const Double_t eta = 0.5 * TMath::Log((p + dpz) / (p - dpz));
 
          const bool isCharged = (charge[i] != 0);   // charge branch, not a pdg list
          if (isCharged && pt > ptMin) {
