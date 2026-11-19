@@ -271,3 +271,11 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 1. ALICE Table 2 다운로드 → `m02_compare_pt.py` → 6 %가 soft 성분인지 확인.
 2. WSL2에서 Module 3 재현, `scripts/m02_run_variations.sh`로 민감도 재현 (8.312).
 3. Module 4 FastJet.
+
+### pT 스펙트럼 (같은 날)
+- ALICE Table 2 (사용자 브라우저 다운로드 → `--local` 검증): |η| < 0.8, INEL>0, 0.15–20 GeV/c, stat/sys 분리.
+- Monash (8.318, 20k): MC/data 0.86 (0.15–0.2) → 1.24 (0.5–0.55) → ~1.08 (1–2) → ~1.2 (2–8).
+  적분 1.09 (dN/dη 결과 1.076과 일치). ⟨pT⟩ 0.667 vs 0.647 (+3 %).
+- 변형: pT0Ref는 크기만 (⟨pT⟩ −0.8 %), CR off는 모양 (⟨pT⟩ −14 %). 4C도 모양 개선 없음.
+- **결론: 6 % dN/dη 초과는 0.3–1 GeV/c 벌크 영역의 초과 + 스펙트럼 모양 차이. 손잡이 하나(pT0Ref)로는
+  dN/dη만 맞고 pT 모양은 못 맞춘다 → MPI와 CR을 함께 다시 맞춰야 함.**

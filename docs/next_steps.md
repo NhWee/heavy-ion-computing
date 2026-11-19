@@ -86,8 +86,9 @@ bash scripts/run_all.sh
       CR 끔 → +37 %, 4C → +7 %. **MPI 튠(13 TeV로의 pT0 외삽)이 유력.** 별개로 INEL 정규화에는
       회절 모델 차이(f(INEL>0) MC 0.86 vs data 0.82)가 약 5 % 더해짐
 - [x] Module 1 분석 코드를 PYTHIA 파일에 수정 없이 실행 — 돌아감. 빈 히스토그램 Z fit "수렴" 버그 수정 (#19)
-- [ ] pT 스펙트럼 비교: `analysis/m02_compare_pt.py` 작성 완료, ALICE Table 2 수동 다운로드 대기
-      (`data/raw/alice_pp13TeV_pt.json`, verified = false)
+- [x] pT 스펙트럼 비교 (ALICE Table 2, 2026-11-19): ⟨pT⟩ MC/data 1.03, MC/data 0.86 (0.15 GeV/c) →
+      1.24 (0.5 GeV/c). pT0Ref는 크기만, CR은 모양을 움직임 → MPI·CR 동시 튜닝 필요 (module02 §8)
+- [ ] (선택) pT0Ref × CR range 2차원 스캔 + 결합 χ² — 그 전에 계통 오차의 bin 간 상관 확인
 - [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.

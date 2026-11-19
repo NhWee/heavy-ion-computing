@@ -1,6 +1,6 @@
 {
-  "_status": "UNVERIFIED -- table name and description from a web-search summary of the HEPData record (2026-11-19). Download Table 2 as YAML from https://www.hepdata.net/record/ins1395253 in a browser, save it as data/raw/alice_pp13TeV_pt_table2.yaml and run scripts/m02_fetch_hepdata.py data/raw/alice_pp13TeV_pt.json --local.",
-  "verified": false,
+  "_status": "Table 2 (YAML) downloaded BY HAND by the user from https://www.hepdata.net/record/ins1395253 (file name HEPData-ins1395253-v1-Table_2.yaml) and copied into the repo on 2026-11-19; record id and version from that file name; header and column checked by scripts/m02_fetch_hepdata.py --local.",
+  "verified": true,
   "experiment": "ALICE",
   "title": "Pseudorapidity and transverse-momentum distributions of charged particles in proton-proton collisions at sqrt(s) = 13 TeV",
   "arxiv": "1509.08734",
@@ -11,7 +11,7 @@
     "record": "ins1395253",
     "record_url": "https://www.hepdata.net/record/ins1395253",
     "table": "Table 2",
-    "table_description": "Invariant charged-particle yield as a function of pT, INEL>0 events (to be confirmed)",
+    "table_description": "Invariant charged-particle yield (1/(2 pi pT)) d2N/(deta dpT) in |eta| < 0.8, INEL>0",
     "doi": null,
     "version": 1
   },
@@ -20,15 +20,19 @@
   "observable": "1/(2 pi pT) 1/N d2N/(deta dpT)",
   "event_class": "INEL>0",
   "selection": {
-    "eta_range": "|eta| < 0.8 (to be confirmed from the table)",
-    "pt_range": "0.15 < pT < 20 GeV/c (to be confirmed)",
-    "primary_definition": "prompt particles incl. all decay products, except products of weak decays of strange particles (arXiv:1509.08734)"
+    "eta_range": "|eta| < 0.8 (table qualifier ABS(ETARAP) < 0.8)",
+    "pt_range": "0.15 < pT < 20 GeV/c, 47 bins (from the table)",
+    "primary_definition": "prompt particles incl. all decay products, except products of weak decays of strange particles (arXiv:1509.08734)",
+    "column": "(1/(2*PI*PT)) * D2(N)/DETARAP/DPT"
   },
   "uncertainties": {
-    "as_published": "to be read from the table",
-    "correlated": "to be read from the paper"
+    "as_published": "stat and sys given separately per point (labels 'stat', 'sys')",
+    "used_as": "stat and sys kept separate; ratio error = MC stat (+) data stat+sys",
+    "correlated": "not stated in the table; to be read from the paper"
   },
-  "downloaded_utc": null,
+  "downloaded_utc": "2026-11-19T08:11:58Z",
   "file": "alice_pp13TeV_pt_table2.yaml",
-  "sha256": null
+  "sha256": "53d399bcca705b5cacc80fe5f05b26eebc809dd9aa072c1f8f8f5db86a59b6f1",
+  "dependent_index": 0,
+  "downloaded_utc_note": "time the file was copied into data/raw/, not the browser download time"
 }

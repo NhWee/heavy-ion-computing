@@ -49,6 +49,8 @@ def main() -> int:
     ap.add_argument("samples", nargs="+", help="name=path.root; the first is the reference")
     ap.add_argument("--data", default=str(REPO / "data" / "raw" / "alice_pp13TeV_dndeta.json"))
     ap.add_argument("--out", default=str(REPO / "results" / "tables" / "m02" / "m02_sensitivity.json"))
+    ap.add_argument("--pt-data", default=str(REPO / "data" / "raw" / "alice_pp13TeV_pt.json"),
+                    help="provenance JSON of the pT spectrum; skipped if absent or unverified")
     args = ap.parse_args()
 
     prov, d = load_dataset(pathlib.Path(args.data))
@@ -70,6 +72,23 @@ def main() -> int:
     data_inel = float(np.sum(y_inel[central] * w) / w.sum())
     f_data = data_inel / data_inel0
 
+    # optional: the pT spectrum (Table 2) -- <pT> and the ratio in pT regions
+    pt = None
+    try:
+        from m02_compare_pt import invariant_yield
+        pprov, pd = load_dataset(pathlib.Path(args.pt_data))
+        pe = np.concatenate([pd["xlo"], [pd["xhi"][-1]]])
+        pc = 0.5 * (pe[1:] + pe[:-1])
+
+        def mean_pt(y):
+            wgt = y * 2 * np.pi * pc * np.diff(pe)
+            return float((wgt * pc).sum() / wgt.sum())
+        pt = {"edges": pe, "ctr": pc, "data": pd["y"], "data_mean_pt": mean_pt(pd["y"]),
+              "regions": [(0.15, 0.25), (0.4, 0.8), (1.0, 4.0)], "mean_pt": mean_pt,
+              "yield": invariant_yield}
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"[pt] pT block skipped: {exc}")
+
     rows = []
     for spec in args.samples:
         name, path = spec.split("=", 1)
@@ -81,6 +100,13 @@ def main() -> int:
                      "pythia_version": mc["provenance"].get("pythia_version"),
                      "dndeta_inel0": c, "dndeta_inel0_err": ce, "ratio_inel0": c / data_inel0,
                      "f_inel0": f, "dndeta_inel": c * f, "ratio_inel": c * f / data_inel})
+        if pt is not None:
+            y, _ = pt["yield"](mc, mask, pt["edges"])
+            r = y / pt["data"]
+            rows[-1]["mean_pt"] = pt["mean_pt"](y)
+            rows[-1]["mean_pt_ratio"] = rows[-1]["mean_pt"] / pt["data_mean_pt"]
+            rows[-1]["pt_region_ratio"] = {f"{lo}-{hi}": float(r[(pt["ctr"] > lo) & (pt["ctr"] < hi)].mean())
+                                           for lo, hi in pt["regions"]}
     ref = rows[0]
     for r in rows:
         r["rel_to_ref"] = r["dndeta_inel0"] / ref["dndeta_inel0"]
@@ -94,11 +120,20 @@ def main() -> int:
               f"{r['ratio_inel0']:8.3f} {r['rel_to_ref']:7.3f} {r['f_inel0']:9.3f} "
               f"{r['ratio_inel']:12.3f}  {'; '.join(r['settings']) or '(card)'}")
 
+    if pt is not None:
+        print(f"\npT spectrum (|eta| < 0.8, INEL>0, 0.15-20 GeV/c): ALICE <pT> = {pt['data_mean_pt']:.3f} GeV/c")
+        print(f"{'sample':12s} {'<pT>':>7s} {'MC/data':>8s}  " + "  ".join(f"{lo}-{hi}".rjust(9) for lo, hi in pt["regions"]))
+        for r in rows:
+            print(f"{r['name']:12s} {r['mean_pt']:7.3f} {r['mean_pt_ratio']:8.3f}  "
+                  + "  ".join(f"{v:9.3f}" for v in r["pt_region_ratio"].values()))
+
     out = pathlib.Path(args.out); out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"eta_range": [-eta_half, eta_half],
                                "data": {"dndeta_inel0": data_inel0, "dndeta_inel0_sys": data_err,
                                         "dndeta_inel": data_inel, "f_inel0": f_data,
                                         "source": prov["hepdata"]},
+                               "data_pt": ({"mean_pt": pt["data_mean_pt"], "source": pprov["hepdata"]}
+                                           if pt is not None else None),
                                "samples": rows}, indent=2))
     print(f"[out] {out}")
     return 0
