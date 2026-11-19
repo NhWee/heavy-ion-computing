@@ -135,7 +135,8 @@ def main() -> int:
          bq["n_bins"], bq["lo"], bq["hi"]), "mmumu")
 
     for h in (h_mult, h_eta, h_pt, h_mass):
-        h.GetValue().Sumw2()
+        if h.GetValue().GetSumw2N() == 0:   # weighted fills already created it
+            h.GetValue().Sumw2()
     for h in (h_mult, h_eta, h_pt):
         h.GetValue().Scale(1.0 / n_ev, "width")
 

@@ -64,23 +64,24 @@ bash scripts/run_all.sh
 **완료 기준**
 - [ ] `verify_environment.py` FAIL 0, SKIP은 LHAPDF 1건만
 - [ ] `pytest` 22건 통과 (WSL2에서도)
-- [ ] PyROOT arm, C++ macro 실행 성공 → `results/tables/m01_{pyroot,root}_summary.json`
-- [ ] `m01_compare_arms.py` → `ARMS AGREE`
-- [ ] 불일치가 나오면 원인을 `docs/troubleshooting.md`에 #12부터 기록
-- [ ] `results/` 재생성분 커밋 (provenance `platform`이 WSL2인지 확인)
-- [ ] `docs/research_log.md`에 Session 4 기록, README 상태표에서 Module 1을 "완료"로
+- [x] PyROOT arm, C++ macro 실행 성공 → `results/tables/m01_{pyroot,root}_summary.json`
+- [x] `m01_compare_arms.py` → `ARMS AGREE` (2026-11-19, WSL2, ROOT 6.40.02)
+- [x] 불일치 원인 기록: 오답노트 #15 (MINUIT 범위), #16 (TH1 소유권 segfault), #17 (C++ float32 곱)
+- [x] `results/` 재생성분 커밋 (`eabd61f`, provenance platform = WSL2)
+- [x] `docs/research_log.md`에 Session 4 기록, README 상태표에서 Module 1을 "완료"로
 
 ### Step 2 — Module 2: PYTHIA 8 minimum bias pp 13 TeV
 `docs/modules/module02_pythia.md`에 상세. 진행:
 - [x] `generators/pythia_mb_13TeV.cmnd` (빔, √s, `SoftQCD:inelastic`, Monash, PDF, tau0Max, seed, 이벤트 수)
 - [x] `scripts/m02_run_pythia.py` — Module 1과 같은 TTree 스키마 + charge/process_code/n_ch_eta1
 - [x] `config/analysis_m02_pythia.yaml`, `data/raw/README.md`(provenance 템플릿), `tests/test_m02_card.py`
-- [ ] WSL2에서 10 → 1,000 → 20,000 이벤트 생성 (스크립트는 **미실행**, API drift 가능)
+- [x] WSL2에서 10 → 20,000 이벤트 생성 (PYTHIA 8.312; 카드 줄 순서 버그 → 오답노트 #14)
 - [ ] Module 1 분석 코드를 **수정 없이** 실행 — 안 되면 인터페이스 설계 문제로 기록
 - [x] "하전입자" 정의 → `particle_charge ≠ 0` (module02_pythia.md §5; 부수적으로 오답노트 #12 발견)
 - [x] HEPData ALICE pp 13 TeV dN_ch/dη 표 확보 (ins1395253 v1 Table 1, 브라우저 수동 다운로드 →
       `--local` 검증, 2026-11-19). INEL>0 열 자동 선택, |η| < 1.8 18 bins
-- [ ] PYTHIA 샘플로 `m02_compare_data.py` 실행 → 판정 (toy로는 체인 동작만 확인: 의미 없음)
+- [x] PYTHIA 샘플로 `m02_compare_data.py` 실행 → MC/data = 1.062 (|η| < 0.4), ±15 % 기준 통과, 약 2σ
+- [ ] 6 % 초과의 원인: ALICE primary 정의 확인, 튠·colour reconnection 변화
 - [x] `analysis/m02_compare_data.py`: 이벤트 클래스 선택 + 데이터 binning + ratio panel + 판정 (toy로 self-comparison 테스트, 실데이터는 아직)
 
 **완료 기준**: dN_ch/dη|₀가 ALICE 측정의 ±15% 이내, 비교 그림에 ratio panel.

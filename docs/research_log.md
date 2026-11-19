@@ -217,3 +217,28 @@ WSL2에서 PYTHIA 8 생성 → `python analysis/m02_compare_data.py` → 판정 
 ### Next step
 WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data.py` →
 정식 결과 커밋. 이어서 primary 정의를 논문과 대조.
+
+### Module 1 종료 — 세 arm 일치 (같은 날, WSL2, ROOT 6.40.02)
+- 처음으로 PyROOT, C++ 매크로를 실행해 uproot arm과 3단계 대조 (`m01_compare_arms.py`).
+- 첫 실행에서 나온 문제 세 개를 고침:
+  #15 MINUIT의 C 범위(10³⁰)가 정규화를 얼림 → PyROOT fit T = 56 MeV, χ²/ndf ≈ 10⁴;
+  #16 히스토그램이 입력 TFile 소유 → `fin->Close()` 후 segfault, 요약 JSON 0 바이트;
+  #17 C++에서 `Float_t` 곱 → 전방 η가 float32 정밀도, dN/dη 19 bins 어긋남.
+- 최종: 세 arm이 스칼라 5개, 히스토그램 220 bins(dN/dη 한 bin만 경계 입자 1개), Tsallis
+  (T, n) 모두 일치 → **ARMS AGREE**. 결과물 WSL2에서 재생성해 커밋 (`eabd61f`).
+
+### Module 2 첫 결과 — PYTHIA 8 vs ALICE (같은 날, WSL2, PYTHIA 8.312)
+- 20,000 이벤트, seed 20260827, 35 s. σ_gen = 78.05 mb; INEL>0 86.4 %;
+  ND / SD / DD = 72.7 / 16.3 / 11.0 %. PYTHIA 내부 오류 0.2 % 수준, 모두 재시도로 처리.
+- **ALICE INEL>0 dN/dη, |η| < 0.4: MC 6.84 ± 0.05 vs data 6.44 ± 0.19 → MC/data = 1.062**.
+  η 모양은 재현, 크기는 |η| < 1.8 전 구간에서 3–7 % 높음 (중앙에서 가장 큼).
+  ±15 % 기준 통과, 차이는 약 2σ (데이터 오차가 지배).
+- 해석(가설): 약붕괴 strange baryon(Σ±, Ξ, Ω)은 |η| < 0.4 하전 트랙의 ~1 % (2k 예비 샘플)
+  → primary 정의 차이로 설명되는 몫은 작음. Monash 튠 자체의 과대 예측이 유력.
+- 결과: `results/tables/m02/m02_compare_summary.json`, `results/figures/m02/`.
+
+### Next step
+1. ALICE 논문의 primary 정의 확인 → tau0Max 설정과 대조.
+2. 튠·colour reconnection을 바꿔 dN/dη 민감도 확인.
+3. 같은 ALICE 측정의 pT 스펙트럼·다중도 분포로 관측량 확대.
+4. Module 1 분석 코드(`m01_analysis_uproot.py`)를 PYTHIA 파일에 수정 없이 적용.

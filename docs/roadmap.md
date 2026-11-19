@@ -15,14 +15,14 @@ micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4, 16 논리코어.
 
 ---
 
-## Module 1 — ROOT 파일 I/O와 첫 히스토그램 (uproot arm 완료, ROOT arm 대기)
+## Module 1 ✅ ROOT 파일 I/O와 첫 히스토그램 (완료, 2026-11-19)
 
 - ✅ toy 이벤트 20,000개 → TTree → P(N_ch) / dN/dη / 불변 pT 수율 / m(μμ) + fit
 - ✅ closure test: 다중도·dN/dη(해석적 기대값)·종류별 Tsallis (T, n) 복원
 - ✅ `tests/` 22건 + GitHub Actions CI, 그림 바이트 단위 재현
-- ⬜ **WSL2에서 ROOT arm 두 개 실행** → `m01_compare_arms.py`가 세 arm의
+- ✅ **WSL2에서 ROOT arm 두 개 실행** → `m01_compare_arms.py`가 세 arm의
   스칼라·히스토그램 bin·fit 파라미터 일치를 판정 → `ARMS AGREE`
-- ⬜ 재생성한 `results/`를 WSL2 환경에서 커밋 (provenance의 platform 갱신)
+- ✅ 재생성한 `results/`를 WSL2 환경에서 커밋 (provenance의 platform 갱신)
 
 **검증 기준**: 세 arm의 `<N_ch>`, `dN/dη`, 이중뮤온 수가 상대 1e-6 이내,
 히스토그램 bin이 float round-off 또는 경계 입자 1개 이내, Tsallis (T, n)이

@@ -15,13 +15,13 @@
 
 ---
 
-## 1. 현재 상태 (2026-11-05 점검)
+## 1. 현재 상태 (2026-11-19)
 
 | 모듈 | 내용 | 상태 |
 |---|---|---|
 | Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
-| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | uproot arm 완료 (closure·테스트·CI·바이트 재현) / **ROOT arm 실행 대기** |
-| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | 카드·생성 스크립트·설정 작성 완료, **WSL2 실행 대기** |
+| Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | **완료** — closure 통과, uproot · PyROOT · C++ 세 arm이 WSL2에서 bin 단위 일치 |
+| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | **첫 결과** — ALICE INEL>0 dN/dη 대비 MC/data = 1.06 (|η| < 0.4). 원인 분석 진행 중 |
 | Module 3 | HepMC · PDG 이벤트 레코드 | 예정 |
 | Module 4 | FastJet | 예정 |
 
