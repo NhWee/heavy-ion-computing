@@ -169,7 +169,7 @@ void m01_analysis_root(const char *infile = "data/generated/m01_toy_events.root"
    // config/analysis.yaml (analysis.fits.tsallis_pt_range)
    TF1 *fTsallis = new TF1("fTsallis", TsallisInvariant, fitPtLo, fitPtHi, 4);
    fTsallis->SetParameters(hPt->GetBinContent(1) * 2.0, 0.13, 7.0, 0.13957039);
-   fTsallis->SetParLimits(0, 0.0, 1e30);
+   // no limit on C: a 1e30-wide MINUIT bound freezes it (troubleshooting #15)
    fTsallis->SetParLimits(1, 0.01, 1.0);
    fTsallis->SetParLimits(2, 1.0, 50.0);
    fTsallis->FixParameter(3, 0.13957039);              // pion mass, fixed

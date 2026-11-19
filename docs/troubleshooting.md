@@ -349,3 +349,26 @@ process / complete event listing이 stdout에 찍힘. 시작 시 "changes only" 
 **배운 점**: PYTHIA 설정은 순서가 의미를 갖는 경우가 있다 (`Print:quiet`, `Tune:pp`처럼
 다른 설정을 한꺼번에 바꾸는 스위치). 시작 시 출력되는 "changes only" 표가 카드의
 의도와 맞는지 보는 것이 가장 싼 검사다.
+
+---
+
+## #15 PyROOT arm의 Tsallis fit: T = 56 MeV, χ²/ndf ≈ 10⁴ (히스토그램은 완전히 일치)
+
+**증상**: WSL2에서 처음 실행한 3-arm 대조. PyROOT arm의 스칼라 5개와 히스토그램 4종
+220 bins가 uproot arm과 일치(최대 상대 차이 1e-10; dN/dη 한 bin만 경계 입자 1개)하는데
+Tsallis fit만 T = 0.0559 GeV (uproot 0.1482), n = 10.45, χ²/ndf = 10876.
+
+**원인 (가설, 재실행으로 확인 예정)**: `SetParLimits(0, 0, 1e30)`. MINUIT은 범위가 있는
+파라미터를 내부적으로 sin 변환해 다루는데, 범위가 10³⁰이면 시작값(첫 bin × 2)이 변환의
+평평한 끝에 놓여 기울기가 ~0이 된다. C가 시작값(참값의 약 2배)에 얼어붙고 T와 n이 그
+어긋남을 떠안음. scipy의 bounds는 이렇게 스텝을 왜곡하지 않아서 uproot arm은 정상이었다.
+같은 데이터·같은 함수·같은 시작값에서 결과가 갈렸다는 것이 근거.
+
+**해결**: C에는 범위를 두지 않음 (PyROOT, C++ 매크로 둘 다). T, n의 물리적 범위는 유지.
+
+**배운 점**: 히스토그램 대조를 fit 대조와 분리해 둔 덕에 "계산은 같고 fit만 다르다"가 한눈에
+보였다. MINUIT에 넓은 범위를 "안전장치"로 주면 오히려 fit을 망가뜨릴 수 있다 — 범위는
+물리적으로 필요한 파라미터에만.
+
+(같은 실행에서 C++ 매크로의 `m01_root_summary.json`은 첫 글자부터 JSON이 아니었음 —
+원인 조사 중. `m01_compare_arms.py`가 그 지점에서 traceback으로 죽던 것은 FAIL로 보고하도록 수정.)

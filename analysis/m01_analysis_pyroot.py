@@ -146,7 +146,11 @@ def main() -> int:
     fr = cfg["analysis"]["fits"]["tsallis_pt_range"]
     f_ts = ROOT.TF1("fTsallis", ROOT.tsallisInvariant, fr[0], fr[1], 4)
     f_ts.SetParameters(hpt.GetBinContent(1) * 2.0, 0.13, 7.0, 0.13957039)
-    f_ts.SetParLimits(0, 0.0, 1e30)
+    # NO limit on C (troubleshooting #15): MINUIT maps a bounded parameter
+    # through sin(); with a 1e30-wide range the mapping is flat at the start
+    # value, C froze at 2x its true value and T, n absorbed the error
+    # (T = 56 MeV, chi2/ndf = 1e4 in the first WSL2 run).  scipy's bounds
+    # do not distort the step that way, which is why the uproot arm was fine.
     f_ts.SetParLimits(1, 0.01, 1.0)
     f_ts.SetParLimits(2, 1.0, 50.0)
     f_ts.FixParameter(3, 0.13957039)

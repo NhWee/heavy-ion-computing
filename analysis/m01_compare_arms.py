@@ -188,7 +188,15 @@ def main() -> int:
 
     ok = True
     for name, path in found:
-        ok &= compare_arm(name, up, json.loads(path.read_text()))
+        raw = path.read_text()
+        try:
+            rt = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            print(f"\n=== uproot arm vs {name} ===\n  FAIL: {path.name} is not valid JSON "
+                  f"({exc}); {len(raw)} bytes, starts with {raw[:120]!r}")
+            ok = False
+            continue
+        ok &= compare_arm(name, up, rt)
     missing = [n for n, p in ARMS if not p.exists()]
     if missing:
         print(f"\n(not run: {', '.join(missing)})")
