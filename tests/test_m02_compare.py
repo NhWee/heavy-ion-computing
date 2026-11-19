@@ -216,3 +216,34 @@ def test_identified_self_comparison(small_sample, tmp_path, invariant, average):
     assert r.returncode == 0, r.stderr + r.stdout
     s = json.loads((tmp_path / "m02_identified_summary.json").read_text())
     np.testing.assert_allclose(s["species"]["pi"]["ratio"], 1.0, rtol=1e-12)
+
+
+def test_identified_inel0_derivation_recovers_known_spectrum(tmp_path):
+    """Fake ins1784041 tables: S_i = c_i * S, R_i = c_i with sum f_i c_i = 1.
+    Both the ratio method and the weighted sum must give back S exactly."""
+    import importlib.util
+    import yaml
+    spec = importlib.util.spec_from_file_location("derive", REPO / "scripts" / "m02_derive_identified_inel0.py")
+    der = importlib.util.module_from_spec(spec); spec.loader.exec_module(der)
+    edges = [0.1, 0.2, 0.5, 1.0, 3.0, 10.0, 20.0]
+    s_true = np.array([10.0, 5.0, 2.0, 0.5, 0.01, 1e-4])
+    c = np.linspace(4.0, 0.3, 10); c = c / np.sum(der.FRAC * c)          # sum f_i c_i = 1
+    x = [{"low": lo, "high": hi} for lo, hi in zip(edges[:-1], edges[1:])]
+
+    def table(n, classes, values):
+        dvs = [{"header": {"name": "y"}, "qualifiers": [{"name": "Mutliplicity", "value": f"V0M Class {k}"}],
+                "values": [{"value": float(v), "errors": [{"label": "stat", "symerror": float(0.01 * v)},
+                                                          {"label": "full syst.", "symerror": float(0.05 * v)}]}
+                           for v in vals]} for k, vals in zip(classes, values)]
+        (tmp_path / f"Table_{n}.yaml").write_text(yaml.safe_dump(
+            {"independent_variables": [{"header": {"name": "PT"}, "values": x}], "dependent_variables": dvs}))
+
+    first9, last = der.CLASSES[:9], der.CLASSES[9:]
+    table(1, first9, [ci * s_true for ci in c[:9]]); table(2, last, [c[9] * s_true])
+    table(7, first9, [np.full(6, ci) for ci in c[:9]]); table(8, last, [np.full(6, c[9])])
+    rows, spread, closure = der.derive(tmp_path, (1, 2, 7, 8))
+    assert len(rows) == 5                                    # the 10-20 GeV/c bin is cut (PT_MAX)
+    np.testing.assert_allclose([r["y"] for r in rows], s_true[:5], rtol=1e-12)
+    np.testing.assert_allclose(closure, 1.0, rtol=1e-12)
+    assert spread.max() < 1e-12
+    np.testing.assert_allclose([r["sys"] / r["y"] for r in rows], 0.05, rtol=1e-12)   # linear sum of 5 %
