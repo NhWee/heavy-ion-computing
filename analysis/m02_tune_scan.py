@@ -55,6 +55,12 @@ PT0REF = [2.28, 2.40, 2.52, 2.64, 2.76]          # Monash default 2.28 GeV
 CR_RANGE = [1.0, 1.4, 1.8, 2.6]                  # Monash default 1.8
 DNDETA_JSON = REPO / "data" / "raw" / "alice_pp13TeV_dndeta.json"
 PT_JSON = REPO / "data" / "raw" / "alice_pp13TeV_pt.json"
+# pT bins used in the chi2: the bulk that MPI and colour reconnection shape, and
+# where 10k events per point leave no empty MC bins.  Above ~10 GeV/c a point
+# can have ZERO MC entries in a bin; its MC error is then 0 while the data
+# error is tiny, and one empty bin adds ~100 to chi2 (first WSL2 scan: one grid
+# point jumped to 369 between neighbours at ~90).
+PT_FIT_MAX = 5.0   # GeV/c, upper edge of the last bin used
 
 
 def tag(pt0, cr):
@@ -141,7 +147,9 @@ def fit():
         r = {"pT0Ref": p["pT0Ref"], "cr_range": p["cr_range"], "f_inel0": p["f_inel0"]}
         for model in ("uncorr", "corr"):
             c1, n1 = chi2(p["dndeta"], p["dndeta_err"], d1["y"], d1["stat"], d1["sys"], model)
-            c2, n2 = chi2(p["pt_yield"], p["pt_yield_err"], d2["y"], d2["stat"], d2["sys"], model)
+            k = d2["xhi"] <= PT_FIT_MAX + 1e-9
+            c2, n2 = chi2(np.asarray(p["pt_yield"])[k], np.asarray(p["pt_yield_err"])[k],
+                          d2["y"][k], d2["stat"][k], d2["sys"][k], model)
             r[model] = {"dndeta": c1, "pt": c2, "total": c1 + c2,
                         "norm_dndeta": n1, "norm_pt": n2}
         central = np.abs(0.5 * (d1["xlo"] + d1["xhi"])) < 0.5
@@ -151,8 +159,8 @@ def fit():
         wd = d2["y"] * 2 * np.pi * c * np.diff(e2)
         r["mean_pt_ratio"] = float(((w * c).sum() / w.sum()) / ((wd * c).sum() / wd.sum()))
         rows.append(r)
-    n1, n2 = len(d1["y"]), len(d2["y"])
-    print(f"{len(rows)} points; bins: dN/deta {n1}, pT {n2}")
+    n1, n2 = len(d1["y"]), int(np.sum(d2["xhi"] <= PT_FIT_MAX + 1e-9))
+    print(f"{len(rows)} points; bins: dN/deta {n1}, pT {n2} (0.15 < pT < {PT_FIT_MAX:g} GeV/c)")
     for model in ("uncorr", "corr"):
         print(f"\n== systematics model: {model}  (chi2 dN/deta | pT | total)")
         best = min(rows, key=lambda r: r[model]["total"])
@@ -173,6 +181,7 @@ def fit():
     monash = next(x for x in rows if x["pT0Ref"] == 2.28 and x["cr_range"] == 1.8)
     out = {"grid": {"pT0Ref": PT0REF, "cr_range": CR_RANGE}, "n_bins": {"dndeta": n1, "pt": n2},
            "monash": monash, "points": rows,
+           "pt_fit_max_gev": PT_FIT_MAX,
            "note": "toy two-parameter scan; systematic correlations bracketed by two models; not a tune"}
     path = REPO / "results" / "tables" / "m02" / "m02_tune_scan.json"
     path.write_text(json.dumps(out, indent=2))
@@ -181,7 +190,7 @@ def fit():
     from hicpy.style import apply_style, save_figure, plt
     apply_style()
     fig, axes = plt.subplots(1, 3, figsize=(12.6, 3.9), sharey=True)
-    for ax, (key, ndf, title) in zip(axes, (("dndeta", n1, r"d$N$/d$\eta$"), ("pt", n2, r"$p_{\rm T}$ spectrum"),
+    for ax, (key, ndf, title) in zip(axes, (("dndeta", n1, r"d$N$/d$\eta$"), ("pt", n2, rf"$p_{{\rm T}}$ < {PT_FIT_MAX:g} GeV/$c$"),
                                              ("total", n1 + n2, "both"))):
         z = np.array([[next(r for r in rows if r["pT0Ref"] == p0 and r["cr_range"] == cr)["uncorr"][key] / ndf
                        for cr in CR_RANGE] for p0 in PT0REF])
