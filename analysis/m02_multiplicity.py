@@ -237,7 +237,7 @@ def compare(args) -> int:
             mcs[t] = json.loads(f.read_text())
     if not mcs:
         print("no MC sets: run `generate` first"); return 1
-    colors = [OKABE_ITO[i % len(OKABE_ITO)] for i in (0, 1, 2, 3, 4, 5)]
+    colors = [OKABE_ITO[i % len(OKABE_ITO)] for i in range(8)]
     summary = {"data": "HEPData ins1784041 (ALICE arXiv:2003.02394)", "ratios": {}, "meanpt": {}}
 
     def one(ax, data, key, title, scale=1.0):
@@ -282,7 +282,7 @@ def compare(args) -> int:
         summary["ratios"][r] = one(ax, d, ("ratios", r), titles[r], scale.get(r, 1.0))
     h, l = axes[0, 0].get_legend_handles_labels()
     fig.tight_layout(rect=(0, 0.07, 1, 1)); fig.legend(h, l, loc="lower center", ncol=5, fontsize=9, frameon=False)
-    save_figure(fig, FIG / "m02_mult_ratios"); plt.close(fig)
+    save_figure(fig, FIG / f"m02_mult_ratios{args.out_tag}"); plt.close(fig)
 
     fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.8))
     for ax, (sp, (tab, dep)) in zip(axes, MEANPT.items()):
@@ -293,12 +293,12 @@ def compare(args) -> int:
         ax.set_ylabel("GeV/$c$")
     h, l = axes[0].get_legend_handles_labels()
     fig.tight_layout(rect=(0, 0.13, 1, 1)); fig.legend(h, l, loc="lower center", ncol=5, fontsize=9, frameon=False)
-    save_figure(fig, FIG / "m02_mult_meanpt"); plt.close(fig)
+    save_figure(fig, FIG / f"m02_mult_meanpt{args.out_tag}"); plt.close(fig)
 
     summary["mc_sets"] = {t: {"label": m.get("label"), "pythia_version": m["pythia_version"],
                               "extra_settings": m["extra_settings"], "n_events": m["n_events"],
                               "dndeta_inel0": m["dndeta_inel0"]} for t, m in mcs.items()}
-    (TAB / "m02_mult_compare.json").write_text(json.dumps(summary, indent=1))
+    (TAB / f"m02_mult_compare{args.out_tag}.json").write_text(json.dumps(summary, indent=1))
     print(f"{'':12s}" + "".join(f"{mcs[t].get('label', t)[:22]:>24s}" for t in mcs))
     for group in ("ratios", "meanpt"):
         for q, res in summary[group].items():
@@ -309,7 +309,8 @@ def compare(args) -> int:
                   f"±{dr['data_rise_err']:.2f}")
     print("columns per set: MC/data at lowest and highest multiplicity, MC rise high/low ± MC stat;"
           " data rise error = stat (+) multiplicity-uncorrelated syst.")
-    print(f"[out] {TAB / 'm02_mult_compare.json'}, {FIG / 'm02_mult_ratios.pdf'}, {FIG / 'm02_mult_meanpt.pdf'}")
+    print(f"[out] {TAB / f'm02_mult_compare{args.out_tag}.json'}, {FIG / f'm02_mult_ratios{args.out_tag}.pdf'}, "
+          f"{FIG / f'm02_mult_meanpt{args.out_tag}.pdf'}")
     return 0
 
 
@@ -324,6 +325,7 @@ def main() -> int:
     g.add_argument("--label", default="Monash")
     c = sub.add_parser("compare")
     c.add_argument("--tags", nargs="+", default=["", "_rescatter", "_pt0240_sig031_rescatter", "_rope"])
+    c.add_argument("--out-tag", default="", help="suffix for the comparison outputs (e.g. _rope_scan)")
     args = ap.parse_args()
     return generate(args) if args.cmd == "generate" else compare(args)
 

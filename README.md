@@ -21,7 +21,7 @@
 |---|---|---|
 | Module 0 | HEP 계산 환경 구축 (WSL2 + micromamba) | **완료** — WSL2 `hic` 환경, verify 23 PASS / 0 FAIL / 2 SKIP |
 | Module 1 | ROOT 파일 I/O, 첫 물리 히스토그램 | **완료** — closure 통과, uproot · PyROOT · C++ 세 arm이 WSL2에서 bin 단위 일치 |
-| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | **완료** — ALICE dN/dη 대비 MC/data = 1.06; MPI pT0Ref 2.40이면 1.003. pT 0.4–0.8 GeV/c 초과(+12–15 %)는 **π에서 온다**; π 출처 분해 → 원인은 조성이 아니라 운동량 재분배(재산란이 일부 고침); 다중도 의존성: 기묘도 증가(Λ, Ξ, Ω)를 PYTHIA 기본은 못 만들고 rope가 일부 |
+| Module 2 | PYTHIA 8 minimum bias pp 13 TeV | **완료** — ALICE dN/dη 대비 MC/data = 1.06; MPI pT0Ref 2.40이면 1.003. pT 0.4–0.8 GeV/c 초과(+12–15 %)는 **π에서 온다**; π 출처 분해 → 원인은 조성이 아니라 운동량 재분배(재산란이 일부 고침); 다중도 의존성: 기묘도 증가(Λ, Ξ, Ω)를 PYTHIA는 못 만듦 — rope 기본값은 수준만 올림 |
 | Module 3 | HepMC · PDG 이벤트 레코드 | **완료** — PYTHIA history → HepMC3 변환기, 전역 보존 검사 통과, 꼭짓점별 보존은 단계에 따라 다름 |
 | Module 4 | FastJet | **완료** — anti-kT/kT/CA, 제트 면적, 배경 삽입·ρA 차감 (중이온 동기) |
 | Module 5 | 양성자·핵 PDF (PYTHIA 내장 NNPDF2.3, EPS09) | **완료** — 합 규칙, LHC x 영역, 납의 shadowing |
