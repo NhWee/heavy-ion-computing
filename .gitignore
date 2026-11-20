@@ -25,6 +25,7 @@ __pycache__/
 *.d
 build/
 .venv/
+.venv-pdf/
 env/
 
 # --- editors / OS

@@ -38,8 +38,10 @@ def pythia_module():
     """A PYTHIA Python module that exposes the PDF classes.
 
     The conda-forge `pythia8` bindings (WSL2 hic env) do NOT expose LHAGrid1 /
-    EPS09; the PyPI wheel `pythia8mc` does.  Both can be installed side by side
-    (different module names): `pip install pythia8mc` (troubleshooting #22).
+    EPS09; the PyPI wheel `pythia8mc` does.  Do NOT pip-install pythia8mc into
+    the conda env: it overwrites conda's share/Pythia8 data and conda PYTHIA
+    then refuses to start (troubleshooting #22, #24).  Use a venv:
+    python -m venv --system-site-packages .venv-pdf && .venv-pdf/bin/pip install pythia8mc
     pythia8mc is tried FIRST, so the conda library is not loaded into the
     same process as the PyPI one only to be rejected.
     """

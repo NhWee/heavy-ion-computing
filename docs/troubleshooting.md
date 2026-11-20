@@ -492,7 +492,10 @@ pT 비교는 데이터 없이 MC만으로 덮어써졌다.
 **증상**: `bash scripts/run_all_pythia.sh m05` → `AttributeError: module 'pythia8' has no attribute 'LHAGrid1'`.
 **원인**: conda-forge `pythia8`의 Python 바인딩은 이벤트 생성용 클래스만 노출하고 PDF 클래스
 (`LHAGrid1`, `EPS09`, …)는 노출하지 않는다. 클라우드에서 쓴 PyPI `pythia8mc` 휠은 전부 노출한다.
-**해결**: 두 패키지는 모듈 이름이 달라 같은 환경에 공존한다 → `pip install pythia8mc`.
+**해결 (처음 안내, 틀림)**: ~~같은 환경에 `pip install pythia8mc`~~ — 모듈 이름은 달라도 데이터 디렉토리가
+같아서 conda PYTHIA를 망가뜨린다 (#24).
+**해결 (고침)**: pythia8mc는 별도 venv에: `python -m venv --system-site-packages .venv-pdf &&
+.venv-pdf/bin/pip install pythia8mc`. `run_all_pythia.sh m05`가 이 venv를 쓴다.
 `hicpy.pdfs.pythia_module()`은 PDF 클래스가 있는 모듈을 골라 쓴다 (생성은 그대로 conda PYTHIA).
 **배운 점**: "같은 PYTHIA"라도 바인딩마다 노출하는 API가 다르다. import가 성공했다고 필요한 클래스가
 있는 것은 아니다 — 필요한 속성으로 확인한다.
@@ -514,3 +517,28 @@ percentile이라 그 자체가 통계 요동한다: 10k 표본 두 개의 40 % �
 독립 seed 표본 하나를 "stat" 행으로 남겨, 이전 방식의 잡음 크기를 함께 기록한다.
 **배운 점**: 작은 계통 효과는 두 독립 표본의 차이로 재지 않는다 — 잡음이 효과보다 크면 부호까지
 틀린다. 표본을 늘리거나(√N) 같은 난수를 쓴다(상관된 차이). 먼저 "명목 vs 명목"의 차이를 본다.
+
+
+---
+
+## #24 `pip install pythia8mc` 뒤 conda PYTHIA가 시작되지 않음: `in code 8.312 but in XML 8.318`
+
+**증상**: #22대로 `hic` 환경에 `pip install pythia8mc` 후 m05는 됐지만, 그 다음 생성 단계
+(`run_all_pythia.sh identified`)가 `PYTHIA rejected the card ...` /
+`PYTHIA Abort from Pythia::checkVersion: unmatched version numbers : in code 8.312 but in XML 8.318`.
+게다가 실행 스크립트는 메시지 없이 끝났다 (`set -e` + 로그 리다이렉트 — 이것도 고침, `logged()`).
+**원인**: pythia8mc 휠은 Python 모듈뿐 아니라 `<환경>/share/Pythia8/`(xmldoc, pdfdata, … 534개 파일)도
+설치한다. conda `pythia8`가 쓰는 것과 **같은 디렉토리** → conda 8.312의 XML 설정 파일이 8.318로 덮어써졌다.
+PYTHIA는 시작할 때 코드와 XML의 버전이 같은지 확인하고, 다르면 멈춘다. 모듈 이름(`pythia8` vs
+`pythia8mc`)이 다르다는 것만 보고 "공존한다"고 판단한 것이 잘못.
+**해결**:
+```bash
+pip uninstall -y pythia8mc
+micromamba install -y -n hic -c conda-forge --force-reinstall pythia8=8.312
+python -m venv --system-site-packages .venv-pdf && .venv-pdf/bin/pip install pythia8mc
+```
+첫 줄이 덮어쓴 파일을 지우고, 둘째 줄이 conda 파일을 되살리고, 셋째 줄이 pythia8mc를 hic 밖(venv 안의
+share/)에 둔다. venv는 `--system-site-packages`라 hic의 numpy·matplotlib을 그대로 본다.
+`run_all_pythia.sh`는 이제 생성 단계 전에 PYTHIA가 시작되는지 확인하고, 안 되면 이 명령을 출력한다.
+**배운 점**: 패키지가 공존하는지는 Python 모듈 이름이 아니라 **설치하는 파일 전체**로 판단한다
+(`pip show -f <패키지>`). 휠이 `../../../share/...` 같은 경로를 가지면 환경 공용 디렉토리를 건드린다.

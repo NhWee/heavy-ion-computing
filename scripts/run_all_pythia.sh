@@ -13,7 +13,7 @@
 #   stringpt    StringPT:sigma scan at pT0Ref 2.40 (6 x 20k) + fit
 #   m03         HepMC event record (Module 3)
 #   m04         hard-QCD sample + jets (Module 4)
-#   m05         proton and nuclear PDFs (Module 5; no generation; needs `pip install pythia8mc`, #22)
+#   m05         proton and nuclear PDFs (Module 5; no generation; uses .venv-pdf, see the stage)
 #   m06         Monte Carlo Glauber, Pb-Pb and p-Pb (Module 6; numpy only, ~10 min on 4 cores)
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
@@ -51,6 +51,29 @@ STAGES="${*:-$ALL}"
 want() { [[ " $STAGES " == *" $1 "* ]]; }
 
 # ---------------------------------------------------------------- preflight
+# PYTHIA's Python code and its XML data must be the same version.  They stop
+# matching if the PyPI wheel pythia8mc is pip-installed INTO the conda env: it
+# writes its own share/Pythia8/xmldoc over conda's (troubleshooting #24).
+need_gen=0
+for s in nominal variations scan stringpt m03 m04 identified; do want "$s" && need_gen=1; done
+if [[ $need_gen == 1 ]]; then
+    out=$("$PY" -c "
+try:
+    import pythia8
+except ImportError:
+    import pythia8mc as pythia8
+p = pythia8.Pythia('', False)
+print('PYTHIA', pythia8.__name__, p.settings.parm('Pythia:versionNumber'))" 2>&1 || true)
+    if [[ $out == *Abort* || $out != *PYTHIA* ]]; then
+        echo "preflight: PYTHIA cannot start -- nothing has been run or changed."
+        echo "$out" | grep -v "^ *$" | tail -n 3
+        echo "If it says 'unmatched version numbers', repair the env (troubleshooting #24):"
+        echo "    pip uninstall -y pythia8mc"
+        echo "    micromamba install -y -n hic -c conda-forge --force-reinstall pythia8=8.312"
+        exit 1
+    fi
+    echo "preflight: ${out##*$'\n'}"
+fi
 need_data=0
 for s in compare sensitivity scan stringpt; do want "$s" && need_data=1; done
 if [[ $need_data == 1 ]]; then
@@ -145,7 +168,17 @@ if want m04; then
 fi
 if want m05; then
     echo "### Module 5: proton and nuclear PDFs"
-    $PY analysis/m05_pdfs.py
+    # The PDF classes come from pythia8mc, which lives in its own venv so that
+    # it cannot overwrite the conda PYTHIA data (#22, #24).  Create it once:
+    #   python -m venv --system-site-packages .venv-pdf && .venv-pdf/bin/pip install pythia8mc
+    PDFPY=$PY
+    [[ -x .venv-pdf/bin/python ]] && PDFPY=.venv-pdf/bin/python
+    if ! "$PDFPY" -c "import sys; sys.path.insert(0, 'src'); from hicpy.pdfs import pythia_module; pythia_module()" 2>/dev/null; then
+        echo "no PYTHIA module with PDF classes for '$PDFPY' -- create the PDF venv once:"
+        echo "    python -m venv --system-site-packages .venv-pdf && .venv-pdf/bin/pip install pythia8mc"
+        exit 1
+    fi
+    $PDFPY analysis/m05_pdfs.py
 fi
 if want m06; then
     echo "### Module 6: Monte Carlo Glauber"
