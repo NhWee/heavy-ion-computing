@@ -21,6 +21,9 @@
 #   mult        K/pi, p/pi, strange/pi and <pT> vs multiplicity (V0M classes), 4 PYTHIA
 #               settings x 1M events (Omega needs them); NOT in the default list;
 #               ~30 min on 16 cores
+#   ropescan    rope-hadronization parameter variants for the multiplicity comparison
+#               (r0, proton radius, alwaysHighest) x 500k; after "mult"; NOT in the
+#               default list; ~40 min on 16 cores
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
 #               sample; generates one 20k tuned sample)
@@ -61,7 +64,7 @@ want() { [[ " $STAGES " == *" $1 "* ]]; }
 # matching if the PyPI wheel pythia8mc is pip-installed INTO the conda env: it
 # writes its own share/Pythia8/xmldoc over conda's (troubleshooting #24).
 need_gen=0
-for s in nominal variations scan stringpt m03 m04 identified origin mult; do want "$s" && need_gen=1; done
+for s in nominal variations scan stringpt m03 m04 identified origin mult ropescan; do want "$s" && need_gen=1; done
 if [[ $need_gen == 1 ]]; then
     out=$("$PY" -c "
 try:
@@ -103,7 +106,7 @@ if bad:
 print("preflight: ALICE tables present, sha256 match")
 EOF
 fi
-if want identified || want origin || want mult; then
+if want identified || want origin || want mult || want ropescan; then
     # Not unpacked yet: look for the archive in the Windows Downloads folder(s)
     # (WSL2 mounts C: at /mnt/c) and unpack it -- no user name to type.
     if [[ ! -f data/raw/ins1784041/Table_1.yaml ]]; then
@@ -235,5 +238,22 @@ if want mult; then
         --set "Ropewalk:RopeHadronization = on" --set "Ropewalk:doShoving = off" \
         --set "Ropewalk:doFlavour = on" --set "PartonVertex:setVertex = on"; tail -n 1 results/logs/mult_rope.log
     $PY analysis/m02_multiplicity.py compare
+fi
+if want ropescan; then
+    echo "### Module 2: rope-hadronization variants (logs: results/logs/rope_*.log)"
+    rope_run() {   # tag label [--set ...]
+        local tag=$1 label=$2; shift 2
+        logged "results/logs/rope${tag}.log" $PY analysis/m02_multiplicity.py generate --n-events 500000 \
+            --tag "_rope$tag" --label "$label" \
+            --set "Ropewalk:RopeHadronization = on" --set "Ropewalk:doShoving = off" \
+            --set "Ropewalk:doFlavour = on" --set "PartonVertex:setVertex = on" "$@"
+        grep "^\[gen\]" "results/logs/rope${tag}.log" | sed 's/ settings.*//'
+    }
+    rope_run _r10      "rope r0 1.0" --set "Ropewalk:r0 = 1.0"
+    rope_run _r15      "rope r0 1.5" --set "Ropewalk:r0 = 1.5"
+    rope_run _r10_high "rope r0 1.0, highest multiplet" --set "Ropewalk:r0 = 1.0" --set "Ropewalk:alwaysHighest = on"
+    rope_run _r10_pr07 "rope r0 1.0, proton radius 0.7" --set "Ropewalk:r0 = 1.0" --set "PartonVertex:ProtonRadius = 0.7"
+    $PY analysis/m02_multiplicity.py compare --tags "" _rope _rope_r10 _rope_r15 _rope_r10_high _rope_r10_pr07 \
+        --out-tag _rope_scan
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

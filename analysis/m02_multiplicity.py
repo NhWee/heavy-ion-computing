@@ -228,6 +228,22 @@ def interp_mc(mc, quantity, x, merge_pairs=False, max_extrap=0.10):
 
 
 # ----------------------------------------------------------------------------- compare
+def fit_rise(x, y, err, x_lo, x_hi):
+    """Weighted fit y = a + b ln x; returns (y(x_hi)/y(x_lo), its error).
+    Uses every class, so it is far less sensitive to one fluctuating end point
+    than the plain end-point ratio (troubleshooting #25)."""
+    ok = np.isfinite(y) & np.isfinite(err) & (err > 0)
+    X = np.vstack([np.ones(ok.sum()), np.log(x[ok])]).T
+    W = 1.0 / err[ok] ** 2
+    cov = np.linalg.inv(X.T @ (X * W[:, None]))
+    a, b = cov @ (X.T @ (W * y[ok]))
+    g_lo, g_hi = np.array([1, np.log(x_lo)]), np.array([1, np.log(x_hi)])
+    lo, hi = g_lo @ [a, b], g_hi @ [a, b]
+    r = hi / lo
+    grad = g_hi / lo - hi * g_lo / lo ** 2
+    return float(r), float(np.sqrt(grad @ cov @ grad))
+
+
 def compare(args) -> int:
     from hicpy.style import apply_style, save_figure, OKABE_ITO, plt
     mcs = {}
@@ -251,6 +267,8 @@ def compare(args) -> int:
         d_rise = data["y"][ih] / data["y"][il]
         d_rise_err = d_rise * np.hypot(np.hypot(data["stat"][ih], data["sys_unc"][ih]) / data["y"][ih],
                                        np.hypot(data["stat"][il], data["sys_unc"][il]) / data["y"][il])
+        d_fit, d_fit_err = fit_rise(data["x"], data["y"], np.hypot(data["stat"], data["sys_unc"]),
+                                    data["x"][il], data["x"][ih])
         for (t, mc), col in zip(mcs.items(), colors):
             xs, ys, es = mc_points(mc, key, merge)
             ax.errorbar(xs, ys * scale, yerr=ys * es * scale, fmt="-s", color=col, lw=1.6, ms=3, capsize=0,
@@ -258,7 +276,11 @@ def compare(args) -> int:
             v, e = interp_mc(mc, key, data["x"], merge)
             at = v / data["y"]
             rise = v[ih] / v[il]
+            mc_fit, mc_fit_err = fit_rise(xs, ys, np.where(es > 0, ys * es, np.nan) if key[0] == "ratios"
+                                          else np.full_like(ys, 1e-3 * np.nanmean(ys)), data["x"][il], data["x"][ih])
             res[t] = {"mc_over_data_lowest": float(at[il]), "mc_over_data_highest": float(at[ih]),
+                      "mc_rise_fit": mc_fit, "mc_rise_fit_err": mc_fit_err,
+                      "data_rise_fit": d_fit, "data_rise_fit_err": d_fit_err,
                       "data_rise_high_over_low": float(d_rise), "data_rise_err": float(d_rise_err),
                       "mc_rise_high_over_low": float(rise), "mc_rise_stat_err": float(rise * np.hypot(e[ih], e[il])),
                       "mc_rel_stat_highest": float(e[ih])}
@@ -303,12 +325,12 @@ def compare(args) -> int:
     for group in ("ratios", "meanpt"):
         for q, res in summary[group].items():
             cells = "".join(f"{res[t]['mc_over_data_lowest']:7.3f} {res[t]['mc_over_data_highest']:6.3f} "
-                            f"{res[t]['mc_rise_high_over_low']:5.2f}±{res[t]['mc_rise_stat_err']:.2f} " for t in mcs)
+                            f"{res[t]['mc_rise_fit']:5.2f}±{res[t]['mc_rise_fit_err']:.2f} " for t in mcs)
             dr = next(iter(res.values()))
-            print(f"{(q if group == 'ratios' else '<pT> ' + q):12s}{cells}  data rise {dr['data_rise_high_over_low']:.2f}"
-                  f"±{dr['data_rise_err']:.2f}")
-    print("columns per set: MC/data at lowest and highest multiplicity, MC rise high/low ± MC stat;"
-          " data rise error = stat (+) multiplicity-uncorrelated syst.")
+            print(f"{(q if group == 'ratios' else '<pT> ' + q):12s}{cells}  data rise {dr['data_rise_fit']:.2f}"
+                  f"±{dr['data_rise_fit_err']:.2f} (end points {dr['data_rise_high_over_low']:.2f})")
+    print("columns per set: MC/data at lowest and highest multiplicity; rise = fit a + b ln(dN/deta) over all classes,"
+          " value at highest / lowest data multiplicity (MC: stat; data: stat (+) multiplicity-uncorrelated syst.)")
     print(f"[out] {TAB / f'm02_mult_compare{args.out_tag}.json'}, {FIG / f'm02_mult_ratios{args.out_tag}.pdf'}, "
           f"{FIG / f'm02_mult_meanpt{args.out_tag}.pdf'}")
     return 0
