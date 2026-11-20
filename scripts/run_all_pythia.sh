@@ -24,6 +24,9 @@
 #   ropescan    rope-hadronization parameter variants for the multiplicity comparison
 #               (r0, proton radius, alwaysHighest) x 500k; after "mult"; NOT in the
 #               default list; ~40 min on 16 cores
+#   m07         Angantyr pp-reference / p-Pb / Pb-Pb at 5.02 TeV (Module 7): 1M / 1M / 20k
+#               events; NOT in the default list; ~25 min on 16 cores; uses Module 6 and
+#               the ins1784041 tables (pp strangeness reference)
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
 #               sample; generates one 20k tuned sample)
@@ -64,7 +67,7 @@ want() { [[ " $STAGES " == *" $1 "* ]]; }
 # matching if the PyPI wheel pythia8mc is pip-installed INTO the conda env: it
 # writes its own share/Pythia8/xmldoc over conda's (troubleshooting #24).
 need_gen=0
-for s in nominal variations scan stringpt m03 m04 identified origin mult ropescan; do want "$s" && need_gen=1; done
+for s in nominal variations scan stringpt m03 m04 identified origin mult ropescan m07; do want "$s" && need_gen=1; done
 if [[ $need_gen == 1 ]]; then
     out=$("$PY" -c "
 try:
@@ -106,7 +109,7 @@ if bad:
 print("preflight: ALICE tables present, sha256 match")
 EOF
 fi
-if want identified || want origin || want mult || want ropescan; then
+if want identified || want origin || want mult || want ropescan || want m07; then
     # Not unpacked yet: look for the archive in the Windows Downloads folder(s)
     # (WSL2 mounts C: at /mnt/c) and unpack it -- no user name to type.
     if [[ ! -f data/raw/ins1784041/Table_1.yaml ]]; then
@@ -255,5 +258,14 @@ if want ropescan; then
     rope_run _r10_pr07 "rope r0 1.0, proton radius 0.7" --set "Ropewalk:r0 = 1.0" --set "PartonVertex:ProtonRadius = 0.7"
     $PY analysis/m02_multiplicity.py compare --tags "" _rope _rope_r10 _rope_r15 _rope_r10_high _rope_r10_pr07 \
         --out-tag _rope_scan
+fi
+if want m07; then
+    echo "### Module 7: Angantyr p-Pb and Pb-Pb (logs: results/logs/m07_*.log)"
+    for spec in "pp 1000000" "pPb 1000000" "PbPb 20000"; do
+        set -- $spec
+        logged "results/logs/m07_$1.log" $PY analysis/m07_angantyr.py generate --system "$1" --n-events "$2"
+        grep -E "^\[(gen|sigma|all)\]" "results/logs/m07_$1.log"
+    done
+    $PY analysis/m07_angantyr.py compare
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

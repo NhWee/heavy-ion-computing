@@ -47,3 +47,18 @@ def test_centrality_classes_are_ordered():
     t = centrality_table(res, (0, 10, 50, 100))
     assert t[0]["npart"] > t[1]["npart"] > t[2]["npart"]
     assert t[0]["b"] < t[1]["b"] < t[2]["b"]
+
+
+def test_m07_percentile_classes_and_frame():
+    """Angantyr analysis helpers: percentile classes and the p-Pb lab frame."""
+    import pathlib
+    import sys
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "analysis"))
+    import m07_angantyr as m7
+    rng = np.random.default_rng(0)
+    key = np.arange(1000, dtype=float)
+    cls = m7.percentile_classes(key, [0, 10, 50, 100], rng)
+    assert [len(i) for _, i in cls] == [100, 400, 500]
+    assert key[cls[0][1]].min() > key[cls[1][1]].max()          # first class = largest key
+    assert m7.Y_SHIFT["pPb"] == -0.465 and m7.FLIP["pPb"]          # proton to -eta, CM at y = -0.465
+    assert not m7.FLIP["PbPb"] and m7.Y_SHIFT["PbPb"] == 0.0

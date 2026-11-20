@@ -1,0 +1,42 @@
+! ---------------------------------------------------------------------------
+! Module 7 : PYTHIA 8 Angantyr, Pb-Pb at sqrt(s_NN) = 5.02 TeV
+!
+!   python analysis/m07_angantyr.py generate --system PbPb
+!
+! Angantyr (Bierlich, Gustafson, Lönnblad, Shah, arXiv:1806.10820) builds a
+! nucleus-nucleus event from nucleon-nucleon sub-collisions, with NO
+! collective effects and NO quark-gluon plasma:
+!   1. a Glauber Monte Carlo with FLUCTUATING nucleon sizes decides which
+!      nucleons interact and how (absorptively = non-diffractive, or
+!      diffractively) -- compare Module 6's black-disk Glauber;
+!   2. each absorptive sub-collision becomes an ordinary PYTHIA pp-like
+!      event (MPI, showers); further collisions of the same projectile
+!      nucleon are added as diffraction-like excitations (wounded-nucleon
+!      picture, after Fritiof);
+!   3. everything is hadronized together with the Lund string model.
+! Same rule as the pp card: nothing that matters is left implicit.
+! ---------------------------------------------------------------------------
+
+Beams:idA = 1000822080            ! lead-208, moves along +z
+Beams:idB = 1000822080      ! lead-208, moves along -z
+Beams:eCM = 5020.           ! GeV per nucleon pair (LHC Run 2)
+Beams:frameType = 1         ! nucleon-nucleon centre-of-mass frame
+
+! Heavy-ion machinery: mode 1 = use Angantyr whenever a beam is a nucleus.
+HeavyIon:mode = 1
+! The sub-collision model (default 2: fluctuating radii and cross sections)
+! is fitted at initialisation to PYTHIA's own pp cross sections (total,
+! non-diffractive, diffractive, elastic) at this energy.  20 generations of a
+! genetic algorithm, ~30 s.  Kept at the documented defaults.
+Angantyr:CollisionModel = 2
+HeavyIon:SigFitNGen = 20
+
+! Primary particles as in ALICE: decay only what has c*tau < 1 cm.
+ParticleDecays:limitTau0 = on
+ParticleDecays:tau0Max = 10.
+
+! Run control (the script overrides the seed per worker).
+Print:quiet = on
+Next:numberCount = 0
+Random:setSeed = on
+Random:seed = 20261121
