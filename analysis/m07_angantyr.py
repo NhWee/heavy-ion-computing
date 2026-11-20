@@ -339,7 +339,7 @@ def compare(args) -> int:
             ax.plot([c["dndeta"] for c in run["classes"]], [c["ratios"][r] for c in run["classes"]], "s-", ms=3,
                     color=colors[s], lw=1.5, label=run["label"])
         ax.set_xscale("log"); ax.set_title(r, fontsize=12); ax.set_xlabel(r"$\langle dN_{\rm ch}/d\eta\rangle$")
-        ticks = [2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000]
+        ticks = [2, 5, 10, 20, 50, 100, 200, 500, 2000]
         ax.xaxis.set_major_locator(FixedLocator(ticks)); ax.xaxis.set_minor_locator(NullLocator())
         ax.xaxis.set_major_formatter(FixedFormatter([str(t) for t in ticks])); ax.set_xlim(2, 3000)
     h, l = axes[0, 0].get_legend_handles_labels()

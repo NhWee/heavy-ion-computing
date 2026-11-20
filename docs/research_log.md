@@ -393,3 +393,14 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - alwaysHighest만 움직임: 맞춤 증가율 Λ 1.18 / Ξ 1.41 / Ω 1.95 (데이터 1.48 / 2.10 / 2.97), 부작용 p/π +25 %.
 - 증가율을 끝점 비 → 맞춤(a + b ln dN/dη)으로 변경 (#25). module02 §14 표 갱신, §15 추가.
 - WSL2 50만 사건: alwaysHighest Λ 1.17 / Ξ 1.34 / Ω 2.13, p/π +32 %; r0·양성자 반지름은 Ξ 1.20–1.30. 결론 동일 (§15 표 갱신).
+
+---
+
+## Session 9 — 2026-11-21 · Module 7 Angantyr
+
+- 접근: `pythia.getHeavyIonsPtr().hiInfo` (Info에는 노출 안 됨). 8.318의 SigFitDefPar는 3개 → 기본 맞춤(30 s) 사용.
+- 함정 (#26): 기본 사건 가중치(가우스 b) → forceUnitWeight; nCollTot·nPartProj에 탄성 포함 → 비탄성으로 다시 셈.
+  고치기 전 ⟨b⟩ 8 % 작음, 고친 뒤 Module 6과 대부분 2 % 안.
+- 결과 (클라우드 8.318): σ_PbPb 7.21 b (ALICE 7.67), σ_pPb 2.00 b (CMS 2.06); Angantyr N_part 2–15 % 적고 N_coll 6–11 % 많음
+  (요동하는 단면적). p–Pb NSD dN_ch/dη 18.4 vs 16.81, Pb–Pb 0–5 % 1805 vs 1943. 기묘 입자 비는 pp부터 Pb–Pb까지 평평.
+- hepdata.net·arxiv.org는 웹 읽기 에이전트로도 DNS 실패 → 측정값은 검색으로 확인된 것만 사용.

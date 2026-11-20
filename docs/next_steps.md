@@ -127,3 +127,7 @@ WSL2 100만 ✅. rope 매개변수 시험 ✅ (§15: r0 무효과, alwaysHighest
 ### 그 다음
 Module 7: PYTHIA Angantyr p–Pb / Pb–Pb — Module 6의 N_part 분포와 비교, Module 4 배경 차감을
 실제 중이온 배경으로.
+
+### Step 8 — Module 7 Angantyr ✅ 1차 (2026-11-21)
+`docs/modules/module07_angantyr.md`. 남은 것: WSL2 정식 (`bash scripts/run_all_pythia.sh m07`), Pb–Pb 중심도별
+dN_ch/dη (HEPData ins1410589 Table 1을 받아 `data/raw/`에), Angantyr + rope/shoving.
