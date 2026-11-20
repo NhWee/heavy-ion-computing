@@ -377,3 +377,4 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - 모양 비 S = (0.4–0.8)/(0.1–0.25): Monash 1.38; mesonUDvector 0.25–1.5 → 1.33–1.44 (조성 아님); BE 1.38;
   재산란 1.23; pT0Ref 2.40 + σ 0.31 + 재산란 1.19 (χ² 462 → 126). module02 §13.
 - 그림 저장 오류: fill_between(color="none", hatch=…)가 PDF에서 TypeError → facecolor/edgecolor 분리.
+- WSL2 8.312 정식: closure 3e-16; S Monash 1.40, UDvector 1.33–1.43, BE 1.38, 재산란 1.24, 조정+재산란 1.16 (χ² 487 → 104).
