@@ -36,6 +36,15 @@ if ! command -v "$PY" >/dev/null 2>&1 || ! "$PY" -c "import numpy, uproot, awkwa
 fi
 G=data/generated
 mkdir -p results/logs
+# Steps whose output goes to a log: on failure print the log's tail and stop.
+# (Plain `cmd > log 2>&1` under `set -e` used to end the script with no message.)
+logged() {
+    local log=$1 rc=0; shift
+    "$@" > "$log" 2>&1 || rc=$?
+    if (( rc != 0 )); then
+        echo "FAILED (exit $rc): $*"; echo "--- last lines of $log:"; tail -n 25 "$log"; exit 1
+    fi
+}
 
 ALL="nominal compare variations sensitivity scan stringpt m03 m04 m05 m06"
 STAGES="${*:-$ALL}"
@@ -95,7 +104,7 @@ fi
 # ---------------------------------------------------------------- stages
 if want nominal; then
     echo "### Module 2: nominal minimum-bias sample (20k)"
-    $PY scripts/m02_run_pythia.py > results/logs/m02_nominal.log 2>&1; tail -2 results/logs/m02_nominal.log
+    logged results/logs/m02_nominal.log $PY scripts/m02_run_pythia.py; tail -n 2 results/logs/m02_nominal.log
 fi
 if want compare; then
     echo "### Module 2: dN/deta and pT spectrum vs ALICE"
@@ -130,8 +139,8 @@ if want m03; then
 fi
 if want m04; then
     echo "### Module 4: jets"
-    $PY scripts/m02_run_pythia.py --card generators/pythia_hardqcd_13TeV.cmnd \
-        --out $G/m04_hardqcd_13TeV.root > results/logs/m04_gen.log 2>&1; tail -2 results/logs/m04_gen.log
+    logged results/logs/m04_gen.log $PY scripts/m02_run_pythia.py --card generators/pythia_hardqcd_13TeV.cmnd \
+        --out $G/m04_hardqcd_13TeV.root; tail -n 2 results/logs/m04_gen.log
     $PY analysis/m04_jets.py
 fi
 if want m05; then
@@ -140,14 +149,14 @@ if want m05; then
 fi
 if want m06; then
     echo "### Module 6: Monte Carlo Glauber"
-    $PY analysis/m06_glauber.py > results/logs/m06_glauber.log 2>&1; grep -E "^\[" results/logs/m06_glauber.log || tail -5 results/logs/m06_glauber.log
+    logged results/logs/m06_glauber.log $PY analysis/m06_glauber.py; grep -E "^\[" results/logs/m06_glauber.log
 fi
 if want identified; then
     echo "### Module 2: identified pi/K/p vs ALICE"
     $PY scripts/m02_derive_identified_inel0.py
     $PY analysis/m02_compare_identified.py --label Monash
-    $PY scripts/m02_run_pythia.py --set "MultipartonInteractions:pT0Ref = 2.40" --set "StringPT:sigma = 0.31" \
-        --out $G/m02_id_pt0240_sig031.root > results/logs/id_gen_best.log 2>&1; tail -n 1 results/logs/id_gen_best.log
+    logged results/logs/id_gen_best.log $PY scripts/m02_run_pythia.py --set "MultipartonInteractions:pT0Ref = 2.40" --set "StringPT:sigma = 0.31" \
+        --out $G/m02_id_pt0240_sig031.root; tail -n 1 results/logs/id_gen_best.log
     $PY analysis/m02_compare_identified.py --mc $G/m02_id_pt0240_sig031.root \
         --label "pT0Ref 2.40, sigma 0.31" --tag _pt0240_sig031
 fi
