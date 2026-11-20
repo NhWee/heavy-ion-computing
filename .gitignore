@@ -3,6 +3,7 @@ data/generated/*.root
 data/generated/scan/
 data/generated/*.hepmc
 data/generated/*.lhe
+data/generated/*.npz
 data/processed/*.parquet
 data/processed/*.root
 # raw = downloaded public data; keep the provenance JSON, not the payload

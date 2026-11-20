@@ -267,3 +267,31 @@ def test_pion_origin_classification():
     for sp in po.ORIGINS:                                         # every label is a declared origin
         for st, m in ((83, 0), (91, 113), (91, 223), (91, 333), (91, 2224), (91, 411), (91, 3114), (91, 9000111)):
             assert po.classify(sp, st, m) in po.ORIGINS[sp]
+
+
+def test_multiplicity_classes_and_ratios():
+    """V0M classes take the right percentiles of INEL>0 events and pool ratios correctly."""
+    import m02_multiplicity as mm
+    cols = ["nv0", "nch1", "nch05"] + [f"n_{s}" for s in mm.SPECIES] + [f"sumpt_{s}" for s in mm.PT_SPECIES]
+    n = 100000
+    rng = np.random.default_rng(3)
+    nv0 = rng.permutation(n).astype(float)                      # all distinct: no ties
+    data = np.zeros((n, len(cols)))
+    c = {k: i for i, k in enumerate(cols)}
+    data[:, c["nv0"]] = nv0
+    data[:, c["nch1"]] = 1                                       # every event INEL>0 ...
+    data[:5000, c["nch1"]] = 0                                   # ... except 5 %
+    data[:, c["nch05"]] = nv0 / 1000.0
+    data[:, c["n_pi"]] = 10; data[:, c["n_K"]] = 1; data[:, c["n_Xi"]] = 0.1
+    data[:, c["sumpt_pi"]] = 5.0
+    res = mm.classify(data, cols)
+    assert res["n_inel0"] == 95000
+    sizes = [k["n_events"] for k in res["classes"]]
+    expected = np.diff(np.round(95000 * np.array(mm.CLASS_EDGES) / 100))
+    np.testing.assert_array_equal(sizes, expected)
+    dn = [k["dndeta"] for k in res["classes"]]
+    assert all(a > b for a, b in zip(dn, dn[1:]))                # class I = highest V0M = highest dN/deta
+    for k in res["classes"]:
+        assert k["ratios"]["K/pi"] == pytest.approx(0.1)
+        assert k["ratios"]["Xi/pi"] == pytest.approx(0.01)
+        assert k["meanpt"]["pi"] == pytest.approx(0.5)
