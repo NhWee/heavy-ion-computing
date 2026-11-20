@@ -27,6 +27,13 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 PY="${PYTHON:-python}"
+# Fail before touching anything if this is not the hic environment (a fresh
+# terminal starts outside it: no `python`, or a system python without numpy).
+if ! command -v "$PY" >/dev/null 2>&1 || ! "$PY" -c "import numpy, uproot, awkward" >/dev/null 2>&1; then
+    echo "'$PY' with numpy/uproot/awkward not found -- activate the environment first:"
+    echo "    micromamba activate hic"
+    exit 1
+fi
 G=data/generated
 mkdir -p results/logs
 
