@@ -362,3 +362,12 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - π: 최저 pT −17 %, 0.4–0.8 +18 % → MC 봉우리가 높은 pT 쪽. K, p: 0.8 GeV/c 위 15–25 % 부족 (질량 순서).
 - K/π 이중비 0.92, p/π 0.99.
 - 다음: π 출처 분해 (공명 붕괴), 다중도 의존성.
+
+### WSL2 정식 (2026-11-20)
+- identified: π 0.4–0.8 1.17 (Monash) / 1.11 (조정), K/π 0.93 / 0.91 — 클라우드와 같은 결론. module02 §12를 8.312 값으로.
+  조정(pT0Ref 2.40 + σ 0.31)은 π를 낫게, K를 나쁘게 (K 수율 0.96 → 0.91).
+- #24: #22의 `pip install pythia8mc`가 hic의 share/Pythia8을 8.318로 덮어써 conda PYTHIA가 시작 거부.
+  복구 후 PDF는 `.venv-pdf`; 실행 스크립트에 PYTHIA 시작 검사, 로그 단계 실패 시 로그 출력(`logged`).
+- 복구 과정에서 conda `pythia8`가 8.312 빌드 305 → 307로 바뀌고 `lhapdf 6.5.6`, `hepmc2`가 의존성으로 들어옴
+  → `environment/versions_installed.txt` 갱신 필요. LHAPDF가 생겼으니 EPPS21로 Module 5 확장 가능.
+
