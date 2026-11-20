@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Module 2, step 9: particle ratios and <pT> versus multiplicity, PYTHIA vs ALICE.
 
-    python analysis/m02_multiplicity.py generate [--n-events 200000] [--workers N]
+    python analysis/m02_multiplicity.py generate [--n-events 1000000] [--workers N]
                                                  [--set "Key = value" ...] [--tag _x] [--label "..."]
     python analysis/m02_multiplicity.py compare  [--tags "" _rescatter ...]
 
@@ -188,12 +188,43 @@ def read_table(n, dep):
     return {"x": x, "y": y, "stat": err["stat"], "sys": err["full syst."], "sys_unc": err["unc. syst."]}
 
 
-def interp_mc(mc, quantity, x):
-    """MC value at the data's <dNch/deta>: linear in dNch/deta between MC classes."""
-    xs = np.array([c["dndeta"] for c in mc["classes"]])
-    ys = np.array([c[quantity[0]][quantity[1]] for c in mc["classes"]], float)
-    o = np.argsort(xs)
-    return np.interp(x, xs[o], ys[o], left=np.nan, right=np.nan)
+def mc_points(mc, quantity, merge_pairs=False):
+    """(dN/deta, value, relative stat. error) per MC class.  merge_pairs: classes
+    I+II, III+IV, ... as in ALICE's Omega table (Table 19), for statistics."""
+    cls = mc["classes"]
+    if not merge_pairs:
+        x = np.array([c["dndeta"] for c in cls])
+        y = np.array([c[quantity[0]][quantity[1]] for c in cls], float)
+        if quantity[0] == "ratios":
+            e = np.array([c["ratio_stat"][quantity[1]] for c in cls], float) / np.where(y > 0, y, np.nan)
+        else:
+            e = np.zeros_like(y)
+        return x, y, e
+    sp, fac = RATIOS[quantity[1]][:2]
+    xs, ys, es = [], [], []
+    for a, b in zip(cls[0::2], cls[1::2]):
+        n = a["n_events"] + b["n_events"]
+        nx = a["counts"][sp] + b["counts"][sp]; npi = a["counts"]["pi"] + b["counts"]["pi"]
+        xs.append((a["dndeta"] * a["n_events"] + b["dndeta"] * b["n_events"]) / n)
+        ys.append(fac * nx / npi); es.append(1 / np.sqrt(nx) if nx else np.nan)
+    return np.array(xs), np.array(ys), np.array(es)
+
+
+def interp_mc(mc, quantity, x, merge_pairs=False, max_extrap=0.10):
+    """MC value (and relative stat. error) at the data's <dNch/deta>: linear in
+    dNch/deta between MC points; outside the MC range linear extrapolation from
+    the two end points, allowed up to max_extrap (relative) beyond the range."""
+    xs, ys, es = mc_points(mc, quantity, merge_pairs)
+    o = np.argsort(xs); xs, ys, es = xs[o], ys[o], es[o]
+    x = np.atleast_1d(np.asarray(x, float))
+    val = np.interp(x, xs, ys); err = np.interp(x, xs, es)
+    lo, hi = x < xs[0], x > xs[-1]
+    val[lo] = ys[0] + (ys[1] - ys[0]) / (xs[1] - xs[0]) * (x[lo] - xs[0])
+    val[hi] = ys[-1] + (ys[-1] - ys[-2]) / (xs[-1] - xs[-2]) * (x[hi] - xs[-1])
+    err[lo], err[hi] = es[0], es[-1]
+    bad = (x < xs[0] * (1 - max_extrap)) | (x > xs[-1] * (1 + max_extrap))
+    val[bad] = np.nan
+    return val, err
 
 
 # ----------------------------------------------------------------------------- compare
@@ -215,17 +246,27 @@ def compare(args) -> int:
         for x, y, s in zip(data["x"], data["y"] * scale, data["sys"] * scale):
             ax.add_patch(plt.Rectangle((x * 0.96, y - s), x * 0.08, 2 * s, fc="none", ec="k", lw=0.8))
         res = {}
+        merge = key == ("ratios", "Omega/pi")
+        ih, il = np.argmax(data["x"]), np.argmin(data["x"])
+        d_rise = data["y"][ih] / data["y"][il]
+        d_rise_err = d_rise * np.hypot(np.hypot(data["stat"][ih], data["sys_unc"][ih]) / data["y"][ih],
+                                       np.hypot(data["stat"][il], data["sys_unc"][il]) / data["y"][il])
         for (t, mc), col in zip(mcs.items(), colors):
-            xs = [c["dndeta"] for c in mc["classes"]]
-            ys = [c[key[0]][key[1]] * scale for c in mc["classes"]]
-            ax.plot(xs, ys, "-", color=col, lw=1.8, marker="s", ms=3, label=mc.get("label", t))
-            at = interp_mc(mc, key, data["x"]) / data["y"]
-            res[t] = {"mc_over_data_lowest": float(at[np.argmin(data["x"])]),
-                      "mc_over_data_highest": float(at[np.argmax(data["x"])]),
-                      "data_rise_high_over_low": float(data["y"][np.argmax(data["x"])] / data["y"][np.argmin(data["x"])]),
-                      "mc_rise_high_over_low": float(interp_mc(mc, key, np.array([data["x"].max()]))[0] /
-                                                     interp_mc(mc, key, np.array([data["x"].min()]))[0])}
+            xs, ys, es = mc_points(mc, key, merge)
+            ax.errorbar(xs, ys * scale, yerr=ys * es * scale, fmt="-s", color=col, lw=1.6, ms=3, capsize=0,
+                        label=mc.get("label", t))
+            v, e = interp_mc(mc, key, data["x"], merge)
+            at = v / data["y"]
+            rise = v[ih] / v[il]
+            res[t] = {"mc_over_data_lowest": float(at[il]), "mc_over_data_highest": float(at[ih]),
+                      "data_rise_high_over_low": float(d_rise), "data_rise_err": float(d_rise_err),
+                      "mc_rise_high_over_low": float(rise), "mc_rise_stat_err": float(rise * np.hypot(e[ih], e[il])),
+                      "mc_rel_stat_highest": float(e[ih])}
         ax.set_xscale("log"); ax.set_title(title, fontsize=12)
+        from matplotlib.ticker import FixedLocator, FixedFormatter, NullLocator
+        ticks = [2, 3, 5, 10, 20, 30]
+        ax.xaxis.set_major_locator(FixedLocator(ticks)); ax.xaxis.set_minor_locator(NullLocator())
+        ax.xaxis.set_major_formatter(FixedFormatter([str(t) for t in ticks])); ax.set_xlim(2, 32)
         ax.set_xlabel(r"$\langle dN_{\rm ch}/d\eta\rangle_{|\eta|<0.5}$")
         return res
 
@@ -239,18 +280,20 @@ def compare(args) -> int:
     for ax, (r, (_, _, tab, dep)) in zip(axes.flat, RATIOS.items()):
         d = read_table(tab, dep)
         summary["ratios"][r] = one(ax, d, ("ratios", r), titles[r], scale.get(r, 1.0))
-    axes[0, 0].legend(fontsize=8, frameon=False, loc="lower right")
-    fig.tight_layout(); save_figure(fig, FIG / "m02_mult_ratios"); plt.close(fig)
+    h, l = axes[0, 0].get_legend_handles_labels()
+    fig.tight_layout(rect=(0, 0.07, 1, 1)); fig.legend(h, l, loc="lower center", ncol=5, fontsize=9, frameon=False)
+    save_figure(fig, FIG / "m02_mult_ratios"); plt.close(fig)
 
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2))
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.8))
     for ax, (sp, (tab, dep)) in zip(axes, MEANPT.items()):
         d = read_table(tab, dep)
         summary["meanpt"][sp] = one(ax, d, ("meanpt", sp), {"pi": r"$\langle p_{\rm T}\rangle$ $\pi^\pm$",
                                                              "K": r"$\langle p_{\rm T}\rangle$ K$^\pm$",
                                                              "p": r"$\langle p_{\rm T}\rangle$ p, $\bar{\rm p}$"}[sp])
         ax.set_ylabel("GeV/$c$")
-    axes[0].legend(fontsize=8, frameon=False, loc="lower right")
-    fig.tight_layout(); save_figure(fig, FIG / "m02_mult_meanpt"); plt.close(fig)
+    h, l = axes[0].get_legend_handles_labels()
+    fig.tight_layout(rect=(0, 0.13, 1, 1)); fig.legend(h, l, loc="lower center", ncol=5, fontsize=9, frameon=False)
+    save_figure(fig, FIG / "m02_mult_meanpt"); plt.close(fig)
 
     summary["mc_sets"] = {t: {"label": m.get("label"), "pythia_version": m["pythia_version"],
                               "extra_settings": m["extra_settings"], "n_events": m["n_events"],
@@ -259,11 +302,13 @@ def compare(args) -> int:
     print(f"{'':12s}" + "".join(f"{mcs[t].get('label', t)[:22]:>24s}" for t in mcs))
     for group in ("ratios", "meanpt"):
         for q, res in summary[group].items():
-            d_rise = next(iter(res.values()))["data_rise_high_over_low"]
             cells = "".join(f"{res[t]['mc_over_data_lowest']:7.3f} {res[t]['mc_over_data_highest']:6.3f} "
-                            f"{res[t]['mc_rise_high_over_low']:5.2f}    " for t in mcs)
-            print(f"{(q if group == 'ratios' else '<pT> ' + q):12s}{cells}   data rise {d_rise:.2f}")
-    print("columns per set: MC/data at lowest and highest multiplicity, MC rise high/low")
+                            f"{res[t]['mc_rise_high_over_low']:5.2f}±{res[t]['mc_rise_stat_err']:.2f} " for t in mcs)
+            dr = next(iter(res.values()))
+            print(f"{(q if group == 'ratios' else '<pT> ' + q):12s}{cells}  data rise {dr['data_rise_high_over_low']:.2f}"
+                  f"±{dr['data_rise_err']:.2f}")
+    print("columns per set: MC/data at lowest and highest multiplicity, MC rise high/low ± MC stat;"
+          " data rise error = stat (+) multiplicity-uncorrelated syst.")
     print(f"[out] {TAB / 'm02_mult_compare.json'}, {FIG / 'm02_mult_ratios.pdf'}, {FIG / 'm02_mult_meanpt.pdf'}")
     return 0
 
@@ -272,7 +317,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
     g = sub.add_parser("generate")
-    g.add_argument("--n-events", type=int, default=200000)
+    g.add_argument("--n-events", type=int, default=1000000)
     g.add_argument("--workers", type=int, default=None)
     g.add_argument("--set", action="append", default=[])
     g.add_argument("--tag", default="")

@@ -119,7 +119,8 @@ LHAPDF로 EPPS21 교체.
 module02 §12. 0.4–0.8 GeV/c 초과의 95 %가 π. K/π 0.92, K·p는 0.8 GeV/c 위에서 15–25 % 부족.
 WSL2 재현 ✅. π 출처 분해 ✅ (module02 §13): 조성(벡터 중간자 비)·Bose–Einstein은 모양을 못 바꾸고,
 강입자 재산란이 모양 비를 1.38 → 1.23 (조정과 합쳐 1.19)으로.
-WSL2 재현 ✅. 남은 것: rope/shoving 시험, 다중도별 K/π·⟨pT⟩
+WSL2 재현 ✅. 다중도별 비교 ✅ (module02 §14, 클라우드): PYTHIA 기본은 기묘도 증가를 못 만들고 rope가 일부.
+남은 것: WSL2 100만 사건 재현 (`bash scripts/run_all_pythia.sh mult`), rope 매개변수·shoving 시험, 다중도별 K/π·⟨pT⟩
 (Table 17, 20; V0M 수용 범위로 MC 클래스 정의) — 재산란은 고다중도에서 커지므로 다중도 의존성이 판별 시험.
 
 ### 그 다음

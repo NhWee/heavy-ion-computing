@@ -19,7 +19,8 @@
 #               vector-meson fraction, Bose-Einstein, rescattering); after "identified";
 #               NOT in the default list; ~3 min on 8+ cores
 #   mult        K/pi, p/pi, strange/pi and <pT> vs multiplicity (V0M classes), 4 PYTHIA
-#               settings x 200k events; NOT in the default list; ~10 min on 16 cores
+#               settings x 1M events (Omega needs them); NOT in the default list;
+#               ~30 min on 16 cores
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
 #               sample; generates one 20k tuned sample)
@@ -223,7 +224,7 @@ if want origin; then
 fi
 if want mult; then
     echo "### Module 2: ratios and <pT> vs multiplicity (logs: results/logs/mult_*.log)"
-    M="analysis/m02_multiplicity.py generate --n-events 200000"
+    M="analysis/m02_multiplicity.py generate --n-events 1000000"
     logged results/logs/mult_monash.log $PY $M --label "Monash"; tail -n 1 results/logs/mult_monash.log
     logged results/logs/mult_rescatter.log $PY $M --tag _rescatter --label "rescattering" \
         --set "HadronLevel:Rescatter = on"; tail -n 1 results/logs/mult_rescatter.log
