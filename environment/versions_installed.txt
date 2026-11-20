@@ -25,5 +25,5 @@ ROOT TFile/TTree/TH1	PASS	100 entries written and read
 ROOT RDataFrame	PASS	sum over 10 entries correct
 PYTHIA 8	PASS	10 pp events at 13 TeV, 1473 final-state particles
 FastJet	PASS	version 3.5.1.4, anti-kT R=0.4 -> 2 jets
-HepMC3 (pyhepmc)	SKIP	not installed (ModuleNotFoundError)
-LHAPDF	SKIP	not installed (ModuleNotFoundError)
+HepMC3 (pyhepmc)	PASS	version 2.16.1, GenEvent with 2 particles
+LHAPDF	SKIP	installed but no PDF set available (Info file not found for PDF set 'CT18NLO')
