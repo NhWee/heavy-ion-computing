@@ -178,8 +178,10 @@ INEL>0 스펙트럼 표가 없다. 있는 것은 V0M 다중도 클래스 I–X�
    (tar.gz 하나, 안에 `HEPData-ins1784041-v1-yaml/Table_1.yaml … Table_24.yaml`)
 2. `data/raw/ins1784041/`에 푼다 (gitignore 대상):
    ```bash
-   mkdir -p data/raw/ins1784041 && tar xzf /mnt/c/Users/<you>/Downloads/HEPData-ins1784041-v1-yaml.tar.gz --strip-components=1 -C data/raw/ins1784041
+   mkdir -p data/raw/ins1784041 && tar xzf /mnt/c/Users/*/Downloads/HEPData-ins1784041-v1-yaml.tar.gz --strip-components=1 -C data/raw/ins1784041
    ```
+   (`*`는 Windows 사용자 이름 자리 — 셸이 채운다. `bash scripts/run_all_pythia.sh identified`는 이 단계를
+   스스로 한다: 표가 없으면 Downloads에서 가장 최근 archive를 찾아 푼다.)
 3. `python scripts/m02_derive_identified_inel0.py` — 두 방법으로 INEL>0 스펙트럼을 만들고 서로 확인한다.
    - (A) 비 방법: 클래스마다 S_i / R_i. 10개 클래스가 같은 값을 줘야 한다 (실제: 차이 0.00 %).
    - (B) 가중합: Σ f_i S_i, f_i는 논문의 클래스 백분위. (B)/(A) = 0.98–1.00 (계통오차 4–10 %보다 작음).
