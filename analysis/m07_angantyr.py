@@ -26,6 +26,10 @@ FRAMES AND SELECTIONS (as ALICE)
   PYTHIA's beam A (the proton) moves along +z in the NN frame, hence
   eta_lab = -eta_NN - 0.465 (exact for rapidity, the eta shift is the usual
   approximation).  Pb-Pb and pp: lab = NN frame.
+- Glauber quantities from HIInfo, in the usual conventions: N_part = nucleons
+  wounded inelastically (absorptive + diffractive), N_coll = inelastic
+  sub-collisions (total - elastic).  Events must have unit weight
+  (HeavyIon:forceUnitWeight = on in the cards).
 - V0A: 2.8 < eta_lab < 5.1, V0C: -3.7 < eta_lab < -1.7 (charged particles).
   Pb-Pb centrality: V0M = V0A + V0C, all events (Angantyr generates
   inelastic collisions).  p-Pb: "NSD" = at least one charged particle in
@@ -69,7 +73,7 @@ ETA_EDGES = np.linspace(-5, 5, 21)
 SEED0 = 20261121
 RATIOS = {"K/pi": ("K", 1.0), "p/pi": ("p", 1.0), "2K0S/pi": ("K0S", 2.0), "Lambda/pi": ("Lambda", 1.0),
           "Xi/pi": ("Xi", 1.0), "Omega/pi": ("Omega", 1.0)}
-COLS = (["b", "npart_proj", "npart_targ", "ncoll", "ncoll_nd", "nv0a", "nv0c", "nch05", "nch1"]
+COLS = (["b", "npart_proj", "npart_targ", "ncoll", "ncoll_nd", "nv0a", "nv0c", "nch05", "nch1", "weight"]
         + [f"eta{i}" for i in range(len(ETA_EDGES) - 1)]
         + [f"n_{s}" for s in SPECIES] + [f"sumpt_{s}" for s in PT_SPECIES])
 
@@ -114,9 +118,16 @@ def _chunk(job):
         n_acc += 1
         row = np.zeros(len(COLS))
         if hi is not None:
-            row[0:5] = hi.b(), hi.nPartProj(), hi.nPartTarg(), hi.nCollTot(), hi.nCollND()
+            # Glauber conventions (troubleshooting #26): a PARTICIPANT is a nucleon wounded
+            # inelastically (absorptively or diffractively) -- HIInfo.nPartProj() also counts
+            # nucleons that only scattered elastically; N_coll counts INELASTIC sub-collisions
+            # -- HIInfo.nCollTot() also counts elastic ones.
+            row[0:5] = (hi.b(), hi.nAbsProj() + hi.nDiffProj(), hi.nAbsTarg() + hi.nDiffTarg(),
+                        hi.nCollTot() - hi.nCollEl(), hi.nCollND())
+            row[9] = hi.weight()
         else:
             row[0:5] = np.nan, 1, 1, 1, 1
+            row[9] = 1.0
         ev = py.event
         for i in range(ev.size()):
             p = ev[i]
@@ -180,6 +191,10 @@ def class_record(name, d, col):
 def summarise(system, data, sigmas, version, settings):
     col = {c: i for i, c in enumerate(COLS)}
     rng = np.random.default_rng(5)
+    w = data[:, col["weight"]]
+    if not np.allclose(w, 1.0):
+        raise SystemExit(f"weighted events (weights {w.min():.3g}-{w.max():.3g}): set HeavyIon:forceUnitWeight = on "
+                         "(troubleshooting #26) -- unweighted percentiles would be biased")
     out = {"system": system, "pythia_version": round(version, 3), "extra_settings": settings,
            "n_events": int(len(data)), "frame": "lab: eta_lab = -eta_NN - 0.465" if system == "pPb" else "NN = lab"}
     s = np.array([x for x in sigmas if np.isfinite(x[0]) and x[1] > 0])

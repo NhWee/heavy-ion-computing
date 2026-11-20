@@ -557,3 +557,19 @@ WSL2 100만 사건으로 돌리니 1.10 ± 0.05. rope 변형 20만 사건에서�
 **배운 점**: 여러 설정을 훑을 때는 가장 좋아 보이는 하나가 요동일 확률이 가장 높다. 통계를 다 쓰는 지표로 바꾸고,
 가장 좋아 보이는 결과는 더 큰 표본으로 다시 확인한다.
 
+
+---
+
+## #26 Angantyr: 사건 가중치와 N_part·N_coll의 정의
+
+**증상**: Module 7 첫 실행에서 Pb–Pb 같은 중심도 클래스의 ⟨b⟩가 Module 6 Glauber보다 8 % 작고(40–50 %: 9.58 vs
+10.46 fm), ⟨N_coll⟩이 13–50 % 컸다. σ_PbPb 차이(3 %)로는 b가 1.5 %밖에 달라질 수 없다.
+**원인 1 — 사건 가중치**: Angantyr는 충돌 변수 b를 가우스 분포에서 뽑고 그 보정을 **사건 가중치**에 싣는다
+(PYTHIA 문서 HeavyIons: "the events produced will always be weighted"). 가중치를 무시하고 백분위 클래스와 평균을
+만들면 중심 충돌이 과대 대표된다. → 카드에 `HeavyIon:forceUnitWeight = on` (b를 가로 평면에서 평평하게 뽑아 모든
+사건 가중치 1), 분석은 가중치가 1이 아니면 멈춘다.
+**원인 2 — 세는 방식**: `HIInfo.nCollTot()`은 **탄성** 하위충돌도 센다 (확인: nCollTot = ND + SDP + SDT + DD + CD + El).
+`HIInfo.nPartProj()`는 탄성으로만 산란된 핵자도 센다 (nPartProj = nAbsProj + nDiffProj + nElProj). Glauber 관례는
+비탄성: N_part = 흡수 + 회절로 상처 입은 핵자, N_coll = 비탄성 하위충돌 = Tot − El.
+**배운 점**: 생성기가 주는 "N_part"는 이름이 같아도 정의가 다를 수 있다 — 구성 요소로 분해해 합이 맞는지 확인한다.
+사건 생성기가 가중 사건을 내는지 처음부터 확인한다 (info.weight()의 분포).
