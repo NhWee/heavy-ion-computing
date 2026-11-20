@@ -59,6 +59,16 @@ print("preflight: ALICE tables present, sha256 match")
 EOF
 fi
 if want identified; then
+    # Not unpacked yet: look for the archive in the Windows Downloads folder(s)
+    # (WSL2 mounts C: at /mnt/c) and unpack it -- no user name to type.
+    if [[ ! -f data/raw/ins1784041/Table_1.yaml ]]; then
+        arc=$(ls -t /mnt/c/Users/*/Downloads/HEPData-ins1784041*yaml*.tar.gz 2>/dev/null | head -n 1 || true)
+        if [[ -n $arc ]]; then
+            echo "preflight: unpacking $arc -> data/raw/ins1784041/"
+            mkdir -p data/raw/ins1784041
+            tar xzf "$arc" --strip-components=1 -C data/raw/ins1784041
+        fi
+    fi
     for n in 1 2 3 4 5 6 7 8 9 10 11 12; do
         if [[ ! -f data/raw/ins1784041/Table_$n.yaml ]]; then
             echo "preflight: data/raw/ins1784041/Table_$n.yaml missing -- unpack the HEPData ins1784041"
