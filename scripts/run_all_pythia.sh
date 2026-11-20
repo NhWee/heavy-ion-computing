@@ -15,6 +15,9 @@
 #   m04         hard-QCD sample + jets (Module 4)
 #   m05         proton and nuclear PDFs (Module 5; no generation; uses .venv-pdf, see the stage)
 #   m06         Monte Carlo Glauber, Pb-Pb and p-Pb (Module 6; numpy only, ~10 min on 4 cores)
+#   origin      where PYTHIA pi/K/p come from + 8 settings (direct vs resonance decays,
+#               vector-meson fraction, Bose-Einstein, rescattering); after "identified";
+#               NOT in the default list; ~3 min on 8+ cores
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
 #               sample; generates one 20k tuned sample)
@@ -55,7 +58,7 @@ want() { [[ " $STAGES " == *" $1 "* ]]; }
 # matching if the PyPI wheel pythia8mc is pip-installed INTO the conda env: it
 # writes its own share/Pythia8/xmldoc over conda's (troubleshooting #24).
 need_gen=0
-for s in nominal variations scan stringpt m03 m04 identified; do want "$s" && need_gen=1; done
+for s in nominal variations scan stringpt m03 m04 identified origin; do want "$s" && need_gen=1; done
 if [[ $need_gen == 1 ]]; then
     out=$("$PY" -c "
 try:
@@ -97,7 +100,7 @@ if bad:
 print("preflight: ALICE tables present, sha256 match")
 EOF
 fi
-if want identified; then
+if want identified || want origin; then
     # Not unpacked yet: look for the archive in the Windows Downloads folder(s)
     # (WSL2 mounts C: at /mnt/c) and unpack it -- no user name to type.
     if [[ ! -f data/raw/ins1784041/Table_1.yaml ]]; then
@@ -192,5 +195,28 @@ if want identified; then
         --out $G/m02_id_pt0240_sig031.root; tail -n 1 results/logs/id_gen_best.log
     $PY analysis/m02_compare_identified.py --mc $G/m02_id_pt0240_sig031.root \
         --label "pT0Ref 2.40, sigma 0.31" --tag _pt0240_sig031
+fi
+if want origin; then
+    echo "### Module 2: origin of pi/K/p in PYTHIA, 8 settings in parallel (logs: results/logs/origin_*.log)"
+    $PY scripts/m02_derive_identified_inel0.py > /dev/null
+    run_origin() {   # tag label [--set ...]: one background job, log tail on failure
+        local tag=$1 label=$2; shift 2
+        logged "results/logs/origin${tag:-_monash}.log" $PY analysis/m02_pion_origin.py --tag "$tag" --label "$label" "$@"
+    }
+    pids=()
+    run_origin ""                         "Monash" & pids+=($!)
+    run_origin _pt0240_sig031             "pT0Ref 2.40, sigma 0.31" \
+        --set "MultipartonInteractions:pT0Ref = 2.40" --set "StringPT:sigma = 0.31" & pids+=($!)
+    run_origin _pt0240_sig031_rescatter   "pT0Ref 2.40, sigma 0.31, rescattering" \
+        --set "MultipartonInteractions:pT0Ref = 2.40" --set "StringPT:sigma = 0.31" \
+        --set "HadronLevel:Rescatter = on" & pids+=($!)
+    run_origin _udv025 "UDvector 0.25" --set "StringFlav:mesonUDvector = 0.25" & pids+=($!)
+    run_origin _udv10  "UDvector 1.0"  --set "StringFlav:mesonUDvector = 1.0"  & pids+=($!)
+    run_origin _udv15  "UDvector 1.5"  --set "StringFlav:mesonUDvector = 1.5"  & pids+=($!)
+    run_origin _bose      "Bose-Einstein on" --set "HadronLevel:BoseEinstein = on" & pids+=($!)
+    run_origin _rescatter "rescattering on"  --set "HadronLevel:Rescatter = on"    & pids+=($!)
+    for pid in "${pids[@]}"; do wait "$pid" || exit 1; done
+    grep -h "^\[closure\]" results/logs/origin_*.log || true
+    $PY analysis/m02_pion_origin_summary.py
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

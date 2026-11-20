@@ -247,3 +247,23 @@ def test_identified_inel0_derivation_recovers_known_spectrum(tmp_path):
     np.testing.assert_allclose(closure, 1.0, rtol=1e-12)
     assert spread.max() < 1e-12
     np.testing.assert_allclose([r["sys"] / r["y"] for r in rows], 0.05, rtol=1e-12)   # linear sum of 5 %
+
+
+def test_pion_origin_classification():
+    """PYTHIA status codes: 81-89 hadronization (direct), 91-99 decay -> by mother."""
+    import m02_pion_origin as po
+    assert po.classify("pi", 83, 2101) == "direct"
+    assert po.classify("pi", -84, 0) == "direct"
+    assert po.classify("pi", 91, 113) == "rho" and po.classify("pi", 91, -213) == "rho"
+    assert po.classify("pi", 91, 223) == "omega"
+    assert po.classify("pi", 91, 221) == "eta/eta'" and po.classify("pi", 91, 331) == "eta/eta'"
+    assert po.classify("pi", 91, 313) == "K*"
+    assert po.classify("pi", 91, 2224) == "Delta"
+    assert po.classify("pi", 91, 421) == "heavy flavour"          # D0
+    assert po.classify("pi", 91, 5122) == "heavy flavour"         # Lambda_b
+    assert po.classify("pi", 91, 3224) == "other baryon"          # Sigma*+
+    assert po.classify("K", 91, 333) == "phi" and po.classify("K", 91, -323) == "K*"
+    assert po.classify("p", 91, 2214) == "Delta"
+    for sp in po.ORIGINS:                                         # every label is a declared origin
+        for st, m in ((83, 0), (91, 113), (91, 223), (91, 333), (91, 2224), (91, 411), (91, 3114), (91, 9000111)):
+            assert po.classify(sp, st, m) in po.ORIGINS[sp]

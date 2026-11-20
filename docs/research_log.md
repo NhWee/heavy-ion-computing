@@ -371,3 +371,9 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - 복구 과정에서 conda `pythia8`가 8.312 빌드 305 → 307로 바뀌고 `lhapdf 6.5.6`, `hepmc2`가 의존성으로 들어옴
   → `environment/versions_installed.txt` 갱신 필요. LHAPDF가 생겼으니 EPPS21로 Module 5 확장 가능.
 
+### π 출처 분해 (2026-11-20, 클라우드 8.318)
+- `analysis/m02_pion_origin.py`: §12와 같은 사건 재생성, status 81–89 direct / 91–99 어미별. closure 4e-16.
+- Monash π: direct 35 %, ρ 35 %, ω 16 %; ⟨pT⟩ direct 0.64 > ρ 0.57 > ω 0.35 > η 0.28.
+- 모양 비 S = (0.4–0.8)/(0.1–0.25): Monash 1.38; mesonUDvector 0.25–1.5 → 1.33–1.44 (조성 아님); BE 1.38;
+  재산란 1.23; pT0Ref 2.40 + σ 0.31 + 재산란 1.19 (χ² 462 → 126). module02 §13.
+- 그림 저장 오류: fill_between(color="none", hatch=…)가 PDF에서 TypeError → facecolor/edgecolor 분리.
