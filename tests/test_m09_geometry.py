@@ -54,3 +54,15 @@ def test_dijet_selection_and_aj():
     aj, ok = dj.select_aj(jets)
     assert list(ok) == [True, True, False, False]
     assert aj == pytest.approx([0.2, 0.2])
+
+
+def test_background_sigma_formula_and_ordering():
+    """Poisson background width: the Module 4 case (dN/detadphi 30, <pT> 0.5, R 0.4) gives 2.75 GeV,
+    and the Angantyr-based widths fall from central to peripheral."""
+    import pathlib
+    import sys
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "analysis"))
+    import m09_dijet as dj
+    assert np.sqrt(np.pi * 0.4 ** 2 * 30 * 2 * 0.5 ** 2) == pytest.approx(2.746, abs=0.01)
+    s = dj.background_sigma()
+    assert len(s) == 9 and np.all(np.diff(s) < 0) and 8 < s[0] < 15

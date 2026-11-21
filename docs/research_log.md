@@ -433,3 +433,7 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
   `infoPython()` 부분 스냅샷 (sigmaGen 0). v₂가 매끄러워짐.
 - A_J (`analysis/m09_dijet.py`): pp R_B 0.51 (CMS의 "PYTHIA 중앙값 0.15"와 일치). 0–10 %: L 모형 R_B 0.49, L²·E^1/3 0.34.
   표면 편향 (선두 경로 적분 34 vs 두 번째 71). 하전입자에 맞춘 손실로는 제트 비대칭이 작다 — L²와 β > 0일 때만.
+- 손실 요동(parton/제트마다 지수 분포 인자)과 바탕 요동(Module 7 Angantyr 다중도 → Poisson σ, Module 4에서 검증한 공식; 0–5 % 11.2 GeV).
+  요동이 있으면 같은 R_AA에 κ가 3–3.6배 (R_AA는 적게 잃을 확률에 민감). A_J: 바탕만 R_B 0.51 → 0.48, 손실 요동이 모형 차이를 지움
+  (0–10 % 네 모형 R_B 0.34–0.39). A_J만으로는 L vs L²를 못 가른다.
+

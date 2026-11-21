@@ -26,8 +26,22 @@ MODEL
   f = the fraction of the parton's lost energy that leaves the R = 0.4 cone
   (the rest is radiated inside and stays in the jet); f = 1 and 0.5.
 - After the loss the jets are re-ordered and the CMS selection applied.
-NOT in the model: background fluctuations of the Pb-Pb underlying event
-(they smear A_J, Module 4), loss fluctuations, jet-by-jet f.
+- Loss fluctuations ("fluct" models): Delta E_jet multiplied by an
+  exponentially distributed factor of mean 1 per jet (kappa recalibrated on
+  hadrons with the same fluctuations, analysis/m09_quenching.py).
+- Background fluctuations: in Pb-Pb a jet's pT after rho*A subtraction still
+  carries delta pT ~ Gaussian(0, sigma_bkg) from the underlying event.  For
+  independently emitted particles (Poisson number, exponential pT -- exactly
+  the case Module 4 validated by embedding: 2.73 vs 2.75 GeV)
+      sigma_bkg^2 = A * dN/(deta dphi) * 2 <pT>^2,   A = pi R^2,
+  with dN/(deta dphi) = 1.5 x (dNch/deta) / 2 pi (charged + neutral) and
+  dNch/deta, <pT> of the Angantyr Pb-Pb centrality class (Module 7,
+  results/tables/m07/m07_PbPb.json).  Correlated fluctuations (flow,
+  mini-jets) make the real width larger: a lower bound.  Each jet of an
+  event gets an independent delta pT, also in the "no loss" baseline, so
+  the background's own effect on A_J is visible.
+NOT in the model: jet-by-jet f, fake jets made of background, the medium
+response that is recovered at large angles.
 
 OUTPUT
   data/generated/m09_dijet_pp.npz (not in git); results/tables/m09/m09_dijet.json;
@@ -57,6 +71,19 @@ GROUPS = {"0-10%": (0, 1), "10-30%": (2, 3), "30-50%": (4, 5), "50-80%": (6, 7, 
 AJ_EDGES = np.linspace(0, 1, 21)
 F_OUT = (1.0, 0.5)
 WIDTH = 0.5
+R_JET = 0.4
+CHARGED_TO_ALL = 1.5
+
+
+def background_sigma():
+    """sigma_bkg (GeV) per Module 9 centrality class from the Angantyr Pb-Pb
+    classes of Module 7 (same edges for 0-80 %)."""
+    m7 = json.loads((REPO / "results" / "tables" / "m07" / "m07_PbPb.json").read_text())
+    out = []
+    for c in m7["classes"][:9]:
+        dens = CHARGED_TO_ALL * c["dndeta"] / (2 * np.pi)
+        out.append(float(np.sqrt(np.pi * R_JET ** 2 * dens * 2 * c["meanpt"]["pi"] ** 2)))
+    return np.array(out)
 
 
 def _chunk(job):
@@ -121,6 +148,8 @@ def model(args) -> int:
     gz = np.load(GEN / "m09_glauber.npz", allow_pickle=True)
     cls, coll, wounded = gz["cls"], gz["coll"], gz["wounded"]
     mods = json.loads((TAB / "m09_model.json").read_text())["models"]
+    mods = {"no loss": {"kappa": 0.0, "zeta": 0, "beta": 0.0, "fluct": False}, **mods}
+    sig_bkg = background_sigma()
     rng = np.random.default_rng(12)
     real = jets[:, :, 0] > 0
     aj_pp, ok_pp = select_aj(jets)
@@ -130,9 +159,14 @@ def model(args) -> int:
            "aj_edges": AJ_EDGES.tolist(), "groups": {}}
     print(f"[pp] {ok_pp.sum()} selected dijets, <A_J> {aj_pp.mean():.3f}, median {np.median(aj_pp):.3f}, "
           f"R_B(A_J<0.15) {np.mean(aj_pp < 0.15):.2f}")
+    res["sigma_bkg_GeV"] = sig_bkg.tolist()
+    print("[bkg] sigma(delta pT), R = 0.4, per class 0-5 ... 70-80 %: " + " ".join(f"{v:.1f}" for v in sig_bkg))
+    x_jet = rng.exponential(1.0, size=jets.shape[:2])                  # loss fluctuation per jet
+    gauss = rng.normal(size=jets.shape[:2])                             # background fluctuation per jet
     for gname, members in GROUPS.items():
         pool = np.nonzero(np.isin(cls, members))[0]
         g_of = rng.choice(pool, size=len(jets))
+        sb = sig_bkg[cls[g_of]][:, None] * gauss                        # delta pT of each jet
         I = np.zeros((len(jets), N_JETS, 2))
         for g in np.unique(g_of):
             ev = np.nonzero(g_of == g)[0]
@@ -143,15 +177,19 @@ def model(args) -> int:
                 I[ev, :, z] = path_integrals(x0, phi, wd, WIDTH, z).reshape(len(ev), N_JETS)
         res["groups"][gname] = {}
         for mname, m in mods.items():
-            for f in F_OUT:
+            for f in (F_OUT if mname != "no loss" else (1.0,)):
+              for bkg in (False, True):
                 pt = jets[:, :, 0]
                 de = f * m["kappa"] * I[:, :, m["zeta"]] * (np.clip(pt, 1e-3, None) / 10.0) ** m["beta"]
-                q = jets.copy(); q[:, :, 0] = np.where(real, np.clip(pt - de, 0, None), 0.0)
+                if m.get("fluct"):
+                    de = de * x_jet
+                ptq = np.clip(pt - de, 0, None) + (sb if bkg else 0.0)
+                q = jets.copy(); q[:, :, 0] = np.where(real, np.clip(ptq, 0, None), 0.0)
                 aj, ok = select_aj(q)
                 # surface bias: path integral of the (post-loss) leading and subleading jet
                 order = np.argsort(-q[:, :, 0], axis=1)
                 Is = np.take_along_axis(I[:, :, m["zeta"]], order, axis=1)
-                key = f"{mname}, f={f:g}"
+                key = f"{mname}, f={f:g}" + (", bkg" if bkg else "")
                 res["groups"][gname][key] = {
                     "n_dijets": int(ok.sum()), "mean_aj": float(aj.mean()) if len(aj) else None,
                     "rb_015": float(np.mean(aj < 0.15)) if len(aj) else None,
@@ -159,34 +197,41 @@ def model(args) -> int:
                     "survival": float(ok.sum() / max(ok_pp.sum(), 1)),
                     "mean_I_leading": float(Is[ok, 0].mean()) if ok.any() else None,
                     "mean_I_subleading": float(Is[ok, 1].mean()) if ok.any() else None}
-        print(f"[{gname}] " + "  ".join(f"{k}: <A_J> {v['mean_aj']:.3f} R_B {v['rb_015']:.2f}"
-                                      for k, v in res["groups"][gname].items() if k.endswith("f=1")))
+        print(f"[{gname}] " + "  ".join(f"{k.replace(', f=1', '')}: R_B {v['rb_015']:.2f}"
+                                      for k, v in res["groups"][gname].items() if ", f=1" in k))
     TAB.mkdir(parents=True, exist_ok=True); FIG.mkdir(parents=True, exist_ok=True)
     (TAB / "m09_dijet.json").write_text(json.dumps(res, indent=1))
 
     apply_style()
     c = 0.5 * (AJ_EDGES[1:] + AJ_EDGES[:-1])
-    cols = dict(zip(mods, OKABE_ITO[:4]))
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.4), sharey=True)
-    for ax, f in zip(axes, F_OUT):
+    base = [n for n in mods if n != "no loss" and not n.endswith("fluct")]
+    col = dict(zip(base, OKABE_ITO[:4]))
+    colr = lambda n: "0.45" if n == "no loss" else col[n.replace(", fluct", "")]        # noqa: E731
+    style = lambda n: "--" if n.endswith("fluct") else "-"                              # noqa: E731
+    g0 = res["groups"]["0-10%"]
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.6), sharey=True)
+    for ax, bkg in zip(axes, (False, True)):
+        sfx = ", bkg" if bkg else ""
         ax.step(c, res["pp"]["hist"], where="mid", color="k", lw=2, label="pp (PYTHIA)")
-        for mname in mods:
-            v = res["groups"]["0-10%"][f"{mname}, f={f:g}"]
-            ax.step(c, v["hist"], where="mid", color=cols[mname], lw=1.5, label=f"0-10 %, {mname}")
+        for n in mods:
+            if n == "no loss" and not bkg:
+                continue
+            v = g0[f"{n}, f=1{sfx}"]
+            ax.step(c, v["hist"], where="mid", color=colr(n), ls=style(n), lw=1.4, label=n)
         ax.set_xlabel(r"$A_J = (p_{T,1} - p_{T,2}) / (p_{T,1} + p_{T,2})$"); ax.set_xlim(0, 0.8)
-        ax.set_title(f"fraction of the loss outside the cone f = {f:g}", fontsize=11)
-    axes[0].set_ylabel("probability density"); axes[0].legend(fontsize=8, frameon=False)
+        ax.set_title("0-10 %, f = 1, " + ("with background fluctuations" if bkg else "no background"), fontsize=11)
+    axes[0].set_ylabel("probability density"); axes[1].legend(fontsize=7, frameon=False, ncol=2)
     fig.tight_layout(); save_figure(fig, FIG / "m09_dijet_aj"); plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(7, 4.4))
+    fig, ax = plt.subplots(figsize=(7.5, 4.6))
     xs = np.arange(len(GROUPS))
-    for mname in mods:
-        for f, ls in zip(F_OUT, ("-", "--")):
-            ax.plot(xs, [res["groups"][g][f"{mname}, f={f:g}"]["rb_015"] for g in GROUPS], ls, marker="o", ms=4,
-                    color=cols[mname], label=f"{mname}, f={f:g}")
+    for n in mods:
+        ax.plot(xs, [res["groups"][g][f"{n}, f=1, bkg"]["rb_015"] for g in GROUPS], style(n), marker="o", ms=4,
+                color=colr(n), label=n + (" (background only)" if n == "no loss" else ""))
     ax.axhline(res["pp"]["rb_015"], color="k", lw=1.5, label="pp")
     ax.set_xticks(xs); ax.set_xticklabels(list(GROUPS)); ax.set_xlabel("centrality")
-    ax.set_ylabel(r"$R_B$ = fraction with $A_J < 0.15$"); ax.legend(fontsize=7, frameon=False, ncol=2)
+    ax.set_ylabel(r"$R_B$ = fraction with $A_J < 0.15$ (f = 1, with background)")
+    ax.legend(fontsize=7, frameon=False, ncol=2)
     fig.tight_layout(); save_figure(fig, FIG / "m09_dijet_rb"); plt.close(fig)
     print(f"[out] {TAB / 'm09_dijet.json'}, {FIG}/m09_dijet_*.png")
     return 0

@@ -44,9 +44,12 @@ MODEL (deliberately minimal, every piece visible)
 kappa is fixed for each (zeta, beta) by R_AA(0-5 %, 6-9 GeV/c) = 0.133
 (the CMS factor 7.5); everything else is a prediction.
 
-NOT IN THE MODEL: expansion and time dependence of the medium, fluctuations of
-the energy loss, medium response, nuclear PDFs (Module 5: small at x ~ 0.01),
-the change of the jet's hadron composition.  It is a geometry exercise.
+Each (zeta, beta) also comes with LOSS FLUCTUATIONS ("..., fluct"): Delta E is
+multiplied by an exponentially distributed factor (mean 1) per parton; kappa
+is recalibrated with them.
+NOT IN THE MODEL: expansion and time dependence of the medium, medium response,
+nuclear PDFs (Module 5: small at x ~ 0.01), the change of the jet's hadron
+composition.  It is a geometry exercise.
 
 OUTPUT
   data/generated/m09_pp.npz, m09_glauber.npz          (not in git)
@@ -78,7 +81,11 @@ CLASSES = [(0, 5), (5, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60), (6
 PT_EDGES = np.array([5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 25, 30, 40, 50, 70, 100], float)
 CALIB = {"class": "0-5%", "pt": (6.0, 9.0), "raa": 0.133,
          "source": "CMS, arXiv:1611.01664: maximal suppression by a factor 7-8 at pT 6-9 GeV, 0-5 %"}
-MODELS = {"L, E^0": (0, 0.0), "L^2, E^0": (1, 0.0), "L, E^1/3": (0, 1 / 3), "L^2, E^1/3": (1, 1 / 3)}
+BASE = {"L, E^0": (0, 0.0), "L^2, E^0": (1, 0.0), "L, E^1/3": (0, 1 / 3), "L^2, E^1/3": (1, 1 / 3)}
+# (zeta, beta, fluctuating): with fluctuations every parton's Delta E is multiplied by an
+# exponentially distributed factor of mean 1 (one number per parton, shared by its hadrons):
+# the same mean loss, but some partons lose almost nothing and others most of their energy.
+MODELS = {**{k: (*v, False) for k, v in BASE.items()}, **{f"{k}, fluct": (*v, True) for k, v in BASE.items()}}
 WIDTH = 0.5
 
 
@@ -282,13 +289,17 @@ def path_lengths(pp, gl, cls_index, rng, n_use):
     where = np.searchsorted(plist, np.where(has_p, pj, plist[0] if len(plist) else 0))
     I = np.where(has_p[:, None, None], Ip[where] if len(plist) else 0.0, 0.0)
     e_parton = np.where(has_p, par[np.where(has_p, pj, 0), 1], np.inf)
+    x_parton = rng.exponential(1.0, size=max(len(plist), 1))          # loss fluctuation, one per parton
+    X = np.where(has_p, x_parton[where] if len(plist) else 1.0, 1.0)
     return {"w": ev[e_of, 0], "pt": h[:, 1], "phi": h[:, 3], "psi": np.array([psi_ev[e] for e in e_of]),
-            "e_parton": np.maximum(e_parton, h[:, 1]), "I": I}
+            "e_parton": np.maximum(e_parton, h[:, 1]), "I": I, "X": X}
 
 
-def spectra(H, kappa, zeta, beta, edges=PT_EDGES, orient=0):
+def spectra(H, kappa, zeta, beta, edges=PT_EDGES, orient=0, fluct=False):
     """Weighted pT spectra (unquenched, quenched) and v2 numerator."""
     de = kappa * H["I"][:, zeta, orient] * (np.where(np.isfinite(H["e_parton"]), H["e_parton"], 10.0) / 10.0) ** beta
+    if fluct:
+        de = de * H["X"]
     frac = np.clip(1 - de / H["e_parton"], 0, 1)
     ptq = H["pt"] * frac
     n0 = np.histogram(H["pt"], edges, weights=H["w"])[0]
@@ -297,10 +308,10 @@ def spectra(H, kappa, zeta, beta, edges=PT_EDGES, orient=0):
     return n0, nq, c2
 
 
-def calibrate(H, zeta, beta, target, pt_range):
+def calibrate(H, zeta, beta, target, pt_range, fluct=False):
     edges = np.array(pt_range)
     def raa(kap):                                                          # noqa: E306
-        n0, nq, _ = spectra(H, kap, zeta, beta, edges)
+        n0, nq, _ = spectra(H, kap, zeta, beta, edges, fluct=fluct)
         return nq.sum() / n0.sum()
     lo, hi = 0.0, 1.0
     while raa(hi) > target and hi < 1e3:
@@ -323,25 +334,25 @@ def model(args) -> int:
            "pt_edges": PT_EDGES.tolist(), "classes": [f"{lo}-{hi}%" for lo, hi in CLASSES],
            "npart": [float(gl["npart"][gl["cls"] == k].mean()) for k in range(len(CLASSES))],
            "eps2": [float(gl["eps2"][gl["cls"] == k].mean()) for k in range(len(CLASSES))], "models": {}}
-    for name, (zeta, beta) in MODELS.items():
-        kap = calibrate(geo[0], zeta, beta, CALIB["raa"], CALIB["pt"])
-        m = {"zeta": zeta, "beta": beta, "kappa": kap, "raa": [], "raa_err": [], "v2": [], "raa_6_9": [], "raa_40_70": [],
+    for name, (zeta, beta, fluct) in MODELS.items():
+        kap = calibrate(geo[0], zeta, beta, CALIB["raa"], CALIB["pt"], fluct)
+        m = {"zeta": zeta, "beta": beta, "fluct": fluct, "kappa": kap, "raa": [], "raa_err": [], "v2": [], "raa_6_9": [], "raa_40_70": [],
              "v2_10_30": []}
         for k in range(len(CLASSES)):
-            n0, nq, c2 = spectra(geo[k], kap, zeta, beta)
+            n0, nq, c2 = spectra(geo[k], kap, zeta, beta, fluct=fluct)
             m["raa"].append((nq / n0).tolist()); m["v2"].append((c2 / np.where(nq > 0, nq, np.nan)).tolist())
             for key, (a, b) in (("raa_6_9", (6, 9)), ("raa_40_70", (40, 70))):
                 s = (PT_EDGES[:-1] >= a) & (PT_EDGES[1:] <= b)
                 m[key].append(float(nq[s].sum() / n0[s].sum()))
             # v2 from in-plane / out-of-plane suppression: R(dphi) = R0 (1 + 2 v2 cos 2 dphi)
-            _, n_in, _ = spectra(geo[k], kap, zeta, beta, orient=1)
-            _, n_out, _ = spectra(geo[k], kap, zeta, beta, orient=2)
+            _, n_in, _ = spectra(geo[k], kap, zeta, beta, orient=1, fluct=fluct)
+            _, n_out, _ = spectra(geo[k], kap, zeta, beta, orient=2, fluct=fluct)
             m["v2"][-1] = ((n_in - n_out) / (2 * (n_in + n_out))).tolist()
             s = (PT_EDGES[:-1] >= 10) & (PT_EDGES[1:] <= 30)
             m["v2_10_30"].append(float((n_in[s].sum() - n_out[s].sum()) / (2 * (n_in[s].sum() + n_out[s].sum()))))
             m.setdefault("v2_10_30_direct", []).append(float(c2[s].sum() / nq[s].sum()))
         res["models"][name] = m
-        print(f"[{name:10s}] kappa = {kap:.3f}  "
+        print(f"[{name:17s}] kappa = {kap:.3f}  "
               f"R_AA 6-9: " + " ".join(f"{v:.2f}" for v in m["raa_6_9"]) +
               f" | 40-70 (0-5 %): {m['raa_40_70'][0]:.2f} | v2 10-30: " + " ".join(f"{v:.3f}" for v in m["v2_10_30"][:6]))
     TAB.mkdir(parents=True, exist_ok=True); FIG.mkdir(parents=True, exist_ok=True)
@@ -349,21 +360,23 @@ def model(args) -> int:
 
     apply_style()
     c = 0.5 * (PT_EDGES[1:] + PT_EDGES[:-1])
-    cols = dict(zip(MODELS, OKABE_ITO[:4]))
+    base_col = dict(zip(BASE, OKABE_ITO[:4]))
+    cols = {n: base_col[n.replace(", fluct", "")] for n in MODELS}
+    ls = {n: "--" if n.endswith("fluct") else "-" for n in MODELS}
     fig, axes = plt.subplots(1, 3, figsize=(14, 4.4), sharey=True)
     for ax, k in zip(axes, (0, 2, 4)):
         for name, m in res["models"].items():
-            ax.plot(c, m["raa"][k], "-o", ms=3, color=cols[name], label=name)
+            ax.plot(c, m["raa"][k], ls[name], marker="o", ms=3, color=cols[name], label=name)
         if k == 0:
             ax.errorbar([7.5], [CALIB["raa"]], xerr=[1.5], yerr=[0.01], fmt="ks", ms=6, label="CMS 6-9 GeV (calibration)")
         ax.set_xscale("log"); ax.set_title(res["classes"][k]); ax.set_xlabel(r"$p_{\rm T}$ (GeV/$c$)")
         ax.axhline(1, color="0.6", lw=0.8); ax.set_ylim(0, 1.1)
-    axes[0].set_ylabel(r"$R_{\rm AA}$ (charged hadrons)"); axes[0].legend(fontsize=8, frameon=False)
+    axes[0].set_ylabel(r"$R_{\rm AA}$ (charged hadrons)"); axes[0].legend(fontsize=7, frameon=False, ncol=2)
     fig.tight_layout(); save_figure(fig, FIG / "m09_raa"); plt.close(fig)
 
     fig, ax = plt.subplots(figsize=(6.5, 4.4))
     for name, m in res["models"].items():
-        ax.plot(res["npart"], m["raa_6_9"], "-o", ms=4, color=cols[name], label=name)
+        ax.plot(res["npart"], m["raa_6_9"], ls[name], marker="o", ms=4, color=cols[name], label=name)
     ax.set_xlabel(r"$\langle N_{\rm part}\rangle$"); ax.set_ylabel(r"$R_{\rm AA}$, $p_{\rm T}$ 6-9 GeV/$c$")
     ax.axhline(1, color="0.6", lw=0.8); ax.legend(fontsize=8, frameon=False)
     fig.tight_layout(); save_figure(fig, FIG / "m09_raa_npart"); plt.close(fig)
@@ -371,7 +384,7 @@ def model(args) -> int:
     fig, ax = plt.subplots(figsize=(6.5, 4.4))
     mids = [0.5 * (lo + hi) for lo, hi in CLASSES]
     for name, m in res["models"].items():
-        ax.plot(mids, m["v2_10_30"], "-o", ms=4, color=cols[name], label=name)
+        ax.plot(mids, m["v2_10_30"], ls[name], marker="o", ms=4, color=cols[name], label=name)
     ax.set_xlabel("centrality (%)"); ax.set_ylabel(r"$v_2$ of hadrons, $p_{\rm T}$ 10-30 GeV/$c$")
     ax.axhline(0, color="0.6", lw=0.8); ax.legend(fontsize=8, frameon=False)
     fig.tight_layout(); save_figure(fig, FIG / "m09_v2"); plt.close(fig)
