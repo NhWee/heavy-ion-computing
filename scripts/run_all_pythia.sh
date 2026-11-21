@@ -27,6 +27,9 @@
 #   m07         Angantyr pp-reference / p-Pb / Pb-Pb at 5.02 TeV (Module 7): 1M / 1M / 20k
 #               events; NOT in the default list; ~25 min on 16 cores; uses Module 6 and
 #               the ins1784041 tables (pp strangeness reference)
+#   m08         CMS Open Data dimuon spectrum (Module 8): downloads the 2 GB file on first
+#               use (scripts/m08_fetch_cms_dimuon.sh), histograms 61 M events, fits;
+#               NOT in the default list; needs network to eospublic.cern.ch
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
 #               sample; generates one 20k tuned sample)
@@ -267,5 +270,13 @@ if want m07; then
         grep -E "^\[(gen|sigma|all)\]" "results/logs/m07_$1.log"
     done
     $PY analysis/m07_angantyr.py compare
+fi
+if want m08; then
+    echo "### Module 8: CMS Open Data dimuon spectrum"
+    if [[ ! -f data/raw/opendata/Run2012BC_DoubleMuParked_Muons.root || ! -f data/raw/cms_2012_doublemuparked.json ]]; then
+        bash scripts/m08_fetch_cms_dimuon.sh
+    fi
+    $PY analysis/m08_dimuon.py histogram
+    $PY analysis/m08_dimuon.py fit
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

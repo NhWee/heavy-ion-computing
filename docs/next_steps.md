@@ -131,3 +131,7 @@ Module 7: PYTHIA Angantyr p–Pb / Pb–Pb — Module 6의 N_part 분포와 비�
 ### Step 8 — Module 7 Angantyr ✅ 1차 (2026-11-21)
 `docs/modules/module07_angantyr.md`. 남은 것: WSL2 정식 (`bash scripts/run_all_pythia.sh m07`), Pb–Pb 중심도별
 dN_ch/dη (HEPData ins1410589 Table 1을 받아 `data/raw/`에), Angantyr + rope/shoving.
+
+### Step 9 — Module 8 Open Data 🔄 (2026-11-21)
+`docs/modules/module08_opendata.md`. 코드와 toy closure 완료. 남은 것: WSL2에서 `bash scripts/run_all_pythia.sh m08`
+(CMS 2012 DoubleMuParked, 2 GB 다운로드 + 6100만 사건) → 질량 척도, 분해능, Υ 비. 그 다음 Module 9 (Υ 억제, Z R_AA).

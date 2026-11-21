@@ -411,3 +411,12 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
   8.312의 N_part는 Module 6에 0–7 % 가깝고 ⟨b⟩는 2–7 % 작음 (σ ≈ 7.3 b로 추정) — 8.318과 하위충돌 맞춤이 다름.
   8.312의 nCollNDTot(0–1 %: 238 < N_part)는 하위충돌 수가 아님 → 8.312에서는 N_coll을 기록하지 않음.
 
+---
+
+## Session 10 — 2026-11-21 · Module 8 (CERN Open Data)
+
+- 데이터: CERN Open Data 12341 (CMS 2012 DoubleMuParked NanoAOD, 뮤온만, DOI 10.7483/OPENDATA.CMS.LVG5.QT81).
+  클라우드에서 opendata.cern.ch / eospublic.cern.ch 연결 불가 → 받기·히스토그램은 WSL2, 히스토그램 JSON을 커밋해 맞춤은 어디서나.
+- `src/hicpy/dimuon.py`: 쌍 질량, Crystal Ball, Voigt, binned Poisson 맞춤, NanoAOD 같은 toy 생성기.
+- toy closure가 잡은 것: Υ 라벨 바뀜(→ 공통 질량 척도, 간격 PDG 고정), Z 창 배경 발산(→ 정규화·범위),
+  특이 헤시안(→ 배경 모양 고정 후 오차). 수율·비가 통계 안에서 돌아옴. uproot의 가지 이름 기본값(`Muon.pt`)도 명시로 고침.

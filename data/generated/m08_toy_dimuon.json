@@ -1,0 +1,21 @@
+{
+ "n_events": 400000,
+ "seed": 8,
+ "sigma_rel": 0.01,
+ "composition": {
+  "J/psi": 0.08,
+  "psi(2S)": 0.003,
+  "Upsilon(1S)": 0.02,
+  "Upsilon(2S)": 0.006,
+  "Upsilon(3S)": 0.003,
+  "Z": 0.01
+ },
+ "expected_counts": {
+  "J/psi": 32000,
+  "psi(2S)": 1200,
+  "Upsilon(1S)": 8000,
+  "Upsilon(2S)": 2400,
+  "Upsilon(3S)": 1200,
+  "Z": 4000
+ }
+}
