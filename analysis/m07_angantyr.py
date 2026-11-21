@@ -28,8 +28,10 @@ FRAMES AND SELECTIONS (as ALICE)
   approximation).  Pb-Pb and pp: lab = NN frame.
 - Glauber quantities from HIInfo, in the usual conventions: N_part = nucleons
   wounded inelastically (absorptive + diffractive), N_coll = inelastic
-  sub-collisions (total - elastic).  Events must have unit weight
-  (HeavyIon:forceUnitWeight = on in the cards).
+  sub-collisions (total - elastic).  Angantyr events are WEIGHTED (b drawn
+  from a Gaussian); every class boundary and average here uses the weights.
+  (HeavyIon:forceUnitWeight would give unit weights but does not exist in
+  PYTHIA 8.312, the WSL2 version.)
 - V0A: 2.8 < eta_lab < 5.1, V0C: -3.7 < eta_lab < -1.7 (charged particles).
   Pb-Pb centrality: V0M = V0A + V0C, all events (Angantyr generates
   inelastic collisions).  p-Pb: "NSD" = at least one charged particle in
@@ -104,6 +106,12 @@ def _chunk(job):
     if not py.init():
         raise RuntimeError("PYTHIA init() failed")
     hi = py.getHeavyIonsPtr().hiInfo if system != "pp" else None
+    # HIInfo differs between versions (troubleshooting #27).  8.318: nCollTot/ND/El
+    # count ALL sub-collisions, glauberINEL exists.  8.312: nCollTot/ND count only
+    # the sub-collisions generated as separate events, nCollNDTot all absorptive
+    # ones, no elastic/diffractive totals and no glauberINEL -> the inelastic
+    # N_coll and sigma_inel are recorded with 8.318 only (NaN otherwise).
+    full_counts = hi is not None and hasattr(hi, "nCollEl")
     flip, shift = FLIP[system], Y_SHIFT[system]
     code = {v: k for k, v in SPECIES.items()}
     sidx = {s: COLS.index(f"n_{s}") for s in SPECIES}
@@ -122,8 +130,9 @@ def _chunk(job):
             # inelastically (absorptively or diffractively) -- HIInfo.nPartProj() also counts
             # nucleons that only scattered elastically; N_coll counts INELASTIC sub-collisions
             # -- HIInfo.nCollTot() also counts elastic ones.
-            row[0:5] = (hi.b(), hi.nAbsProj() + hi.nDiffProj(), hi.nAbsTarg() + hi.nDiffTarg(),
-                        hi.nCollTot() - hi.nCollEl(), hi.nCollND())
+            row[0:3] = hi.b(), hi.nAbsProj() + hi.nDiffProj(), hi.nAbsTarg() + hi.nDiffTarg()
+            row[3:5] = ((hi.nCollTot() - hi.nCollEl(), hi.nCollND()) if full_counts
+                        else (np.nan, hi.nCollNDTot()))
             row[9] = hi.weight()
         else:
             row[0:5] = np.nan, 1, 1, 1, 1
@@ -156,47 +165,63 @@ def _chunk(job):
                     if sp in pidx:
                         row[pidx[sp]] += p.pT()
         rows.append(row)
-    sig = (hi.glauberINEL(), hi.glauberINELErr()) if hi is not None else (np.nan, np.nan)
+    sig = ((hi.glauberINEL(), hi.glauberINELErr()) if hi is not None and hasattr(hi, "glauberINEL")
+           else (np.nan, np.nan))
     return np.array(rows), sig, py.settings.parm("Pythia:versionNumber")
 
 
-def percentile_classes(key, edges, rng):
-    """Index arrays of percentile classes, largest key first (random tie break)."""
+def percentile_classes(key, edges, rng, w=None):
+    """Index arrays of percentile classes of the (weighted) sample, largest key
+    first, random tie break.  With event weights an event belongs to the class
+    that contains the midpoint of its slice of the cumulative weight."""
     k = key + rng.random(len(key))
-    order = np.argsort(-k, kind="stable"); n = len(order)
-    return [(f"{lo:g}-{hi:g}%", order[int(round(n * lo / 100)):int(round(n * hi / 100))])
-            for lo, hi in zip(edges[:-1], edges[1:])]
+    order = np.argsort(-k, kind="stable")
+    w = np.ones(len(key)) if w is None else np.asarray(w, float)
+    cw = np.cumsum(w[order]); mid = (cw - 0.5 * w[order]) / cw[-1] * 100
+    return [(f"{lo:g}-{hi:g}%", order[(mid >= lo) & (mid < hi)]) for lo, hi in zip(edges[:-1], edges[1:])]
+
+
+def wmean(x, w):
+    return float(np.sum(w * x) / np.sum(w)) if len(x) else None
 
 
 def class_record(name, d, col):
+    """Weighted class averages.  Angantyr events carry weights unless unit
+    weights are forced (PYTHIA >= 8.313; troubleshooting #26)."""
+    w = d[:, col["weight"]]
+    n_eff = float(w.sum() ** 2 / np.sum(w ** 2)) if len(w) else 0.0
     npart = d[:, col["npart_proj"]] + d[:, col["npart_targ"]]
-    rec = {"class": name, "n_events": int(len(d)), "b": float(np.nanmean(d[:, col["b"]])) if len(d) else None,
-           "npart": float(npart.mean()), "ncoll": float(d[:, col["ncoll"]].mean()),
-           "dndeta": float(d[:, col["nch05"]].mean()), "dndeta_err": float(d[:, col["nch05"]].std() / np.sqrt(len(d))),
+    nch = d[:, col["nch05"]]
+    m = wmean(nch, w)
+    rec = {"class": name, "n_events": int(len(d)), "n_eff": n_eff,
+           "b": wmean(d[:, col["b"]], w) if np.isfinite(d[:, col["b"]]).all() and len(d) else None,
+           "npart": wmean(npart, w),
+           "ncoll": wmean(d[:, col["ncoll"]], w) if np.isfinite(d[:, col["ncoll"]]).all() and len(d) else None,
+           "ncoll_nd": wmean(d[:, col["ncoll_nd"]], w), "dndeta": m,
+           "dndeta_err": float(np.sqrt(wmean((nch - m) ** 2, w) / n_eff)) if n_eff else None,
            "ratios": {}, "ratio_stat": {}, "meanpt": {}, "counts": {}}
-    rec["dndeta_per_part_pair"] = rec["dndeta"] / (rec["npart"] / 2)
-    npi = d[:, col["n_pi"]].sum()
+    rec["dndeta_per_part_pair"] = rec["dndeta"] / (rec["npart"] / 2) if len(d) else None
+    npi = np.sum(w * d[:, col["n_pi"]])
     for r, (sp, fac) in RATIOS.items():
-        nx = d[:, col[f"n_{sp}"]].sum()
-        rec["ratios"][r] = float(fac * nx / npi) if npi else None
-        rec["ratio_stat"][r] = float(fac * np.sqrt(nx) / npi) if npi else None
-        rec["counts"][sp] = int(nx)
-    rec["counts"]["pi"] = int(npi)
+        nx = d[:, col[f"n_{sp}"]]
+        rec["ratios"][r] = float(fac * np.sum(w * nx) / npi) if npi else None
+        rec["ratio_stat"][r] = float(fac * np.sqrt(np.sum(w ** 2 * nx)) / npi) if npi else None
+        rec["counts"][sp] = int(nx.sum())
+    rec["counts"]["pi"] = int(d[:, col["n_pi"]].sum())
     for sp in PT_SPECIES:
-        n = d[:, col[f"n_{sp}"]].sum()
-        rec["meanpt"][sp] = float(d[:, col[f"sumpt_{sp}"]].sum() / n) if n else None
+        n = np.sum(w * d[:, col[f"n_{sp}"]])
+        rec["meanpt"][sp] = float(np.sum(w * d[:, col[f"sumpt_{sp}"]]) / n) if n else None
     return rec
 
 
 def summarise(system, data, sigmas, version, settings):
     col = {c: i for i, c in enumerate(COLS)}
     rng = np.random.default_rng(5)
-    w = data[:, col["weight"]]
-    if not np.allclose(w, 1.0):
-        raise SystemExit(f"weighted events (weights {w.min():.3g}-{w.max():.3g}): set HeavyIon:forceUnitWeight = on "
-                         "(troubleshooting #26) -- unweighted percentiles would be biased")
+    wt = data[:, col["weight"]]
     out = {"system": system, "pythia_version": round(version, 3), "extra_settings": settings,
-           "n_events": int(len(data)), "frame": "lab: eta_lab = -eta_NN - 0.465" if system == "pPb" else "NN = lab"}
+           "n_events": int(len(data)), "frame": "lab: eta_lab = -eta_NN - 0.465" if system == "pPb" else "NN = lab",
+           "event_weights": {"min": float(wt.min()), "max": float(wt.max()),
+                             "n_eff": float(wt.sum() ** 2 / np.sum(wt ** 2))}}
     s = np.array([x for x in sigmas if np.isfinite(x[0]) and x[1] > 0])
     if len(s):
         w = 1 / s[:, 1] ** 2
@@ -211,7 +236,7 @@ def summarise(system, data, sigmas, version, settings):
         nsd = (data[:, col["nv0a"]] > 0) & (data[:, col["nv0c"]] > 0)
         sel = data[nsd]
         out["selection"] = "NSD: >= 1 charged in V0A and in V0C; centrality = V0A (Pb side)"
-        out["nsd_fraction"] = float(nsd.mean())
+        out["nsd_fraction"] = float(np.sum(wt[nsd]) / np.sum(wt))
         key = sel[:, col["nv0a"]]
         edges = [0, 5, 10, 20, 40, 60, 80, 100]; glauber_edges = None
     else:
@@ -219,17 +244,29 @@ def summarise(system, data, sigmas, version, settings):
         out["selection"] = "INEL>0 (>= 1 charged in |eta| < 1); classes = V0A + V0C as in Module 2"
         key = sel[:, col["nv0a"]] + sel[:, col["nv0c"]]
         edges = [0, 0.92, 4.6, 9.2, 13.8, 18.4, 27.6, 36.8, 46, 64.5, 100]; glauber_edges = None
+    sw = sel[:, col["weight"]]
+    eta = slice(col["eta0"], col["eta0"] + len(ETA_EDGES) - 1)
+
+    def eta_profile(idx):
+        return (np.sum(sw[idx, None] * sel[idx, eta], axis=0) / np.sum(sw[idx]) / 0.5).tolist()
+
     out["all"] = class_record("all", sel, col)
-    out["dndeta_vs_eta"] = {"edges": ETA_EDGES.tolist(),
-                            "all": (sel[:, col["eta0"]:col["eta0"] + 20].mean(axis=0) / 0.5).tolist()}
-    out["classes"] = [class_record(n, sel[i], col) for n, i in percentile_classes(key, edges, rng)]
-    for c, (n, i) in zip(out["classes"], percentile_classes(key, edges, np.random.default_rng(5))):
-        out["dndeta_vs_eta"][n] = (sel[i][:, col["eta0"]:col["eta0"] + 20].mean(axis=0) / 0.5).tolist()
+    out["dndeta_vs_eta"] = {"edges": ETA_EDGES.tolist(), "all": eta_profile(np.arange(len(sel)))}
+    classes = percentile_classes(key, edges, rng, sw)
+    out["classes"] = [class_record(n, sel[i], col) for n, i in classes]
+    for n, i in classes:
+        out["dndeta_vs_eta"][n] = eta_profile(i)
     if glauber_edges:
         b = sel[:, col["b"]]
-        out["glauber_b_order"] = [class_record(n, sel[i], col) for n, i in percentile_classes(-b, glauber_edges, rng)]
-        out["glauber_v0m_order"] = [class_record(n, sel[i], col) for n, i in percentile_classes(key, glauber_edges, rng)]
+        out["glauber_b_order"] = [class_record(n, sel[i], col)
+                                  for n, i in percentile_classes(-b, glauber_edges, rng, sw)]
+        out["glauber_v0m_order"] = [class_record(n, sel[i], col)
+                                    for n, i in percentile_classes(key, glauber_edges, rng, sw)]
     return out
+
+
+def f2(x):
+    return "n/a" if x is None else f"{x:.1f}"
 
 
 def generate(args) -> int:
@@ -251,11 +288,11 @@ def generate(args) -> int:
     print(f"[gen] {args.system}: {len(data)} events in {time.time() - t0:.0f} s on {w} workers, PYTHIA {version:.3f}")
     if "sigma_inel_mb" in out:
         print(f"[sigma] Angantyr sigma_inel = {out['sigma_inel_mb'] / 1000:.3f} +- {out['sigma_inel_err_mb'] / 1000:.3f} b")
-    print(f"[all]  {out['selection']}: {a['n_events']} events, <Npart> {a['npart']:.2f}, <Ncoll> {a['ncoll']:.2f}, "
+    print(f"[all]  {out['selection']}: {a['n_events']} events, <Npart> {a['npart']:.2f}, <Ncoll> {f2(a['ncoll'])}, "
           f"<dNch/deta> {a['dndeta']:.2f}")
     for c in out["classes"]:
         print(f"  {c['class']:>8s}: <b> {c['b'] if c['b'] is not None else float('nan'):5.2f}  <Npart> {c['npart']:6.1f}  "
-              f"<Ncoll> {c['ncoll']:7.1f}  <dNch/deta> {c['dndeta']:8.1f}  per pair {c['dndeta_per_part_pair']:5.2f}")
+              f"<Ncoll> {f2(c['ncoll']):>7s}  <dNch/deta> {c['dndeta']:8.1f}  per pair {c['dndeta_per_part_pair']:5.2f}")
     print(f"[out] {path}")
     return 0
 
@@ -279,11 +316,14 @@ def compare(args) -> int:
         for ax, q, lab in zip(axes, ("npart", "ncoll"), (r"$\langle N_{\rm part}\rangle$", r"$\langle N_{\rm coll}\rangle$")):
             def mid(rows):
                 return np.array([np.mean([float(x) for x in r["class"].rstrip("%").split("-")]) for r in rows])
+            qa = q if (q == "npart" or pb["glauber_b_order"][0]["ncoll"] is not None) else "ncoll_nd"
             for rows, style, name in ((g6["pbpb"]["centrality_b_order"], dict(color=OKABE_ITO[0], ls="-"), "Module 6, b order"),
                                       (g6["pbpb"]["centrality_npart_order"], dict(color=OKABE_ITO[0], ls=":"), "Module 6, N$_{part}$ order"),
                                       (pb["glauber_b_order"], dict(color=OKABE_ITO[1], ls="-"), "Angantyr, b order"),
                                       (pb["glauber_v0m_order"], dict(color=OKABE_ITO[1], ls="--"), "Angantyr, V0M order")):
-                ax.plot(mid(rows), [r[q] for r in rows], marker="o", ms=3, label=name, **style)
+                key = qa if name.startswith("Angantyr") else q
+                ax.plot(mid(rows), [r[key] for r in rows], marker="o", ms=3,
+                        label=name + (" (absorptive only)" if key == "ncoll_nd" else ""), **style)
             ref = DATA["ALICE_PbPb_glauber"]
             ax.plot([0.5, 4.5], [ref["0-1%"][0 if q == "npart" else 1], ref["4-5%"][0 if q == "npart" else 1]], "k*", ms=10,
                     label="ALICE-PUBLIC-2018-011")
@@ -387,7 +427,7 @@ def compare(args) -> int:
               f"ALICE 7.67 +- 0.25 b")
         for cl in gl["classes"]:
             print(f"   {cl['class']:>8s}: Npart Angantyr(b) {cl['angantyr_b'][0]:6.1f}  (V0M) {cl['angantyr_v0m'][0]:6.1f}  "
-                  f"Module6 {cl['module6_b'][0]:6.1f} | Ncoll {cl['angantyr_b'][1]:7.1f} {cl['angantyr_v0m'][1]:7.1f} "
+                  f"Module6 {cl['module6_b'][0]:6.1f} | Ncoll {f2(cl['angantyr_b'][1]):>7s} {f2(cl['angantyr_v0m'][1]):>7s} "
                   f"{cl['module6_b'][1]:7.1f} | b {cl['angantyr_b'][2]:5.2f} vs {cl['module6_b'][2]:5.2f}")
     if "sigma_pPb_b" in summary:
         sp = summary["sigma_pPb_b"]

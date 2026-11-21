@@ -30,12 +30,10 @@ HeavyIon:mode = 1
 ! genetic algorithm, ~30 s.  Kept at the documented defaults.
 Angantyr:CollisionModel = 2
 HeavyIon:SigFitNGen = 20
-! By default Angantyr samples the impact parameter from a Gaussian and gives
-! every event a WEIGHT.  An analysis that ignores the weights (percentile
-! classes, plain averages) is then biased towards central events
-! (troubleshooting #26).  Unit weights: b sampled flat in the transverse
-! plane within HeavyIon:bWidthCut x bWidth, i.e. the physical distribution.
-HeavyIon:forceUnitWeight = on
+! Angantyr samples the impact parameter from a Gaussian and gives every
+! event a WEIGHT; analysis/m07_angantyr.py uses the weights everywhere
+! (troubleshooting #26).  HeavyIon:forceUnitWeight = on would avoid them,
+! but that setting does not exist in PYTHIA 8.312 (WSL2) -- init() fails.
 
 ! Primary particles as in ALICE: decay only what has c*tau < 1 cm.
 ParticleDecays:limitTau0 = on

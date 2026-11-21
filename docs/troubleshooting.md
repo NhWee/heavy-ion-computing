@@ -566,10 +566,30 @@ WSL2 100만 사건으로 돌리니 1.10 ± 0.05. rope 변형 20만 사건에서�
 10.46 fm), ⟨N_coll⟩이 13–50 % 컸다. σ_PbPb 차이(3 %)로는 b가 1.5 %밖에 달라질 수 없다.
 **원인 1 — 사건 가중치**: Angantyr는 충돌 변수 b를 가우스 분포에서 뽑고 그 보정을 **사건 가중치**에 싣는다
 (PYTHIA 문서 HeavyIons: "the events produced will always be weighted"). 가중치를 무시하고 백분위 클래스와 평균을
-만들면 중심 충돌이 과대 대표된다. → 카드에 `HeavyIon:forceUnitWeight = on` (b를 가로 평면에서 평평하게 뽑아 모든
-사건 가중치 1), 분석은 가중치가 1이 아니면 멈춘다.
+만들면 중심 충돌이 과대 대표된다. → 처음에는 카드에 `HeavyIon:forceUnitWeight = on`을 넣었지만 이 설정은
+PYTHIA 8.312(WSL2)에 없어 `init()`가 실패했다 (#27). 그래서 **분석이 가중치를 쓴다**: 백분위 경계는 누적 가중치로,
+평균·비는 가중 평균·가중 합으로, 통계 오차는 유효 사건 수 (Σw)²/Σw²로. 검증: 같은 8.318에서 단위 가중치로
+만든 결과와 비교 (module07 §1).
 **원인 2 — 세는 방식**: `HIInfo.nCollTot()`은 **탄성** 하위충돌도 센다 (확인: nCollTot = ND + SDP + SDT + DD + CD + El).
 `HIInfo.nPartProj()`는 탄성으로만 산란된 핵자도 센다 (nPartProj = nAbsProj + nDiffProj + nElProj). Glauber 관례는
 비탄성: N_part = 흡수 + 회절로 상처 입은 핵자, N_coll = 비탄성 하위충돌 = Tot − El.
 **배운 점**: 생성기가 주는 "N_part"는 이름이 같아도 정의가 다를 수 있다 — 구성 요소로 분해해 합이 맞는지 확인한다.
 사건 생성기가 가중 사건을 내는지 처음부터 확인한다 (info.weight()의 분포).
+
+---
+
+## #27 WSL2(PYTHIA 8.312)에서 Angantyr `init()` 실패, 그리고 HIInfo가 버전마다 다름
+
+**증상**: `bash scripts/run_all_pythia.sh m07` → pp는 되고 p–Pb에서 `RuntimeError: PYTHIA init() failed`. 카드가
+`Print:quiet = on`이라 이유가 안 보였다.
+**원인**: 클라우드(8.318)에서 만든 카드의 `HeavyIon:forceUnitWeight`가 8.312에는 없다. PYTHIA는 모르는 설정이
+하나라도 있으면 `init()`를 거부한다 ("some user settings did not make sense"). PyPI에 `pythia8mc==8.312.1`이 있어서
+클라우드 venv에서 같은 버전으로 재현하고 카드를 한 줄씩 읽혀 찾았다.
+그 과정에서 `HIInfo`도 버전마다 다르다는 것이 드러났다: 8.312는 `nCollEL`(대문자), `glauberINEL` 없음, 그리고
+`nCollTot`·`nCollND`가 **별도 사건으로 생성된 하위충돌만** 센다 (흡수적 전체는 `nCollNDTot`). 8.318은 `nCollEl`,
+`glauberINEL`, 모든 하위충돌.
+**해결**: 카드에서 `forceUnitWeight`를 빼고 분석이 가중치를 쓴다 (#26). N_part(흡수 + 회절)는 두 버전 같은 정의.
+비탄성 N_coll과 σ_inel은 8.318에서만 기록 (8.312에서는 n/a), 흡수적 N_coll은 둘 다 기록.
+**배운 점**: 한 버전에서 만든 카드·코드는 다른 버전에서 바로 돌려 본다 — 같은 "PYTHIA 8.3"이어도 설정과 Python API가
+다르다. 시험할 버전이 PyPI에 있으면 venv로 그 자리에서 재현할 수 있다.
+

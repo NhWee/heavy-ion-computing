@@ -62,3 +62,17 @@ def test_m07_percentile_classes_and_frame():
     assert key[cls[0][1]].min() > key[cls[1][1]].max()          # first class = largest key
     assert m7.Y_SHIFT["pPb"] == -0.465 and m7.FLIP["pPb"]          # proton to -eta, CM at y = -0.465
     assert not m7.FLIP["PbPb"] and m7.Y_SHIFT["PbPb"] == 0.0
+
+
+def test_m07_weighted_percentiles():
+    """A weighted event counts as many unweighted ones: doubling the weights of the
+    top half must move the 50 % boundary to the top third of the events."""
+    import pathlib
+    import sys
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "analysis"))
+    import m07_angantyr as m7
+    key = np.arange(3000, dtype=float)[::-1]                # event 0 has the largest key
+    w = np.ones(3000); w[:1000] = 2.0                        # top third carries half the weight
+    (_, top), (_, bottom) = m7.percentile_classes(key, [0, 50, 100], np.random.default_rng(1), w)
+    assert len(top) == 1000 and len(bottom) == 2000
+    assert set(top) == set(range(1000))
