@@ -1,0 +1,27 @@
+{
+  "_status": "Downloaded by scripts/m08_fetch_cms_dimuon.sh; complete (size = server Content-Length), opens with uproot; sha256 computed locally.",
+  "verified": true,
+  "experiment": "CMS",
+  "title": "DoubleMuParked dataset from 2012 in NanoAOD format reduced on muons",
+  "opendata_record": 12341,
+  "opendata_url": "https://opendata.cern.ch/record/12341",
+  "doi": "10.7483/OPENDATA.CMS.LVG5.QT81",
+  "analysis_record": {
+    "record": 12342,
+    "doi": "10.7483/OPENDATA.CMS.AAR1.4NZQ",
+    "title": "Analysis of the di-muon spectrum using data from the CMS detector taken in 2012"
+  },
+  "license": "CC0 1.0",
+  "system": "pp",
+  "sqrt_s_TeV": 8.0,
+  "runs": "2012 Run B and C (DoubleMuParked)",
+  "content": "muon variables only: nMuon, Muon_pt, Muon_eta, Muon_phi, Muon_mass, Muon_charge",
+  "source_url": "https://opendata.cern.ch/eos/opendata/cms/derived-data/AOD2NanoAODOutreachTool/Run2012BC_DoubleMuParked_Muons.root",
+  "file": "opendata/Run2012BC_DoubleMuParked_Muons.root",
+  "size_bytes": 2244449133,
+  "server_size_bytes": 2244449133,
+  "sha256": "f8a9d40dba9ee7131a4110f93b4e14a29f99255cbff777018848477f2f61b00b",
+  "n_events": 61540413,
+  "downloaded_utc": "2026-11-21T11:56:51Z",
+  "note": "CMS and CERN do not endorse works produced with these data (record terms of use)."
+}
