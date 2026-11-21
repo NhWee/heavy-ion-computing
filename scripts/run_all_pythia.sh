@@ -33,6 +33,11 @@
 #   m09         jet quenching (Module 9): PYTHIA pp 5.02 TeV (2M minimum bias + 2M in
 #               pT-hat slices, 1M dijet events), Glauber pool, energy-loss model, R_AA,
 #               v2 and dijet A_J; NOT in the default list; ~1.5 h on 16 cores
+#   m10         viscous hydrodynamics (Module 10): builds MUSIC + iSS into external/
+#               (scripts/m10_build_hydro.sh, pinned commits), Glauber centrality scan,
+#               s_factor calibration and event-by-event MUSIC runs for 4 variants
+#               (eta/s 0.12, 0, 0.20, +bulk); NOT in the default list; ~3 h on 16 cores;
+#               resume an interrupted run with M10_RESUME=1 (skips finished events)
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
 #               sample; generates one 20k tuned sample)
@@ -290,5 +295,22 @@ if want m09; then
     logged results/logs/m09_dijet_pp.log $PY analysis/m09_dijet.py pp --n-events 1000000; tail -n 1 results/logs/m09_dijet_pp.log
     logged results/logs/m09_dijet.log $PY analysis/m09_dijet.py model
     grep -E "^\[" results/logs/m09_dijet.log
+fi
+if want m10; then
+    echo "### Module 10: viscous hydrodynamics (logs: results/logs/m10_*.log)"
+    logged results/logs/m10_build.log bash scripts/m10_build_hydro.sh; tail -n 1 results/logs/m10_build.log
+    NJ=$(nproc)
+    # a fresh run replaces the committed (cloud) events; M10_RESUME=1 continues an interrupted run
+    if [[ "${M10_RESUME:-0}" != 1 ]]; then rm -f results/tables/m10/m10_events_*.jsonl results/tables/m10/m10_calibration.json; fi
+    logged results/logs/m10_scan.log $PY analysis/m10_hydro.py scan --n 4000 --jobs "$NJ"; head -n 1 results/logs/m10_scan.log
+    for v in nominal ideal etas020 bulk; do
+        n=20; [[ $v == nominal ]] && n=30
+        logged results/logs/m10_calib_$v.log $PY analysis/m10_hydro.py calibrate --variant $v --n 8 --jobs "$NJ" --samples 40
+        tail -n 1 results/logs/m10_calib_$v.log
+        logged results/logs/m10_run_$v.log $PY analysis/m10_hydro.py run --variant $v --per-class $n --jobs "$NJ" --samples 100
+        tail -n 1 results/logs/m10_run_$v.log
+    done
+    logged results/logs/m10_analyze.log $PY analysis/m10_hydro.py analyze
+    grep -E "^\[|^ +[0-9]" results/logs/m10_analyze.log
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

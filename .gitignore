@@ -37,3 +37,7 @@ Thumbs.db
 
 # --- tests
 .pytest_cache/
+
+# --- third-party codes built locally (Module 10: MUSIC, iSS)
+external/
+data/generated/m10/
