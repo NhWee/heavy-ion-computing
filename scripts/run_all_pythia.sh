@@ -311,6 +311,6 @@ if want m10; then
         tail -n 1 results/logs/m10_run_$v.log
     done
     logged results/logs/m10_analyze.log $PY analysis/m10_hydro.py analyze
-    grep -E "^\[|^ +[0-9]" results/logs/m10_analyze.log
+    grep -E "^\[|^ +[0-9]|same initial|^ +(ideal|etas020|bulk) \(" results/logs/m10_analyze.log
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

@@ -526,18 +526,59 @@ def cmd_analyze(a):
         if not rows:
             continue
         S[var] = rows
-        res = {"variant": var, "settings": VARIANTS[var] | {"tau0": TAU0, "e_sw": E_SW, "w": W_NUC,
+        e = np.concatenate([r["eps2_event"] for r in rows]); v = np.concatenate([r["v2_event"] for r in rows])
+        kappa2 = float(np.sum(e * v) / np.sum(e * e))      # least-squares slope through 0
+        res = {"kappa2_all_classes": kappa2, "variant": var, "settings": VARIANTS[var] | {"tau0": TAU0, "e_sw": E_SW, "w": W_NUC,
                                                              "k_gamma": K_GAMMA, "grid": [X_MAX, DX]},
                "s_factor": cal.get(var, {}).get("s_factor"), "codes": versions, "classes": rows}
         (TAB / f"m10_{var}.json").write_text(json.dumps(res, indent=1))
         print(f"\n[{var}] s_factor = {res['s_factor']:.4g}")
-        print("  class    nev  Npart  dNch/deta   <pT> pi    K      p     eps2   v2{2}          eps3   v3{2}")
+        print("  class    nev  Npart  dNch/deta   <pT> pi    K      p     K/pi  p/pi   eps2   v2{2}          eps3   v3{2}")
         for r in rows:
             print(f"  {r['class']:>7} {r['n_hydro_events']:4d} {r['npart']:6.1f} {r['dndeta']:8.1f}   "
-                  f"{r['meanpt_pi']:.3f} {r['meanpt_K']:.3f} {r['meanpt_p']:.3f}  {r['eps2_rms']:.3f} "
+                  f"{r['meanpt_pi']:.3f} {r['meanpt_K']:.3f} {r['meanpt_p']:.3f}  {r['dndy_K']/r['dndy_pi']:.3f} {r['dndy_p']/r['dndy_pi']:.3f}  {r['eps2_rms']:.3f} "
                   f"{r['v2']:.4f}+-{r['v2_err']:.4f}  {r['eps3_rms']:.3f} {r['v3']:.4f}+-{r['v3_err']:.4f}")
     if not S:
         sys.exit("no events: run `run` first")
+    # matched comparison: the variants reuse the same initial conditions, so
+    # ratios on common events cancel the event-by-event (geometry) fluctuations
+    paired = {}
+    if "nominal" in S:
+        ref = {e["i"]: e for e in load_events("nominal")}
+        for var in S:
+            if var == "nominal":
+                continue
+            E = [e for e in load_events(var) if e["i"] in ref]
+            if not E:
+                continue
+            p = {"n_events": len(E)}
+            for n in (2, 3):
+                a = sum(e[f"ref{n}_num"] for e in E) / sum(e[f"ref{n}_den"] for e in E)
+                b = sum(ref[e["i"]][f"ref{n}_num"] for e in E) / sum(ref[e["i"]][f"ref{n}_den"] for e in E)
+                p[f"v{n}_ratio"] = float(np.sqrt(a / b))
+            for k in SPECIES:
+                a = sum(e["sumpt"][k] for e in E) / sum(e["npt"][k] for e in E)
+                b = sum(ref[e["i"]]["sumpt"][k] for e in E) / sum(ref[e["i"]]["npt"][k] for e in E)
+                p[f"meanpt_{k}_ratio"] = float(a / b)
+            p["dndeta_ratio"] = float(np.mean([e["nch_eta05"] / ref[e["i"]]["nch_eta05"] for e in E]))
+            cmap = class_of(cen); p["per_class"] = []
+            for c in cen["classes"]:
+                Ec = [e for e in E if cmap.get(e["i"]) == c["class"]]
+                if not Ec:
+                    continue
+                q = {"class": c["class"], "n_events": len(Ec)}
+                for n in (2, 3):
+                    a = sum(e[f"ref{n}_num"] for e in Ec) / sum(e[f"ref{n}_den"] for e in Ec)
+                    b = sum(ref[e["i"]][f"ref{n}_num"] for e in Ec) / sum(ref[e["i"]][f"ref{n}_den"] for e in Ec)
+                    q[f"v{n}_ratio"] = float(np.sqrt(max(a, 0) / b))
+                p["per_class"].append(q)
+            paired[var] = p
+        print("\nsame initial conditions, ratio to nominal (all classes pooled, pair-weighted):")
+        for var, p in paired.items():
+            print(f"  {var:>8} ({p['n_events']} events): v2 {p['v2_ratio']:.3f}  v3 {p['v3_ratio']:.3f}  "
+                  f"<pT> pi {p['meanpt_pi_ratio']:.3f} K {p['meanpt_K_ratio']:.3f} p {p['meanpt_p_ratio']:.3f}  "
+                  f"dN/deta {p['dndeta_ratio']:.3f}")
+        (TAB / "m10_paired.json").write_text(json.dumps(paired, indent=1))
     ang = json.loads((ROOT / "results/tables/m07/m07_PbPb.json").read_text())
     ang = {c["class"]: c for c in ang["classes"]}
     cls_mid = {c["class"]: 0.5 * sum(map(float, c["class"].rstrip("%").split("-"))) for c in cen["classes"]}
@@ -588,19 +629,20 @@ def cmd_analyze(a):
     fig, ax = plt.subplots(figsize=(5.6, 4.4))
     ptc = 0.5 * (PT_EDGES[1:] + PT_EDGES[:-1])
     a05 = ang.get("0-5%")
+    names = {"pi": r"$\pi^+ + \pi^-$", "K": r"$K^+ + K^-$", "p": r"$p + \bar{p}$"}
     for k, col in zip(SPECIES, ("C0", "C1", "C2")):
-        if "nominal" in S:
-            ax.semilogy(ptc, S["nominal"][0][f"spec_{k}"], "-", color=col, label=f"{k}$^+$+{k}$^-$ MUSIC")
-        if a05 is not None and "counts" in a05:
-            pass
+        for var, ls in (("nominal", "-"), ("ideal", "--"), ("bulk", ":")):
+            if var in S and S[var][0]["class"] == "0-5%":
+                ax.semilogy(ptc, S[var][0][f"spec_{k}"], ls, color=col,
+                            label=names[k] + " " + VARIANTS[var]["label"] if k == "pi" or var == "nominal" else None)
     ax.set_xlabel(r"$p_{\rm T}$ (GeV/$c$)"); ax.set_ylabel(r"$dN/dy\,dp_{\rm T}$ (GeV$^{-1}c$), $|y|<0.5$")
     ax.set_title("0-5% Pb-Pb, identified hadrons (MUSIC + iSS, decays, no afterburner)", fontsize=9)
-    ax.legend(fontsize=8); fig.tight_layout(); fig.savefig(FIG / "m10_spectra.png", dpi=130); plt.close(fig)
+    ax.legend(fontsize=7); fig.tight_layout(); fig.savefig(FIG / "m10_spectra.png", dpi=130); plt.close(fig)
 
     # --- flow vs centrality, and response
-    fig, axs = plt.subplots(1, 2, figsize=(11, 4.2))
+    fig, axs = plt.subplots(1, 3, figsize=(15, 4.2))
     ax = axs[0]
-    for var, rows in S.items():
+    for var, rows in [(v, r) for v, r in S.items() if v == "nominal"]:
         xc = [cls_mid[r["class"]] for r in rows]
         ax.errorbar(xc, [r["v2"] for r in rows], yerr=[r["v2_err"] for r in rows], fmt="o-", ms=4,
                     color=colors[var], label=r"$v_2\{2\}$ " + VARIANTS[var]["label"])
@@ -609,13 +651,19 @@ def cmd_analyze(a):
     ax.set_xlabel("centrality (%)"); ax.set_ylabel(r"$v_n\{2\}$, $0.2<p_{\rm T}<3$ GeV/$c$, $|\eta|<0.8$")
     ax.set_title(r"elliptic (filled) and triangular (open) flow", fontsize=10); ax.legend(fontsize=7)
     ax = axs[1]
+    for var, p in paired.items():
+        xc = [cls_mid[q["class"]] for q in p["per_class"]]
+        ax.plot(xc, [q["v2_ratio"] for q in p["per_class"]], "o-", ms=4, color=colors[var],
+                label=VARIANTS[var]["label"] + f": $v_2$ {p['v2_ratio']:.2f}, $v_3$ {p['v3_ratio']:.2f}")
+        ax.plot(xc, [q["v3_ratio"] for q in p["per_class"]], "s:", ms=4, color=colors[var], mfc="none")
+    ax.axhline(1, color="gray", lw=0.8)
+    ax.set_xlabel("centrality (%)"); ax.set_ylabel(r"$v_n$(variant) / $v_n$($\eta/s$ = 0.12)")
+    ax.set_title("same initial conditions: $v_2$ (filled), $v_3$ (open)", fontsize=10); ax.legend(fontsize=7)
+    ax = axs[2]
     for var, rows in S.items():
         e = np.concatenate([r["eps2_event"] for r in rows]); v = np.concatenate([r["v2_event"] for r in rows])
         k2 = float(np.sum(e * v) / np.sum(e * e))
         ax.scatter(e, v, s=6, color=colors[var], alpha=0.5, label=VARIANTS[var]["label"] + f": $v_2/\\varepsilon_2$ = {k2:.2f}")
-        for r in rows:
-            r["kappa2"] = k2
-    xx = np.linspace(0, 0.7, 10)
     ax.set_xlabel(r"$\varepsilon_2$ (initial state)"); ax.set_ylabel(r"$v_2$ of the hydro event")
     ax.set_title("linear response: $v_2 \\approx \\kappa_2\\,\\varepsilon_2$", fontsize=10); ax.legend(fontsize=7)
     fig.tight_layout(); fig.savefig(FIG / "m10_flow.png", dpi=130); plt.close(fig)

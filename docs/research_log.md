@@ -437,3 +437,13 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
   요동이 있으면 같은 R_AA에 κ가 3–3.6배 (R_AA는 적게 잃을 확률에 민감). A_J: 바탕만 R_B 0.51 → 0.48, 손실 요동이 모형 차이를 지움
   (0–10 % 네 모형 R_B 0.34–0.39). A_J만으로는 L vs L²를 못 가른다.
 
+
+## 2026-11-21 — Module 10: MUSIC 점성 유체 + iSS
+- `scripts/m10_build_hydro.sh`: MUSIC(85f4351, GPL-2.0)과 iSS(8b3e43b, MIT)를 고정 커밋으로 받아 빌드 (클라우드 23초; GSL은 apt).
+- 초기 조건: Module 6 Glauber, 상처 입은 핵자마다 w = 0.5 fm 가우스 × Gamma(k = 1.6) 가중치, s ∝ √(T_A T_B) (TRENTo p = 0).
+  중심도는 총 초기 엔트로피의 백분위. 2+1D, τ₀ = 0.6 fm/c 정지 출발, hotQCD EOS, e_sw = 0.18 GeV/fm³ (T ≈ 145 MeV), 재산란 없음.
+- 흐름 추정: 같은 유체 사건의 서로 다른 oversample끼리 상관 → non-flow 없는 v_n{2}. toy에서 1/√N 안에서 되찾음.
+- s_factor를 0–5 % dN_ch/dη = 1943에 맞춤: ideal 184, η/s 0.12 167, 0.20 161, + ζ/s(T) 147 — 점성이 엔트로피를 만든다.
+- nominal: v₂{2} 0.03 (0–5 %) → 0.12 (40–50 %), κ₂ = v₂/ε₂ ≈ 0.22; ⟨pT⟩ π/K/p 0.67/1.01/1.44 (Angantyr 0.53/0.75/0.88);
+  v₂(pT) 질량 순서. 같은 초기 조건 비: ideal v₂ ×1.22, v₃ ×1.36; η/s 0.20 v₂ ×0.87, v₃ ×0.78; bulk v₂ ×0.82, ⟨pT⟩ ×0.75–0.78.
+  η/s는 v_n(높은 n일수록, 작은 계일수록), ζ/s는 ⟨pT⟩. 측정(HEPData) 비교는 대기.

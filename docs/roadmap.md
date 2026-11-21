@@ -91,7 +91,7 @@ micromamba 2.9.0 / ROOT 6.40.02 / PYTHIA 8 / FastJet 3.5.1.4, 16 논리코어.
 Module 5 ✅ PDF·nuclear PDF (2026-11-19, `docs/modules/module05_pdfs.md`) → 6 ✅ Glauber MC 직접 구현
 (2026-11-19, `docs/modules/module06_glauber.md`) → 7 ✅ Angantyr (2026-11-21, `docs/modules/module07_angantyr.md`) → 7 Angantyr/HIJING/AMPT로
 pPb·PbPb → 8 ✅ CERN Open Data 실측 재현 (2026-11-21, `docs/modules/module08_opendata.md`) → 9 🔄 jet quenching(2026-11-21 모형 1차, `docs/modules/module09_quenching.md`; R_AA,
-dijet asymmetry) → 10 JETSCAPE/JEWEL/MUSIC.
+dijet asymmetry) → 10 🔄 MUSIC 점성 유체 + iSS (2026-11-21, `docs/modules/module10_hydro.md`; v₂, v₃, radial flow) → JETSCAPE/JEWEL.
 
 > 이전 문서·코드 주석에 남아 있는 "Module 6 LHAPDF", "Module 8·10 flow/jet",
 > "Module 9 open data"는 이 개요 번호 기준으로 각각 5, 7·9, 8에 해당합니다.
