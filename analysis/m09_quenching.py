@@ -17,8 +17,8 @@ everything else.
 
 MODEL (deliberately minimal, every piece visible)
 -------------------------------------------------
-1. pp reference: PYTHIA 8 hard QCD 2 -> 2 at 5.02 TeV, pT-hat biased with
-   event weights (generators/pythia_hardqcd_bias_5TeV.cmnd).  Per event the
+1. pp reference: PYTHIA 8 hard QCD 2 -> 2 at 5.02 TeV in pT-hat slices with
+   slice weights sigma/N (generators/pythia_hardqcd_5TeV.cmnd).  Per event the
    two outgoing partons and every charged hadron with |eta| < 1, pT > 3 GeV/c,
    each hadron assigned to the nearer parton in Delta R.  (A first version
    left hadrons with Delta R > 0.5 untouched: 30-40 % of the 6-9 GeV/c
@@ -50,6 +50,7 @@ the change of the jet's hadron composition.  It is a geometry exercise.
 
 OUTPUT
   data/generated/m09_pp.npz, m09_glauber.npz          (not in git)
+  the n_eff of the weighted hadron sample is printed (pp step)
   results/tables/m09/m09_model.json; results/figures/m09/m09_raa.png, m09_v2.png, m09_raa_npart.png
 """
 from __future__ import annotations
@@ -69,7 +70,9 @@ sys.path.insert(0, str(REPO / "src"))
 from hicpy.glauber import PB208, sample_nucleus, event_geometry, participant_plane, path_integrals  # noqa: E402
 
 GEN, TAB, FIG = REPO / "data" / "generated", REPO / "results" / "tables" / "m09", REPO / "results" / "figures" / "m09"
-CARD = REPO / "generators" / "pythia_hardqcd_bias_5TeV.cmnd"
+CARD = REPO / "generators" / "pythia_hardqcd_5TeV.cmnd"
+SLICES = [8, 12, 18, 27, 40, 60, 100, -1]                # pT-hat slice edges (GeV); -1 = no upper limit
+PT_SWITCH = 10.0             # GeV/c: minimum bias below, hard slices above (unquenched hadron pT)
 SIGMA_NN = 67.6
 CLASSES = [(0, 5), (5, 10), (10, 20), (20, 30), (30, 40), (40, 50), (50, 60), (60, 70), (70, 80)]
 PT_EDGES = np.array([5, 6, 7, 8, 9, 10, 12, 14, 17, 20, 25, 30, 40, 50, 70, 100], float)
@@ -81,57 +84,106 @@ WIDTH = 0.5
 
 # ----------------------------------------------------------------------------- pp
 def _pp_chunk(job):
-    n_events, seed = job
+    """One generation job.  kind 'mb': SoftQCD:inelastic (unweighted, MPI-aware:
+    the right reference below ~12 GeV/c); kind 'hard': HardQCD in one pT-hat
+    slice.  Returns events [weight, sample], partons [event, pT, eta, phi] (all
+    outgoing partons of the hard process AND of the MPI scatterings, status
+    23 and 33, pT > 1 GeV), hadrons [event, pT, eta, phi, parton, Delta R]."""
+    kind, n_events, seed, lo, hi = job
     try:
         import pythia8
     except ImportError:
         import pythia8mc as pythia8
     py = pythia8.Pythia("", False)
     py.readFile(str(CARD))
-    py.readString(f"Random:seed = {seed}")
+    settings = [f"Random:seed = {seed}"]
+    if kind == "mb":
+        settings += ["HardQCD:all = off", "SoftQCD:inelastic = on"]
+    else:
+        settings += [f"PhaseSpace:pTHatMin = {lo}", f"PhaseSpace:pTHatMax = {hi}"]
+    for x in settings:
+        py.readString(x)
     if not py.init():
         raise RuntimeError("PYTHIA init() failed")
-    info = py.infoPython() if hasattr(py, "infoPython") else py.info
-    ev_rows, had_rows = [], []
+    ev_rows, par_rows, had_rows = [], [], []
     n = 0
     while n < n_events:
         if not py.next():
             continue
         ev = py.event
-        partons = [(ev[i].pT(), ev[i].eta(), ev[i].phi()) for i in range(ev.size()) if abs(ev[i].status()) == 23]
-        if len(partons) != 2:
-            continue
-        ev_rows.append([info.weight(), *partons[0], *partons[1]])
+        partons = [(ev[i].pT(), ev[i].eta(), ev[i].phi()) for i in range(ev.size())
+                   if abs(ev[i].status()) in (23, 33) and ev[i].pT() > 1.0]
+        first = len(par_rows)
+        for q in partons:
+            par_rows.append([n, *q])
         for i in range(ev.size()):
             p = ev[i]
             if not (p.isFinal() and p.isCharged()) or p.pT() < 3.0 or abs(p.eta()) > 1.0:
                 continue
-            dr = [np.hypot(p.eta() - q[1], (p.phi() - q[2] + np.pi) % (2 * np.pi) - np.pi) for q in partons]
-            k = int(np.argmin(dr))
-            had_rows.append([n, p.pT(), p.eta(), p.phi(), k, dr[k]])
+            if partons:
+                dr = [np.hypot(p.eta() - q[1], (p.phi() - q[2] + np.pi) % (2 * np.pi) - np.pi) for q in partons]
+                k = int(np.argmin(dr)); had_rows.append([n, p.pT(), p.eta(), p.phi(), first + k, dr[k]])
+            else:                                   # (diffractive event without a hard parton: no loss)
+                had_rows.append([n, p.pT(), p.eta(), p.phi(), -1, 99.0])
+        ev_rows.append([1.0, 0 if kind == "mb" else 1])
         n += 1
-    return np.array(ev_rows), np.array(had_rows), py.settings.parm("Pythia:versionNumber")
+    # infoPython() is a partial SNAPSHOT: weight() follows the events, but
+    # sigmaGen() and nAccepted() keep the values of the moment it was called
+    # (0 before generation) -> ask for it now (troubleshooting #29)
+    info = py.infoPython() if hasattr(py, "infoPython") else py.info
+    return (np.array(ev_rows), np.array(par_rows).reshape(-1, 4), np.array(had_rows).reshape(-1, 6),
+            py.settings.parm("Pythia:versionNumber"), (kind, lo, hi, info.sigmaGen(), n))
 
 
 def make_pp(args) -> int:
     w = args.workers or os.cpu_count() or 1
-    jobs = [(args.n_events // w + (i < args.n_events % w), 20261122 + 17 * i) for i in range(w)]
+    n_sl = len(SLICES) - 1
+    n_mb = args.n_events // 2                         # half minimum bias, half in the hard slices
+    jobs = [("mb", n_mb // w, 20261122 + i, 0, 0) for i in range(w)]
+    per_job = max(1, (args.n_events - n_mb) // (n_sl * w))
+    jobs += [("hard", per_job, 20261222 + 17 * (i * w + k), SLICES[i], SLICES[i + 1]) for i in range(n_sl) for k in range(w)]
     t0 = time.time()
     with ProcessPoolExecutor(max_workers=w) as ex:
         parts = list(ex.map(_pp_chunk, jobs))
-    evs, hads, off = [], [], 0
-    for e, h, _ in parts:
-        if len(h):
-            h = h.copy(); h[:, 0] += off
-        evs.append(e); hads.append(h); off += len(e)
-    ev = np.vstack(evs); had = np.vstack([h for h in hads if len(h)])
+    # weight per event = (cross section of its sample or slice) / (events in it)
+    sig = {}
+    for *_, (kind, lo, hi, s, n) in parts:
+        a = sig.setdefault((kind, lo, hi), [0.0, 0]); a[0] += s * n; a[1] += n
+    evs, pars, hads, off_e, off_p = [], [], [], 0, 0
+    for e, pa, h, _, (kind, lo, hi, s, n) in parts:
+        tot_s, tot_n = sig[(kind, lo, hi)]
+        if len(e):
+            e[:, 0] = (tot_s / tot_n) / tot_n
+        pa = pa.copy(); pa[:, 0] += off_e
+        h = h.copy(); h[:, 0] += off_e; h[:, 4] = np.where(h[:, 4] >= 0, h[:, 4] + off_p, -1)
+        evs.append(e); pars.append(pa); hads.append(h); off_e += len(e); off_p += len(pa)
+    ev, par, had = np.vstack(evs), np.vstack(pars), np.vstack(hads)
     GEN.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(GEN / "m09_pp.npz", events=ev, hadrons=had, version=parts[0][2])
-    tagged = np.mean(had[:, 5] < 0.5)
-    print(f"[pp] {len(ev)} events, {len(had)} charged hadrons (|eta|<1, pT>3), {100 * tagged:.0f} % within Delta R < 0.5 "
-          f"of a hard parton; "
-          f"PYTHIA {parts[0][2]:.3f}, {time.time() - t0:.0f} s")
+    np.savez_compressed(GEN / "m09_pp.npz", events=ev, partons=par, hadrons=had, version=parts[0][3])
+    for (kind, lo, hi), (s, n) in sorted(sig.items(), key=lambda x: (x[0][0] != "mb", x[0][1])):
+        name = "minimum bias" if kind == "mb" else f"pT-hat {lo}-{'inf' if hi < 0 else hi} GeV"
+        print(f"[sample] {name:22s}: sigma {s / n:.4g} mb, {n} events")
+    use = domain_mask(ev, had)
+    for lo, hi in ((6, 9), (10, 30), (40, 70)):
+        sel = use & (had[:, 1] >= lo) & (had[:, 1] < hi)
+        _, inv = np.unique(had[sel, 0], return_inverse=True)
+        we = np.bincount(inv, weights=ev[had[sel, 0].astype(int), 0])
+        print(f"[n_eff] hadrons {lo}-{hi} GeV/c: {len(we)} events, effective {we.sum() ** 2 / np.sum(we ** 2):.0f}")
+    # continuity check where the two samples meet
+    for k, name in ((0, "minimum bias"), (1, "hard slices")):
+        sel = (ev[had[:, 0].astype(int), 1] == k) & (had[:, 1] >= PT_SWITCH) & (had[:, 1] < PT_SWITCH + 4)
+        print(f"[match] {name:12s}: yield {PT_SWITCH:.0f}-{PT_SWITCH + 4:.0f} GeV/c = {np.sum(ev[had[sel, 0].astype(int), 0]):.4g} mb "
+              f"({sel.sum()} hadrons)")
+    print(f"[pp] {len(ev)} events, {len(par)} partons, {len(had)} charged hadrons (|eta|<1, pT>3); "
+          f"PYTHIA {parts[0][3]:.3f}, {time.time() - t0:.0f} s")
     return 0
+
+
+def domain_mask(ev, had):
+    """Which sample describes a hadron: minimum bias below PT_SWITCH (UNQUENCHED
+    pT), the hard slices above.  Each hadron is counted from one sample only."""
+    sample = ev[had[:, 0].astype(int), 1]
+    return np.where(had[:, 1] < PT_SWITCH, sample == 0, sample == 1)
 
 
 # ----------------------------------------------------------------------------- glauber
@@ -182,54 +234,73 @@ def make_glauber(args) -> int:
 
 # ----------------------------------------------------------------------------- model
 def path_lengths(pp, gl, cls_index, rng, n_use):
-    """For n_use pp events: a Glauber event of the class, a collision point,
-    and I_0, I_1 for both partons.  Grouped by Glauber event (vectorised)."""
-    ev = pp["events"]
-    idx = rng.choice(len(ev), size=min(n_use, len(ev)), replace=False)
-    pool = np.nonzero(gl["cls"] == cls_index)[0]
-    g_of = rng.choice(pool, size=len(idx))
-    # I[event, parton, zeta, orientation]: orientation 0 = as generated (random
-    # with respect to the Glauber event), 1 = first parton along Psi_2 (in plane),
-    # 2 = along Psi_2 + pi/2 (out of plane); the second parton keeps its azimuthal
-    # difference to the first.  In/out give v2 without azimuthal sampling noise.
-    I = np.zeros((len(idx), 2, 2, 3))
-    psi = gl["psi2"][g_of]
-    for g in np.unique(g_of):
-        sel = np.nonzero(g_of == g)[0]
+    """Hadron-level arrays for one centrality class.
+
+    n_use pp events of each sample are placed in Glauber events of the class,
+    at a random collision point.  I_zeta is computed for every parton that has
+    a hadron of interest (pT > 5 GeV/c, in its sample's domain), in three
+    orientations: 0 = as generated (random w.r.t. the Glauber event), 1 = the
+    event turned so that its leading parton points along Psi_2 (in plane),
+    2 = along Psi_2 + pi/2 (out of plane).  In/out give v2 without azimuthal
+    sampling noise."""
+    ev, par, had = pp["events"], pp["partons"], pp["hadrons"]
+    chosen = np.zeros(len(ev), bool)
+    for k in (0, 1):
+        pool = np.nonzero(ev[:, 1] == k)[0]
+        chosen[rng.choice(pool, size=min(n_use, len(pool)), replace=False)] = True
+    hsel = chosen[had[:, 0].astype(int)] & domain_mask(ev, had) & (had[:, 1] >= PT_EDGES[0])
+    h = had[hsel]
+    e_of = h[:, 0].astype(int)
+    events = np.unique(e_of)
+    g_pool = np.nonzero(gl["cls"] == cls_index)[0]
+    g_of_ev = dict(zip(events, rng.choice(g_pool, size=len(events))))
+    pj = h[:, 4].astype(int)
+    has_p = pj >= 0
+    plist = np.unique(pj[has_p])                                   # partons that matter
+    p_ev = par[plist, 0].astype(int)
+    # leading parton of each event (for the in/out orientation)
+    lead_phi = {}
+    order = np.lexsort((-par[:, 1], par[:, 0]))
+    first = np.r_[True, par[order[1:], 0] != par[order[:-1], 0]]
+    for row in order[first]:
+        lead_phi[int(par[row, 0])] = par[row, 3]
+    Ip = np.zeros((len(plist), 2, 3))
+    psi_ev = {e: gl["psi2"][g] for e, g in g_of_ev.items()}
+    x0_ev = {}
+    g_of_p = np.array([g_of_ev[e] for e in p_ev])
+    for g in np.unique(g_of_p):
+        sel = np.nonzero(g_of_p == g)[0]
         coll, wounded = gl["coll"][g].astype(float), gl["wounded"][g].astype(float)
-        x0 = coll[rng.integers(0, len(coll), size=len(sel))]
-        phi1, phi2 = ev[idx[sel], 3], ev[idx[sel], 6]
-        for o, base in ((0, phi1), (1, psi[sel]), (2, psi[sel] + np.pi / 2)):
-            for j, phi in ((0, base), (1, base + (phi2 - phi1))):
-                for z in (0, 1):
-                    I[sel, j, z, o] = path_integrals(x0, phi, wounded, WIDTH, z)
-    return idx, I, psi
+        for e in np.unique(p_ev[sel]):
+            x0_ev[e] = coll[rng.integers(0, len(coll))]
+        x0 = np.array([x0_ev[e] for e in p_ev[sel]])
+        phi = par[plist[sel], 3]
+        lead = np.array([lead_phi[e] for e in p_ev[sel]]); psi = gl["psi2"][g]
+        for o, rot in ((0, 0.0), (1, psi - lead), (2, psi + np.pi / 2 - lead)):
+            for z in (0, 1):
+                Ip[sel, z, o] = path_integrals(x0, phi + rot, wounded, WIDTH, z)
+    where = np.searchsorted(plist, np.where(has_p, pj, plist[0] if len(plist) else 0))
+    I = np.where(has_p[:, None, None], Ip[where] if len(plist) else 0.0, 0.0)
+    e_parton = np.where(has_p, par[np.where(has_p, pj, 0), 1], np.inf)
+    return {"w": ev[e_of, 0], "pt": h[:, 1], "phi": h[:, 3], "psi": np.array([psi_ev[e] for e in e_of]),
+            "e_parton": np.maximum(e_parton, h[:, 1]), "I": I}
 
 
-def spectra(pp, idx, I, psi, kappa, zeta, beta, edges=PT_EDGES, orient=0):
-    """Weighted pT spectra (unquenched, quenched) and v2 numerator of the hadrons
-    belonging to the selected events."""
-    ev, had = pp["events"], pp["hadrons"]
-    pos = np.full(len(ev), -1); pos[idx] = np.arange(len(idx))
-    h = had[pos[had[:, 0].astype(int)] >= 0]
-    k = pos[h[:, 0].astype(int)]
-    w = ev[idx[k], 0]
-    jj = h[:, 4].astype(int)
-    pt = h[:, 1]
-    e_parton = np.maximum(ev[idx[k], 1 + 3 * jj], pt)       # a hadron cannot carry more than its parton
-    de = kappa * I[k, jj, zeta, orient] * (e_parton / 10.0) ** beta
-    frac = np.clip(1 - de / e_parton, 0, 1)
-    ptq = pt * frac
-    n0 = np.histogram(pt, edges, weights=w)[0]
-    nq = np.histogram(ptq, edges, weights=w)[0]
-    c2 = np.histogram(ptq, edges, weights=w * np.cos(2 * (h[:, 3] - psi[k])))[0]
+def spectra(H, kappa, zeta, beta, edges=PT_EDGES, orient=0):
+    """Weighted pT spectra (unquenched, quenched) and v2 numerator."""
+    de = kappa * H["I"][:, zeta, orient] * (np.where(np.isfinite(H["e_parton"]), H["e_parton"], 10.0) / 10.0) ** beta
+    frac = np.clip(1 - de / H["e_parton"], 0, 1)
+    ptq = H["pt"] * frac
+    n0 = np.histogram(H["pt"], edges, weights=H["w"])[0]
+    nq = np.histogram(ptq, edges, weights=H["w"])[0]
+    c2 = np.histogram(ptq, edges, weights=H["w"] * np.cos(2 * (H["phi"] - H["psi"])))[0]
     return n0, nq, c2
 
 
-def calibrate(pp, idx, I, psi, zeta, beta, target, pt_range):
+def calibrate(H, zeta, beta, target, pt_range):
     edges = np.array(pt_range)
     def raa(kap):                                                          # noqa: E306
-        n0, nq, _ = spectra(pp, idx, I, psi, kap, zeta, beta, edges)
+        n0, nq, _ = spectra(H, kap, zeta, beta, edges)
         return nq.sum() / n0.sum()
     lo, hi = 0.0, 1.0
     while raa(hi) > target and hi < 1e3:
@@ -242,7 +313,7 @@ def calibrate(pp, idx, I, psi, zeta, beta, target, pt_range):
 
 def model(args) -> int:
     from hicpy.style import apply_style, save_figure, OKABE_ITO, plt
-    z = np.load(GEN / "m09_pp.npz"); pp = {"events": z["events"], "hadrons": z["hadrons"]}
+    z = np.load(GEN / "m09_pp.npz"); pp = {"events": z["events"], "partons": z["partons"], "hadrons": z["hadrons"]}
     gz = np.load(GEN / "m09_glauber.npz", allow_pickle=True); gl = {k: gz[k] for k in gz.files}
     rng = np.random.default_rng(3)
     t0 = time.time()
@@ -253,18 +324,18 @@ def model(args) -> int:
            "npart": [float(gl["npart"][gl["cls"] == k].mean()) for k in range(len(CLASSES))],
            "eps2": [float(gl["eps2"][gl["cls"] == k].mean()) for k in range(len(CLASSES))], "models": {}}
     for name, (zeta, beta) in MODELS.items():
-        kap = calibrate(pp, *geo[0], zeta, beta, CALIB["raa"], CALIB["pt"])
+        kap = calibrate(geo[0], zeta, beta, CALIB["raa"], CALIB["pt"])
         m = {"zeta": zeta, "beta": beta, "kappa": kap, "raa": [], "raa_err": [], "v2": [], "raa_6_9": [], "raa_40_70": [],
              "v2_10_30": []}
         for k in range(len(CLASSES)):
-            n0, nq, c2 = spectra(pp, *geo[k], kap, zeta, beta)
+            n0, nq, c2 = spectra(geo[k], kap, zeta, beta)
             m["raa"].append((nq / n0).tolist()); m["v2"].append((c2 / np.where(nq > 0, nq, np.nan)).tolist())
             for key, (a, b) in (("raa_6_9", (6, 9)), ("raa_40_70", (40, 70))):
                 s = (PT_EDGES[:-1] >= a) & (PT_EDGES[1:] <= b)
                 m[key].append(float(nq[s].sum() / n0[s].sum()))
             # v2 from in-plane / out-of-plane suppression: R(dphi) = R0 (1 + 2 v2 cos 2 dphi)
-            _, n_in, _ = spectra(pp, *geo[k], kap, zeta, beta, orient=1)
-            _, n_out, _ = spectra(pp, *geo[k], kap, zeta, beta, orient=2)
+            _, n_in, _ = spectra(geo[k], kap, zeta, beta, orient=1)
+            _, n_out, _ = spectra(geo[k], kap, zeta, beta, orient=2)
             m["v2"][-1] = ((n_in - n_out) / (2 * (n_in + n_out))).tolist()
             s = (PT_EDGES[:-1] >= 10) & (PT_EDGES[1:] <= 30)
             m["v2_10_30"].append(float((n_in[s].sum() - n_out[s].sum()) / (2 * (n_in[s].sum() + n_out[s].sum()))))

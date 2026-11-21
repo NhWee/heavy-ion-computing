@@ -39,3 +39,18 @@ def test_participant_plane_points_along_the_short_axis():
     assert eps == pytest.approx((16 - 4) / (16 + 4), abs=0.03)
     d = (psi - rot + np.pi / 2) % np.pi - np.pi / 2                       # Psi_2 is defined modulo pi
     assert abs(d) < 0.05
+
+
+def test_dijet_selection_and_aj():
+    import pathlib
+    import sys
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "analysis"))
+    import m09_dijet as dj
+    jets = np.zeros((4, dj.N_JETS, 3))
+    jets[0, :2] = [[150, 0, 0], [100, 0, np.pi]]          # balanced enough: A_J = 0.2
+    jets[1, :2] = [[100, 0, 0], [150, 0, np.pi]]          # order swapped: re-sorted, same A_J
+    jets[2, :2] = [[150, 0, 0], [40, 0, np.pi]]           # subleading below 50: rejected
+    jets[3, :2] = [[150, 0, 0], [100, 0, 1.0]]            # not back-to-back: rejected
+    aj, ok = dj.select_aj(jets)
+    assert list(ok) == [True, True, False, False]
+    assert aj == pytest.approx([0.2, 0.2])

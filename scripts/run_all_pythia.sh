@@ -30,9 +30,9 @@
 #   m08         CMS Open Data dimuon spectrum (Module 8): downloads the 2 GB file on first
 #               use (scripts/m08_fetch_cms_dimuon.sh), histograms 61 M events, fits;
 #               NOT in the default list; needs network to eospublic.cern.ch
-#   m09         jet quenching (Module 9): PYTHIA pp 5.02 TeV hard QCD 4M weighted events,
-#               Glauber pool, energy-loss model, R_AA and v2; NOT in the default list;
-#               ~45 min on 16 cores
+#   m09         jet quenching (Module 9): PYTHIA pp 5.02 TeV (2M minimum bias + 2M in
+#               pT-hat slices, 1M dijet events), Glauber pool, energy-loss model, R_AA,
+#               v2 and dijet A_J; NOT in the default list; ~1.5 h on 16 cores
 #   identified  pi/K/p spectra vs ALICE (NOT in the default list: needs the HEPData
 #               ins1784041 tables, docs/howto/fetch_hepdata.md appendix; needs 'nominal'
 #               sample; generates one 20k tuned sample)
@@ -287,5 +287,8 @@ if want m09; then
     logged results/logs/m09_glauber.log $PY analysis/m09_quenching.py glauber --n-events 60000; head -n 1 results/logs/m09_glauber.log
     logged results/logs/m09_model.log $PY analysis/m09_quenching.py model --n-use 1000000
     grep -E "^\[" results/logs/m09_model.log
+    logged results/logs/m09_dijet_pp.log $PY analysis/m09_dijet.py pp --n-events 1000000; tail -n 1 results/logs/m09_dijet_pp.log
+    logged results/logs/m09_dijet.log $PY analysis/m09_dijet.py model
+    grep -E "^\[" results/logs/m09_dijet.log
 fi
 echo "### done ($STAGES) -- review: git diff --stat results/"

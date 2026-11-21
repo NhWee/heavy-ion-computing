@@ -1,0 +1,29 @@
+! ---------------------------------------------------------------------------
+! Module 9 : PYTHIA 8 hard QCD 2 -> 2, pp at sqrt(s) = 5.02 TeV
+!
+!   python analysis/m09_quenching.py pp         (charged hadrons, pT-hat slices)
+!   python analysis/m09_dijet.py pp             (jets, pT-hat > 80 GeV)
+!
+! The scripts set PhaseSpace:pTHatMin / pTHatMax per job.  For the hadron
+! spectrum the range 3 GeV - infinity is cut into pT-hat SLICES with the same
+! number of events each; inside a slice events are unweighted, and the slice
+! weight sigma_slice / N_slice makes the slices add up to the cross section.
+! (A first version used one continuous bias (pT-hat/10)^4 with event weights:
+! the weights spanned 10^4 and the effective sample was ~1000 events out of
+! 10^5 -- troubleshooting #29.)
+! ---------------------------------------------------------------------------
+Beams:idA = 2212
+Beams:idB = 2212
+Beams:eCM = 5020.
+
+HardQCD:all = on
+PhaseSpace:pTHatMin = 3.
+
+Tune:pp = 14                     ! Monash 2013, as Module 2
+ParticleDecays:limitTau0 = on
+ParticleDecays:tau0Max = 10.     ! primary particles as ALICE / CMS
+
+Print:quiet = on
+Next:numberCount = 0
+Random:setSeed = on
+Random:seed = 20261122
