@@ -135,3 +135,7 @@ dN_ch/dη (HEPData ins1410589 Table 1을 받아 `data/raw/`에), Angantyr + rope
 ### Step 9 — Module 8 Open Data 🔄 (2026-11-21)
 `docs/modules/module08_opendata.md`. 코드와 toy closure 완료. 남은 것: WSL2에서 `bash scripts/run_all_pythia.sh m08`
 (CMS 2012 DoubleMuParked, 2 GB 다운로드 + 6100만 사건) → 질량 척도, 분해능, Υ 비. 그 다음 Module 9 (Υ 억제, Z R_AA).
+
+### Step 10 — Module 9 jet quenching 🔄 (2026-11-21)
+`docs/modules/module09_quenching.md`. 남은 것: WSL2 큰 통계 (`bash scripts/run_all_pythia.sh m09`), CMS HIN-15-015 HEPData
+R_AA 표와 고 pT v₂ 비교, 이중 제트 비대칭 A_J.

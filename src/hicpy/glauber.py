@@ -125,4 +125,61 @@ def centrality_table(res, edges_pct=(0, 1, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90
     return rows
 
 
-__all__ = ["Nucleus", "PB208", "PROTON", "sample_nucleus", "collide", "run", "centrality_table"]
+# ----------------------------------------------------------------------------- geometry for Module 9
+def event_geometry(pa, pb, b, sigma_nn_mb):
+    """Transverse geometry of one collision: midpoints of the colliding nucleon
+    pairs (where hard processes happen, density ~ N_coll) and the positions of
+    the wounded nucleons (the source of the medium, density ~ N_part).
+    Returns (collision_points (N_coll, 2), wounded (N_part, 2)) in fm."""
+    xa = pa[:, :2] + np.array([b / 2, 0.0])
+    xb = pb[:, :2] - np.array([b / 2, 0.0])
+    d2 = np.sum((xa[:, None, :] - xb[None, :, :]) ** 2, axis=2)
+    hit = d2 < sigma_nn_mb * MB_TO_FM2 / np.pi
+    ia, ib = np.nonzero(hit)
+    coll = 0.5 * (xa[ia] + xb[ib])
+    wounded = np.vstack([xa[hit.any(axis=1)], xb[hit.any(axis=0)]])
+    return coll, wounded
+
+
+def participant_plane(wounded, n=2):
+    """Participant-plane angle Psi_n and eccentricity eps_n of the wounded
+    nucleons (r^n weighting, centred).  Psi_2 points along the SHORT axis of
+    the almond (along b for a smooth overlap): the in-plane direction, where
+    the medium is thinnest, so that both flow and energy loss give v_2 > 0
+    with respect to it."""
+    x = wounded - wounded.mean(axis=0)
+    r2 = np.sum(x ** 2, axis=1); phi = np.arctan2(x[:, 1], x[:, 0])
+    c, s_ = np.sum(r2 ** (n / 2) * np.cos(n * phi)), np.sum(r2 ** (n / 2) * np.sin(n * phi))
+    eps = np.hypot(c, s_) / np.sum(r2 ** (n / 2))
+    psi = (np.arctan2(s_, c) + np.pi) / n          # direction of the shortest extent
+    return float(psi), float(eps)
+
+
+def path_integrals(x0, phi, sources, width=0.5, zeta=0):
+    """Line integrals of the medium density along straight paths.
+
+    The density is a sum of 2D Gaussians (width fm) on the wounded nucleons,
+    rho(x) = sum_j G(x - s_j), in nucleons / fm^2.  For a path starting at x0
+    in direction phi, returns I_zeta = integral_0^inf rho(x0 + t n) t^zeta dt:
+    zeta = 0 -> number of participants crossed per fm^2 times fm (~ L),
+    zeta = 1 -> weighted by the distance travelled (~ L^2, the BDMPS-like
+    radiative case).  Closed form per Gaussian, vectorised (paths x sources).
+    """
+    from scipy.special import erf
+    x0 = np.atleast_2d(x0); phi = np.atleast_1d(phi)
+    nvec = np.stack([np.cos(phi), np.sin(phi)], axis=1)                  # (k, 2)
+    d = sources[None, :, :] - x0[:, None, :]                            # (k, m, 2)
+    tc = np.einsum("kmi,ki->km", d, nvec)                               # projection on the path
+    dperp2 = np.sum(d ** 2, axis=2) - tc ** 2
+    w2 = width ** 2
+    pref = np.exp(-dperp2 / (2 * w2)) / (2 * np.pi * w2)
+    half = 0.5 * (1 + erf(tc / (width * np.sqrt(2))))                   # fraction of the Gaussian ahead
+    i0 = width * np.sqrt(2 * np.pi) * half                              # int_0^inf exp(-(t-tc)^2/2w^2) dt
+    if zeta == 0:
+        return np.sum(pref * i0, axis=1)
+    i1 = w2 * np.exp(-tc ** 2 / (2 * w2)) + tc * i0                    # int_0^inf t exp(...) dt
+    return np.sum(pref * i1, axis=1)
+
+
+__all__ = ["Nucleus", "PB208", "PROTON", "sample_nucleus", "collide", "run", "centrality_table",
+           "event_geometry", "participant_plane", "path_integrals"]
