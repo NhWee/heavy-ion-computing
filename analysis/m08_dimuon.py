@@ -74,6 +74,12 @@ def histogram(args) -> int:
     if not path.exists():
         print(f"{path} not found -- run scripts/m08_fetch_cms_dimuon.sh (WSL2) or `toy` for a test file")
         return 1
+    if path.resolve() == RAW.resolve():
+        prov = json.loads(PROV.read_text()) if PROV.exists() else {}
+        if not prov.get("verified") or prov.get("size_bytes") != path.stat().st_size:
+            print(f"{path.name}: no verified provenance for this file (incomplete download?) -- "
+                  "run scripts/m08_fetch_cms_dimuon.sh first")
+            return 1
     hists = {sel: {"spectrum": np.zeros(len(SPECTRUM_EDGES) - 1),
                    **{w: np.zeros(len(window_edges(w)) - 1) for w in WINDOWS}} for sel in ("all", "barrel")}
     n_read = n_pairs = 0

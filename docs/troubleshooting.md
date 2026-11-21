@@ -594,3 +594,23 @@ PYTHIA 8.312(WSL2)에 없어 `init()`가 실패했다 (#27). 그래서 **분석�
 **배운 점**: 한 버전에서 만든 카드·코드는 다른 버전에서 바로 돌려 본다 — 같은 "PYTHIA 8.3"이어도 설정과 Python API가
 다르다. 시험할 버전이 PyPI에 있으면 venv로 그 자리에서 재현할 수 있다.
 
+
+---
+
+## #28 Open Data 다운로드: 인증서 오류, 끊긴 전송, 그리고 반쯤 받은 파일을 분석함
+
+**증상** (WSL2, `bash scripts/run_all_pythia.sh m08`):
+1. `https://eospublic.cern.ch/...` → `curl: (60) self-signed certificate in certificate chain`.
+2. `https://opendata.cern.ch/eos/...` → 155 MB(2.08 GB 중)에서 `SSL_read: unexpected eof` — 370 kB/s로 받다가 끊김.
+3. 그런데 스크립트가 **반쯤 받은 파일을 "직접 받은 파일"로 간주**해 그 sha256으로 provenance JSON을 쓰고,
+   분석 단계로 넘어가 uproot가 `expected Chunk of length 27079, received 0 bytes`로 죽었다.
+**원인**: (1) eospublic의 HTTPS는 CERN Grid CA로 서명되어 일반 시스템 신뢰 목록에 없다. (2) 긴 전송이 중간에
+끊기는 것은 흔하다 — 첫 스크립트는 다음 URL로 넘어갈 뿐 이어받지 않았다. (3) "파일이 있으면 된 것"이라는
+판단 — 크기·형식을 확인하지 않았다. 클라우드에서는 프록시가 403과 74바이트 오류 본문을 주는데, 고친 첫 판은
+그 74를 파일 크기로 받아들이기도 했다.
+**해결**: `scripts/m08_fetch_cms_dimuon.sh`를 다시 씀 — 서버의 Content-Length(1 MB 미만·HTTP 오류는 거부)와
+비교해 **완전할 때까지 이어받기**(최대 50회, HTTP 오류면 즉시 멈춤), 크기가 맞고 uproot로 `Events`가 열릴 때만
+provenance를 쓴다. eospublic HTTPS는 쓰지 않는다 (TLS 검증을 끄지 않음), xrdcp는 마지막 대안. 실행 스크립트는 받기가
+실패하면 분석하지 않고, 히스토그램 단계도 크기가 일치하는 검증된 provenance가 없으면 데이터 파일을 읽지 않는다.
+**배운 점**: 다운로드의 "성공"은 종료 코드가 아니라 **크기와 형식**으로 확인한다. 실패 경로를 시험할 때 "기록을 남기지
+않는가"까지 본다 — 잘못된 provenance는 없는 provenance보다 나쁘다.

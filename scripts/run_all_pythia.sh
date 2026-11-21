@@ -273,9 +273,8 @@ if want m07; then
 fi
 if want m08; then
     echo "### Module 8: CMS Open Data dimuon spectrum"
-    if [[ ! -f data/raw/opendata/Run2012BC_DoubleMuParked_Muons.root || ! -f data/raw/cms_2012_doublemuparked.json ]]; then
-        bash scripts/m08_fetch_cms_dimuon.sh
-    fi
+    # idempotent: resumes a partial file, skips a complete one, fails (and stops here) if incomplete
+    bash scripts/m08_fetch_cms_dimuon.sh || { echo "m08: download not complete -- nothing analysed"; exit 1; }
     $PY analysis/m08_dimuon.py histogram
     $PY analysis/m08_dimuon.py fit
 fi
