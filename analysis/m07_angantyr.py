@@ -131,8 +131,10 @@ def _chunk(job):
             # nucleons that only scattered elastically; N_coll counts INELASTIC sub-collisions
             # -- HIInfo.nCollTot() also counts elastic ones.
             row[0:3] = hi.b(), hi.nAbsProj() + hi.nDiffProj(), hi.nAbsTarg() + hi.nDiffTarg()
+            # 8.312: nCollNDTot is not the number of absorptive sub-collisions either
+            # (0-1 % Pb-Pb: 238 < N_part 402), so no N_coll at all from 8.312.
             row[3:5] = ((hi.nCollTot() - hi.nCollEl(), hi.nCollND()) if full_counts
-                        else (np.nan, hi.nCollNDTot()))
+                        else (np.nan, np.nan))
             row[9] = hi.weight()
         else:
             row[0:5] = np.nan, 1, 1, 1, 1
@@ -197,7 +199,8 @@ def class_record(name, d, col):
            "b": wmean(d[:, col["b"]], w) if np.isfinite(d[:, col["b"]]).all() and len(d) else None,
            "npart": wmean(npart, w),
            "ncoll": wmean(d[:, col["ncoll"]], w) if np.isfinite(d[:, col["ncoll"]]).all() and len(d) else None,
-           "ncoll_nd": wmean(d[:, col["ncoll_nd"]], w), "dndeta": m,
+           "ncoll_nd": wmean(d[:, col["ncoll_nd"]], w) if np.isfinite(d[:, col["ncoll_nd"]]).all() and len(d) else None,
+           "dndeta": m,
            "dndeta_err": float(np.sqrt(wmean((nch - m) ** 2, w) / n_eff)) if n_eff else None,
            "ratios": {}, "ratio_stat": {}, "meanpt": {}, "counts": {}}
     rec["dndeta_per_part_pair"] = rec["dndeta"] / (rec["npart"] / 2) if len(d) else None
@@ -316,14 +319,18 @@ def compare(args) -> int:
         for ax, q, lab in zip(axes, ("npart", "ncoll"), (r"$\langle N_{\rm part}\rangle$", r"$\langle N_{\rm coll}\rangle$")):
             def mid(rows):
                 return np.array([np.mean([float(x) for x in r["class"].rstrip("%").split("-")]) for r in rows])
-            qa = q if (q == "npart" or pb["glauber_b_order"][0]["ncoll"] is not None) else "ncoll_nd"
+            has_ncoll = pb["glauber_b_order"][0]["ncoll"] is not None and pb["pythia_version"] >= 8.313
+            qa = q
             for rows, style, name in ((g6["pbpb"]["centrality_b_order"], dict(color=OKABE_ITO[0], ls="-"), "Module 6, b order"),
                                       (g6["pbpb"]["centrality_npart_order"], dict(color=OKABE_ITO[0], ls=":"), "Module 6, N$_{part}$ order"),
                                       (pb["glauber_b_order"], dict(color=OKABE_ITO[1], ls="-"), "Angantyr, b order"),
                                       (pb["glauber_v0m_order"], dict(color=OKABE_ITO[1], ls="--"), "Angantyr, V0M order")):
-                key = qa if name.startswith("Angantyr") else q
-                ax.plot(mid(rows), [r[key] for r in rows], marker="o", ms=3,
-                        label=name + (" (absorptive only)" if key == "ncoll_nd" else ""), **style)
+                if name.startswith("Angantyr") and q == "ncoll" and not has_ncoll:
+                    continue
+                ax.plot(mid(rows), [r[q] for r in rows], marker="o", ms=3, label=name, **style)
+            if q == "ncoll" and not has_ncoll:
+                ax.text(0.97, 0.95, f"Angantyr N$_{{coll}}$ needs PYTHIA >= 8.313\n(this run: {pb['pythia_version']})",
+                        transform=ax.transAxes, ha="right", va="top", fontsize=8)
             ref = DATA["ALICE_PbPb_glauber"]
             ax.plot([0.5, 4.5], [ref["0-1%"][0 if q == "npart" else 1], ref["4-5%"][0 if q == "npart" else 1]], "k*", ms=10,
                     label="ALICE-PUBLIC-2018-011")

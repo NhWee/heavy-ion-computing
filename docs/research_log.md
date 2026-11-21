@@ -407,4 +407,7 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - WSL2 m07 실패: 8.312에 `HeavyIon:forceUnitWeight` 없음 → init 실패, HIInfo도 다름 (#27). PyPI `pythia8mc==8.312.1` venv로 재현.
   → 분석을 가중 사건용으로 (누적 가중치 백분위, 가중 평균). 단위 가중치 표본과 대조: p–Pb 1 % 안, Pb–Pb 0–60 % 1–2 % 안
   (60 % 이후는 4000사건 경계 요동). σ_PbPb 7.42 b, Pb–Pb 0–5 % 1829 (ALICE 1943), p–Pb NSD 18.43 (16.81).
+- WSL2 정식 (8.312; pp 100만, p–Pb 100만, Pb–Pb 2만): p–Pb NSD 18.24 (1.09), Pb–Pb 0–5 % 1818 (0.94), N_part 0–5 % 382.
+  8.312의 N_part는 Module 6에 0–7 % 가깝고 ⟨b⟩는 2–7 % 작음 (σ ≈ 7.3 b로 추정) — 8.318과 하위충돌 맞춤이 다름.
+  8.312의 nCollNDTot(0–1 %: 238 < N_part)는 하위충돌 수가 아님 → 8.312에서는 N_coll을 기록하지 않음.
 
