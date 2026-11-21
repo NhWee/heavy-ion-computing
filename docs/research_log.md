@@ -404,3 +404,7 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - 결과 (클라우드 8.318): σ_PbPb 7.21 b (ALICE 7.67), σ_pPb 2.00 b (CMS 2.06); Angantyr N_part 2–15 % 적고 N_coll 6–11 % 많음
   (요동하는 단면적). p–Pb NSD dN_ch/dη 18.4 vs 16.81, Pb–Pb 0–5 % 1805 vs 1943. 기묘 입자 비는 pp부터 Pb–Pb까지 평평.
 - hepdata.net·arxiv.org는 웹 읽기 에이전트로도 DNS 실패 → 측정값은 검색으로 확인된 것만 사용.
+- WSL2 m07 실패: 8.312에 `HeavyIon:forceUnitWeight` 없음 → init 실패, HIInfo도 다름 (#27). PyPI `pythia8mc==8.312.1` venv로 재현.
+  → 분석을 가중 사건용으로 (누적 가중치 백분위, 가중 평균). 단위 가중치 표본과 대조: p–Pb 1 % 안, Pb–Pb 0–60 % 1–2 % 안
+  (60 % 이후는 4000사건 경계 요동). σ_PbPb 7.42 b, Pb–Pb 0–5 % 1829 (ALICE 1943), p–Pb NSD 18.43 (16.81).
+

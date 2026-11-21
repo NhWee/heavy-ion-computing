@@ -1,6 +1,6 @@
 # Module 7 — PYTHIA 8 Angantyr: p–Pb와 Pb–Pb를 핵자–핵자 충돌의 합으로
 
-상태(2026-11-21): **1차 완료** — 클라우드 PYTHIA 8.318 (pp 20만, p–Pb 20만, Pb–Pb 4000 사건).
+상태(2026-11-21): **1차 완료** — 클라우드 PYTHIA 8.318 (pp 20만, p–Pb 20만, Pb–Pb 4000 사건, 가중 사건 분석).
 WSL2 정식 재현: `bash scripts/run_all_pythia.sh m07` (pp 100만, p–Pb 100만, Pb–Pb 2만; 16코어 ~25분).
 남은 것: Pb–Pb 중심도별 dN_ch/dη 전체 (HEPData ins1410589 Table 1 — 클라우드에서 hepdata.net 접속 불가).
 
@@ -26,7 +26,7 @@ Angantyr(Bierlich, Gustafson, Lönnblad, Shah, arXiv:1806.10820)는 그런 기�
 
 - 카드 `generators/angantyr_{pPb,PbPb}_5TeV.cmnd` — √s_NN = 5.02 TeV, `HeavyIon:mode = 1`, 기본 하위충돌 모형
   (`Angantyr:CollisionModel = 2`, 초기화 때 PYTHIA의 pp 단면적에 유전 알고리즘으로 맞춤, ~30 s),
-  `HeavyIon:forceUnitWeight = on` (아래 함정 1), ALICE 일차 입자 정의 (cτ < 1 cm만 붕괴).
+  ALICE 일차 입자 정의 (cτ < 1 cm만 붕괴). PYTHIA 8.312(WSL2)와 8.318(클라우드) 둘 다에서 돈다 (#27).
 - `analysis/m07_angantyr.py generate --system {pp,pPb,PbPb}` — 병렬 생성, 사건마다 Glauber 정보
   (`pythia.getHeavyIonsPtr().hiInfo`: b, 상처 입은 핵자, 하위충돌 수)와 ALICE 관측 정의:
   - p–Pb는 **ALICE 실험실계**: 양성자가 −η로 가고 NN 중심계가 rapidity −0.465로 움직인다 → η_lab = −η_NN − 0.465.
@@ -35,12 +35,17 @@ Angantyr(Bierlich, Gustafson, Lönnblad, Shah, arXiv:1806.10820)는 그런 기�
   - 동정·기묘 입자는 |y_lab| < 0.5 (Module 2와 같은 정의).
 - `analysis/m07_angantyr.py compare` — 그림 4장과 `results/tables/m07/m07_summary.json`.
 
-**함정 두 개 (troubleshooting #26)**
-1. Angantyr는 기본적으로 b를 가우스 분포에서 뽑고 **사건 가중치**를 준다. 첫 분석은 가중치를 무시해서 같은
-   중심도 클래스의 ⟨b⟩가 8 % 작게 나왔다 (σ 차이로는 1.5 %밖에 설명 안 됨). `forceUnitWeight = on`으로 고친 뒤
-   ⟨b⟩는 Module 6과 대부분 클래스에서 2 % 안, 최대 4 % 차이로 같다 (30–40 %: 9.21 vs 9.20 fm; 0–1 %는 40사건뿐). 분석은 가중치가 1이 아니면 멈춘다.
-2. `HIInfo.nCollTot()`은 탄성 하위충돌을, `nPartProj()`는 탄성으로만 산란된 핵자를 포함한다. Glauber 관례에 맞춰
-   N_part = 흡수 + 회절로 상처 입은 핵자, N_coll = 전체 − 탄성으로 계산한다 (구성 요소의 합으로 확인).
+**함정 (troubleshooting #26, #27)**
+1. **사건 가중치.** Angantyr는 b를 가우스 분포에서 뽑고 **사건 가중치**를 준다 (이 표본에서 1–2.9). 첫 분석은
+   가중치를 무시해서 같은 중심도 클래스의 ⟨b⟩가 8 % 작게 나왔다 (σ 차이로는 1.5 %밖에 설명 안 됨). 단위 가중치를
+   강제하는 `HeavyIon:forceUnitWeight`는 8.312에 없어서(WSL2에서 `init()` 실패), **분석이 가중치를 쓴다**: 백분위
+   경계는 누적 가중치로, 평균·비는 가중으로, 통계 오차는 유효 사건 수로.
+   **검증** — 같은 8.318에서 단위 가중치로 만든 독립 표본과 비교: p–Pb는 모든 클래스에서 1 % 안. Pb–Pb는 0–60 %에서
+   1–2 % 안, 60–90 %에서 7–16 % 차이 — 4000사건이면 주변부 클래스가 400사건이라 클래스 경계 자체가 요동한다
+   (Module 6의 #23과 같은 현상). WSL2 2만 사건이 정식.
+2. **세는 방식.** 8.318의 `HIInfo.nCollTot()`은 탄성 하위충돌을, `nPartProj()`는 탄성으로만 산란된 핵자를 포함한다.
+   Glauber 관례에 맞춰 N_part = 흡수 + 회절로 상처 입은 핵자, N_coll = 전체 − 탄성. 8.312의 HIInfo는 하위충돌을
+   일부만 세므로 비탄성 N_coll과 σ_inel은 8.318에서만 기록한다 (흡수적 N_coll은 둘 다).
 
 ## 2. 결과 (클라우드 8.318)
 
@@ -48,20 +53,20 @@ Angantyr(Bierlich, Gustafson, Lönnblad, Shah, arXiv:1806.10820)는 그런 기�
 
 | | Angantyr | Module 6 (black disk) | 측정 |
 |---|---|---|---|
-| σ_PbPb | 7.21 ± 0.11 b | 7.64 ± 0.03 b | 7.67 ± 0.25 b (ALICE, arXiv:2204.10148) |
-| σ_pPb | 2.002 ± 0.004 b | 2.10 ± 0.03 b | 2.061 ± 0.080 b (CMS, arXiv:1509.03893) |
+| σ_PbPb | 7.42 ± 0.09 b (독립 표본 7.21 ± 0.11) | 7.64 ± 0.03 b | 7.67 ± 0.25 b (ALICE, arXiv:2204.10148) |
+| σ_pPb | 2.022 ± 0.004 b | 2.10 ± 0.03 b | 2.061 ± 0.080 b (CMS, arXiv:1509.03893) |
 
 | 중심도 (b 순서) | ⟨N_part⟩ Angantyr / Module 6 | ⟨N_coll⟩ Angantyr / Module 6 | ⟨b⟩ (fm) Angantyr / Module 6 |
 |---|---|---|---|
-| 4–5 % | 355 / 362 | 1768 / 1596 | 3.27 / 3.33 |
-| 10–20 % | 249 / 266 | 1060 / 990 | 6.02 / 5.95 |
-| 30–40 % | 117 / 132 | 362 / 342 | 9.21 / 9.20 |
-| 50–60 % | 48 / 54 | 99 / 89 | 11.38 / 11.58 |
-| 70–80 % | 13.4 / 15.7 | 17.9 / 16.2 | 13.29 / 13.53 |
+| 4–5 % | 357 / 362 | 1819 / 1596 | 3.29 / 3.33 |
+| 10–20 % | 247 / 266 | 1045 / 990 | 6.07 / 5.95 |
+| 30–40 % | 118 / 132 | 359 / 342 | 9.20 / 9.20 |
+| 50–60 % | 48 / 54 | 97 / 89 | 11.42 / 11.58 |
+| 70–80 % | 12.0 / 15.7 | 16.8 / 16.2 | 13.38 / 13.53 |
 
-- 같은 b에서 Angantyr는 **N_part가 2–15 % 적고 N_coll이 6–11 % 많다** (주변부로 갈수록 N_part 차이가 큼). 요동하는 핵자 단면적: 큰 단면적을 가진
+- 같은 b에서 Angantyr는 **N_part가 1–11 % 적고 N_coll이 4–14 % 많다** (70 % 이후는 4000사건의 통계로는 말하기 어렵다). 요동하는 핵자 단면적: 큰 단면적을 가진
   핵자는 여러 번 충돌하고(N_coll ↑), 작은 단면적을 가진 핵자는 빠진다(N_part ↓). black disk는 모든 쌍이 같은 σ.
-- σ_PbPb는 Angantyr가 측정보다 6 % 낮다 (1.8σ). σ_pPb는 둘 다 측정과 맞다.
+- σ_PbPb는 Angantyr가 측정보다 3–6 % 낮다 (1–2σ). σ_pPb는 둘 다 측정과 맞다.
 - V0M 순서와 b 순서의 N_part가 60 %까지 1 % 안에서 같다 → Pb–Pb에서 다중도 중심도는 기하를 잘 따른다.
   그 뒤로 갈라져 80–100 %에서는 10–30 % 차이 (사건마다 요동이 큰 영역).
 
@@ -69,12 +74,12 @@ Angantyr(Bierlich, Gustafson, Lönnblad, Shah, arXiv:1806.10820)는 그런 기�
 
 | | Angantyr | ALICE |
 |---|---|---|
-| p–Pb NSD, dN_ch/dη (\|η_lab\| < 0.5) | 18.40 (N_part 7.40) | 16.81 ± 0.71 (arXiv:1210.3615) → MC/data 1.09 |
+| p–Pb NSD, dN_ch/dη (\|η_lab\| < 0.5) | 18.43 (N_part 7.41) | 16.81 ± 0.71 (arXiv:1210.3615) → MC/data 1.10 |
 | p–Pb NSD, 참여자당 | 2.49 | 2.14 ± 0.17 |
-| Pb–Pb 0–5 %, dN_ch/dη (\|η\| < 0.5) | 1805 (N_part 376) | 1943 ± 54 (arXiv:1512.06104) → MC/data 0.93 |
+| Pb–Pb 0–5 %, dN_ch/dη (\|η\| < 0.5) | 1829 ± 8 (N_part 379) | 1943 ± 54 (arXiv:1512.06104) → MC/data 0.94 |
 | pp 5.02 TeV INEL>0 | 5.47 | — |
 
-- **집단 효과 없이도 중심 Pb–Pb의 다중도를 7 % 안에서 만든다.** (2/N_part) dN_ch/dη가 N_part와 함께 2 → 9.6으로
+- **집단 효과 없이도 중심 Pb–Pb의 다중도를 6 % 안에서 만든다.** (2/N_part) dN_ch/dη가 N_part와 함께 2 → 9.7로
   오르는 것은 N_coll이 N_part보다 빨리 자라서(MPI가 핵자 충돌 수를 따라감) — 참여자 스케일링이 깨지는 이유가
   "QGP"일 필요는 없다는 것을 이 기준선이 보여 준다.
 - p–Pb에서는 V0A 다중도 클래스의 (2/N_part) dN_ch/dη가 N_part에 대해 단조롭지 않다 (0–5 %에서 다시 내려감).
@@ -87,8 +92,8 @@ Angantyr(Bierlich, Gustafson, Lönnblad, Shah, arXiv:1806.10820)는 그런 기�
 | | ⟨dN_ch/dη⟩ | K/π | Λ/π | Ξ/π | Ω/π |
 |---|---|---|---|---|---|
 | PYTHIA pp 5.02 (INEL>0) | 5.5 | 0.128 | 0.022 | 0.0020 | 1 × 10⁻⁴ |
-| Angantyr p–Pb 0–5 % | 47 | 0.124 | 0.021 | 0.0019 | 1 × 10⁻⁴ |
-| Angantyr Pb–Pb 0–5 % | 1805 | 0.128 | 0.022 | 0.0019 | 1 × 10⁻⁴ |
+| Angantyr p–Pb 0–5 % | 47 | 0.124 | 0.021 | 0.0020 | 1 × 10⁻⁴ |
+| Angantyr Pb–Pb 0–5 % | 1829 | 0.129 | 0.022 | 0.0021 | 1 × 10⁻⁴ |
 | ALICE pp 13 TeV 최고 다중도 | 26 | 0.130 | 0.041 | 0.0055 | 5 × 10⁻⁴ |
 
 - **dN_ch/dη가 2에서 1800까지 늘어도 Angantyr의 기묘 입자 비는 그대로다.** Angantyr의 끈 조각화는 끈마다 독립이라,
@@ -101,7 +106,7 @@ Angantyr(Bierlich, Gustafson, Lönnblad, Shah, arXiv:1806.10820)는 그런 기�
 
 1. Angantyr는 **기하(Glauber)와 전체 다중도**의 좋은 기준선이다: σ_pPb, 중심 Pb–Pb dN_ch/dη를 10 % 안에서,
    b–중심도 관계는 Module 6과 대부분 2 % 안에서. 요동하는 핵자 단면적 때문에 N_part는 적고 N_coll은 많다 — R_AA의
-   N_coll 정규화가 Glauber 모형 선택에 5–10 % 의존한다는 뜻.
+   N_coll 정규화가 Glauber 모형 선택에 5–15 % 의존한다는 뜻.
 2. **기묘도 증가와 radial flow는 없다** — 이것이 "핵자 충돌의 합"과 실제 중이온 충돌의 차이를 재는 지표다.
    PYTHIA 안에서 이를 더하는 시도는 rope(Module 2 §15에서 pp로 시험: 증가분의 30–60 %)와 shoving.
 3. 다음: Pb–Pb 중심도별 dN_ch/dη 전체(ins1410589), Angantyr + rope/shoving의 Pb–Pb 시험, 그리고 Module 8의
