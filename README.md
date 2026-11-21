@@ -27,7 +27,7 @@
 | Module 5 | 양성자·핵 PDF (PYTHIA 내장 NNPDF2.3, EPS09) | **완료** — 합 규칙, LHC x 영역, 납의 shadowing |
 | Module 6 | Monte Carlo Glauber (Pb–Pb, p–Pb 5.02 TeV) | **완료** — σ_PbPb 7.64 b (ALICE 측정 7.67 ± 0.25), ALICE 중심도 표와 0.2–1.4 % 일치, 계통 불확실성 |
 | Module 7 | PYTHIA Angantyr p–Pb, Pb–Pb 5.02 TeV | **1차 완료** — 중심 Pb–Pb dN_ch/dη MC/data 0.94, p–Pb 1.10, σ_pPb 맞음; Glauber는 Module 6과 비교; 기묘도 증가·radial flow 없음 |
-| Module 8 | 공개 데이터 직접 분석: CMS Open Data 이중뮤온 (pp 8 TeV) | **코드·closure 완료, 데이터 실행 대기** — J/ψ, Υ(1S–3S), Z 맞춤; Module 9 Υ 억제·Z R_AA의 pp 기준 |
+| Module 8 | 공개 데이터 직접 분석: CMS Open Data 이중뮤온 (pp 8 TeV) | **완료** — 6150만 사건; 질량 척도 −0.1 %(쿼코늄)·−0.3 %(Z), Υ 분해능 0.62 %(barrel), Υ(2S)/Υ(1S) 원시 0.469 |
 
 자세한 로드맵: [`docs/roadmap.md`](docs/roadmap.md) ·
 보완 사항과 바로 다음 할 일: [`docs/next_steps.md`](docs/next_steps.md)

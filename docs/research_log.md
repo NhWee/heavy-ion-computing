@@ -420,3 +420,7 @@ WSL2에서 `git pull` 후 20,000 이벤트 → `python analysis/m02_compare_data
 - `src/hicpy/dimuon.py`: 쌍 질량, Crystal Ball, Voigt, binned Poisson 맞춤, NanoAOD 같은 toy 생성기.
 - toy closure가 잡은 것: Υ 라벨 바뀜(→ 공통 질량 척도, 간격 PDG 고정), Z 창 배경 발산(→ 정규화·범위),
   특이 헤시안(→ 배경 모양 고정 후 오차). 수율·비가 통계 안에서 돌아옴. uproot의 가지 이름 기본값(`Muon.pt`)도 명시로 고침.
+- WSL2 실데이터 (61.5 M 사건, 24 M 쌍): 단일 CB/Voigt χ²/ndf 146/142 → 이중 CB(J/ψ 4.8, Υ 1.2)·BW⊗CB(Z 15.8, barrel 3.3).
+  질량 척도 J/ψ 0.9990, Υ 0.9987, Z 0.9968 (보정 전 운동량; pT 의존). Υ(2S)/Υ(1S) 0.469 ± 0.003 ± 0.005 (원시).
+  다운로드: opendata.cern.ch HTTPS가 9번 끊김 → 이어받기로 완료 (#28).
+

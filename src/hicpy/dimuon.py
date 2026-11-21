@@ -72,9 +72,23 @@ def voigt(x, mu, sigma, gamma=GAMMA_Z):
     return special.voigt_profile(x - mu, sigma, gamma / 2)
 
 
-def background(x, x0, x1, lam, c1, c2):
+def background(x, x0, x1, lam, c1, c2, c3=0.0):
     u = (x - x0) / (x1 - x0)
-    return np.exp(-np.clip(lam, -50, 50) * u) * np.clip(1 + c1 * u + c2 * u * u, 1e-12, None)
+    return np.exp(-np.clip(lam, -50, 50) * u) * np.clip(1 + c1 * u + c2 * u * u + c3 * u ** 3, 1e-12, None)
+
+
+def bw_cb(x, mu, sigma, alpha, n, gamma=GAMMA_Z):
+    """Breit-Wigner (full width gamma) convolved with a Crystal Ball resolution
+    centred at zero: the Z line shape with the low-mass tail from final-state
+    photon radiation.  Numerical convolution on a 10 MeV grid."""
+    from scipy.signal import fftconvolve
+    lo, hi = mu - 60.0, mu + 60.0
+    g = np.arange(lo, hi, 0.01)
+    bw = (gamma / (2 * np.pi)) / ((g - mu) ** 2 + gamma ** 2 / 4)
+    k = np.arange(-30.0, 30.0 + 1e-9, 0.01)
+    cb = crystal_ball(k, 0.0, sigma, alpha, n)
+    conv = fftconvolve(bw, cb, mode="same") * 0.01
+    return np.interp(x, g, conv, left=0.0, right=0.0)
 
 
 # ----------------------------------------------------------------------------- fit
@@ -85,24 +99,33 @@ def _bin_integral(f, edges, n_sub=5):
     return f(x).mean(axis=1) * np.diff(edges)
 
 
-def fit_window(edges, counts, states, model="cb", fix=None, start=None):
+def fit_window(edges, counts, states, model="cb", fix=None, start=None, bkg_order=2):
     """Binned Poisson maximum-likelihood fit of a mass window.
 
     states: list of PDG names in this window (first = reference for the width
-    scaling).  model 'cb' (quarkonia) or 'voigt' (Z).  Returns a dict with the
+    scaling).  model: 'cb' or 'dcb' (two Crystal Balls with a common mean and
+    two widths, for a resolution that varies across the detector) for quarkonia;
+    'voigt' or 'bwcb' (Breit-Wigner x Crystal Ball, with the radiative tail)
+    for the Z.  bkg_order: degree of the polynomial times the exponential.  Returns a dict with the
     fitted masses, width, yields (with errors from the inverse Hessian), the
     background yield under each peak (+-2 sigma) and the fit quality.
     """
     edges = np.asarray(edges, float); counts = np.asarray(counts, float)
     x0, x1 = edges[0], edges[-1]; n_tot = counts.sum()
     ref = PDG[states[0]]
-    names = (["scale", "sigma"] + (["alpha", "n"] if model == "cb" else [])
-             + [f"N_{s}" for s in states] + ["N_bkg", "lam", "c1", "c2"])
-    p0 = ([1.0, 0.01 * ref if model == "cb" else 1.5] + ([1.5, 3.0] if model == "cb" else [])
-          + [0.1 * n_tot / len(states)] * len(states) + [0.5 * n_tot, 1.0, 0.0, 0.0])
+    tail = model in ("cb", "dcb", "bwcb")
+    names = (["scale", "sigma"] + (["alpha", "n"] if tail else []) + (["r2", "f2"] if model == "dcb" else [])
+             + [f"N_{s}" for s in states] + ["N_bkg", "lam", "c1", "c2", "c3"])
+    p0 = ([1.0, 0.01 * ref if model in ("cb", "dcb") else 1.5] + ([1.5, 3.0] if tail else [])
+          + ([1.8, 0.3] if model == "dcb" else [])
+          + [0.1 * n_tot / len(states)] * len(states) + [0.5 * n_tot, 1.0, 0.0, 0.0, 0.0])
     if start:
         p0 = [start.get(k, v) for k, v in zip(names, p0)]
-    fix = fix or {}
+    fix = dict(fix or {})
+    if bkg_order < 3:
+        fix.setdefault("c3", 0.0)
+    if bkg_order < 2:
+        fix.setdefault("c2", 0.0)
     free = [i for i, k in enumerate(names) if k not in fix]
 
     def unpack(q):
@@ -112,29 +135,40 @@ def fit_window(edges, counts, states, model="cb", fix=None, start=None):
             p[names.index(k)] = v
         return dict(zip(names, p))
 
+    def shape_of(par, m, sig):
+        if model == "cb":
+            return lambda x: crystal_ball(x, m, sig, par["alpha"], par["n"])
+        if model == "dcb":                          # two widths: resolution differs across the detector
+            return lambda x: ((1 - par["f2"]) * crystal_ball(x, m, sig, par["alpha"], par["n"])
+                              + par["f2"] * crystal_ball(x, m, sig * par["r2"], par["alpha"], par["n"]))
+        if model == "bwcb":
+            return lambda x: bw_cb(x, m, sig, par["alpha"], par["n"])
+        return lambda x: voigt(x, m, sig)
+
     def expected(par):
         mu = np.zeros(len(counts))
         for s in states:
             m = par["scale"] * PDG[s]; sig = par["sigma"] * PDG[s] / ref
-            if model == "cb":
-                f = lambda x, m=m, sig=sig: crystal_ball(x, m, sig, par["alpha"], par["n"])  # noqa: E731
-            else:
-                f = lambda x, m=m, sig=sig: voigt(x, m, sig)                                    # noqa: E731
-            mu += par[f"N_{s}"] * _bin_integral(f, edges)
-        bk = _bin_integral(lambda x: background(x, x0, x1, par["lam"], par["c1"], par["c2"]), edges)
+            mu += par[f"N_{s}"] * _bin_integral(shape_of(par, m, sig), edges)
+        bk = _bin_integral(lambda x: background(x, x0, x1, par["lam"], par["c1"], par["c2"], par["c3"]), edges)
         mu += par["N_bkg"] * bk / max(bk.sum(), 1e-300)
         return mu
 
     def nll(q):
         par = unpack(q)
-        if par["sigma"] <= 0 or not 0.9 < par["scale"] < 1.1 or (model == "cb" and (par["n"] <= 1.05 or abs(par["alpha"]) < 0.1)):
+        if par["sigma"] <= 0 or not 0.9 < par["scale"] < 1.1:
+            return 1e30
+        if tail and (par["n"] <= 1.05 or abs(par["alpha"]) < 0.1 or par["n"] > 200):
+            return 1e30
+        if model == "dcb" and not (1.0 < par["r2"] < 6.0 and 0.0 < par["f2"] < 0.95):
             return 1e30
         if any(par[f"N_{s}"] < 0 for s in states) or par["N_bkg"] < 0:
             return 1e30
-        if max(abs(par["lam"]), abs(par["c1"]), abs(par["c2"])) > 30:      # keep the background shape finite
+        if max(abs(par["lam"]), abs(par["c1"]), abs(par["c2"]), abs(par["c3"])) > 30:   # keep the background finite
             return 1e30
         mu = np.clip(expected(par), 1e-12, None)
-        return float(np.sum(mu - counts * np.log(mu)))
+        v = float(np.sum(mu - counts * np.log(mu)))
+        return v if np.isfinite(v) else 1e30            # a NaN would trap the simplex
 
     q0 = np.array(p0, float)[free]
     res = optimize.minimize(nll, q0, method="Nelder-Mead",
@@ -145,7 +179,7 @@ def fit_window(edges, counts, states, model="cb", fix=None, start=None):
     # background shape (lam, c1, c2), which stays at its best fit.  Where the data
     # barely constrain the shape (no continuum under the Z) the full Hessian is
     # singular and its finite differences can step into the parameter walls.
-    shape = {"lam", "c1", "c2"}
+    shape = {"lam", "c1", "c2", "c3"}
     err_idx = [k for k, i in enumerate(free) if names[i] not in shape]
     best = np.array(res.x, float)
 
@@ -172,7 +206,7 @@ def fit_window(edges, counts, states, model="cb", fix=None, start=None):
         sig = par["sigma"] * PDG[s] / ref
         out[f"m_{s}"] = float(par["scale"] * PDG[s]); out[f"m_{s}_err"] = float(err["scale"] * PDG[s])
         lo, hi = out[f"m_{s}"] - 2 * sig, out[f"m_{s}"] + 2 * sig
-        bk = _bin_integral(lambda x: background(x, x0, x1, par["lam"], par["c1"], par["c2"]), edges)
+        bk = _bin_integral(lambda x: background(x, x0, x1, par["lam"], par["c1"], par["c2"], par["c3"]), edges)
         bk = par["N_bkg"] * bk / bk.sum()
         c = 0.5 * (edges[1:] + edges[:-1]); sel = (c > lo) & (c < hi)
         out[f"S/B_{s}"] = float(par[f"N_{s}"] * 0.95 / max(bk[sel].sum(), 1e-12))

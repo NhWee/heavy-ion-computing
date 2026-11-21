@@ -124,21 +124,55 @@ def histogram(args) -> int:
 
 
 # ----------------------------------------------------------------------------- fit
+# Nominal model per window and the variations that define the fit-model
+# systematic.  Every fit starts from the simpler model's result: the
+# double Crystal Ball and the BW x CB diverge from generic starting values
+# (Upsilon all-pairs NaN, Z sigma -> 0 in the first attempt).
+NOMINAL = {"jpsi": ("dcb", 3), "upsilon": ("dcb", 3), "z": ("bwcb", 2)}
+VARIATIONS = {"jpsi": [("cb", 2, 0.0), ("dcb", 2, 0.0), ("dcb", 3, 0.1)],
+              "upsilon": [("cb", 2, 0.0), ("dcb", 2, 0.0), ("dcb", 3, 0.1)],
+              "z": [("voigt", 2, 0.0), ("bwcb", 3, 0.0), ("bwcb", 2, 0.1)]}
+
+
+def _staged(e, c, states, model, order):
+    simple = "voigt" if model in ("voigt", "bwcb") else "cb"
+    r = fit_window(e, c, states, simple, bkg_order=min(order, 2))
+    if model != simple or order > 2:
+        start = dict(r["params"]); start.setdefault("alpha", 1.5); start.setdefault("n", 3.0)
+        r = fit_window(e, c, states, model, start=start, bkg_order=order)
+    return r
+
+
+def fit_with_variations(e, c, states, window):
+    """Nominal fit plus the model / background / window variations."""
+    model, order = NOMINAL[window]
+    nominal = _staged(e, c, states, model, order)
+    out = []
+    for vm, vo, trim in VARIATIONS[window]:
+        k = int(round(trim * len(c)))
+        ee, cc = (e[k:len(e) - k], c[k:len(c) - k]) if k else (e, c)
+        r = _staged(ee, cc, states, vm, vo)
+        out.append({"model": vm, "bkg_order": vo, "window_trim": trim,
+                    "chi2_ndf": r["chi2_poisson"] / max(r["ndf"], 1), "scale": r["params"]["scale"],
+                    "yields": {st: r["params"][f"N_{st}"] for st in states}})
+    return nominal, out
+
+
 def fit(args) -> int:
     from hicpy.style import apply_style, save_figure, OKABE_ITO, plt
     h = json.loads((TAB / f"m08_hist{args.tag}.json").read_text())
     res = {"input": h["input"], "n_events_read": h["n_events_read"], "provenance": h.get("provenance"),
            "fits": {}}
+    res["systematics"] = {}
     for sel in ("all", "barrel"):
-        res["fits"][sel] = {}
+        res["fits"][sel] = {}; res["systematics"][sel] = {}
         for w, spec in h["windows"].items():
             e = np.array(spec["edges"]); c = np.array(h["hist"][sel][w], float)
             if c.sum() < 50:
                 continue
-            r = fit_window(e, c, spec["states"], spec["model"])
-            if not r["converged"]:
-                r = fit_window(e, c, spec["states"], spec["model"], start=r["params"])
-            res["fits"][sel][w] = r
+            nominal, variations = fit_with_variations(e, c, spec["states"], w)
+            res["fits"][sel][w] = nominal
+            res["systematics"][sel][w] = variations
     # summary numbers
     summ = {}
     for sel, fits in res["fits"].items():
@@ -154,11 +188,19 @@ def fit(args) -> int:
                          "sigma_over_m": p["sigma"] / PDG[ref],
                          "yield": p[f"N_{st}"], "yield_err": er[f"N_{st}"], "S/B_2sigma": r[f"S/B_{st}"]}
             s[f"chi2/ndf {w}"] = r["chi2_poisson"] / max(r["ndf"], 1)
-        for num, den in (("Upsilon(2S)", "Upsilon(1S)"), ("Upsilon(3S)", "Upsilon(1S)"), ("psi(2S)", "J/psi")):
+        for num, den, w in (("Upsilon(2S)", "Upsilon(1S)", "upsilon"), ("Upsilon(3S)", "Upsilon(1S)", "upsilon"),
+                            ("psi(2S)", "J/psi", "jpsi")):
             if num in s and den in s:
                 rr = s[num]["yield"] / s[den]["yield"]
+                var = [v["yields"][num] / v["yields"][den] for v in res["systematics"][sel].get(w, [])
+                       if v["yields"][den] > 0]
                 s[f"{num}/{den}"] = {"ratio": rr, "err": rr * np.hypot(s[num]["yield_err"] / s[num]["yield"],
-                                                                       s[den]["yield_err"] / s[den]["yield"])}
+                                                                       s[den]["yield_err"] / s[den]["yield"]),
+                                     "syst": float(max(abs(v - rr) for v in var)) if var else None,
+                                     "variations": var}
+        for w, vs in res["systematics"][sel].items():
+            ref_scale = fits[w]["params"]["scale"]
+            s[f"scale_syst {w}"] = float(max(abs(v["scale"] - ref_scale) for v in vs)) if vs else None
         summ[sel] = s
     res["summary"] = summ
     FIG.mkdir(parents=True, exist_ok=True)
@@ -175,7 +217,10 @@ def fit(args) -> int:
                       + (f"{v['S/B_2sigma']:.2f}" if v['S/B_2sigma'] < 1e3 else "> 1000"))
         for k, v in s.items():
             if isinstance(v, dict) and "ratio" in v:
-                print(f"  {k:24s} = {v['ratio']:.4f} +- {v['err']:.4f}  (raw yields: no acceptance correction)")
+                print(f"  {k:24s} = {v['ratio']:.4f} +- {v['err']:.4f} (stat) +- {v['syst'] or 0:.4f} (fit model)"
+                      "  [raw yields: no acceptance correction]")
+            elif k.startswith("scale_syst") and v is not None:
+                print(f"  {k} = {v:.5f}")
             elif k.startswith("chi2"):
                 print(f"  {k} = {v:.2f}")
 
