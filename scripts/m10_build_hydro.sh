@@ -27,8 +27,10 @@ for t in git cmake make; do
 done
 command -v c++ >/dev/null || command -v g++ >/dev/null || { echo "ERROR: no C++ compiler (conda activate hic)"; exit 1; }
 
+# MUSIC and iSS declare cmake_minimum_required below 3.5; CMake >= 4 refuses that
+# unless told the minimum policy version (older CMake ignores this variable).
 # conda provides GSL/zlib under $CONDA_PREFIX; cmake's FindGSL looks at GSL_ROOT_DIR
-CMAKE_EXTRA=()
+CMAKE_EXTRA=("-DCMAKE_POLICY_VERSION_MINIMUM=3.5")
 if [[ -n "${CONDA_PREFIX:-}" && -f "$CONDA_PREFIX/include/gsl/gsl_math.h" ]]; then
   CMAKE_EXTRA+=("-DGSL_ROOT_DIR=$CONDA_PREFIX" "-DCMAKE_PREFIX_PATH=$CONDA_PREFIX")
 elif [[ ! -f /usr/include/gsl/gsl_math.h ]]; then

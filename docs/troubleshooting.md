@@ -633,3 +633,17 @@ provenance를 쓴다. eospublic HTTPS는 쓰지 않는다 (TLS 검증을 끄지 
 parton이 자기 방향으로 손실. 결과: 10–30 GeV n_eff 209 → 1465 (60만 사건), v₂가 중심도에 매끄러움.
 **배운 점**: 가중 표본은 사건 수가 아니라 n_eff로 판단한다 — 출력에 늘 찍는다. 생성기의 "하드" 모드가 물리적인 영역을 확인한다
 (구간 단면적이 전체보다 크면 그 영역은 쓰면 안 된다).
+
+## #30 MUSIC/iSS 빌드: CMake 4가 `cmake_minimum_required` < 3.5를 거부
+
+**증상** (WSL2 `hic`, conda-forge cmake 4.x): `bash scripts/run_all_pythia.sh m10` →
+`CMake Error at CMakeLists.txt:1 (cmake_minimum_required): Compatibility with CMake < 3.5 has been removed from CMake.`
+클라우드(cmake 3.28)에서는 경고만 나오고 빌드되었다.
+
+**원인**: MUSIC·iSS의 CMakeLists.txt가 3.5보다 낮은 최소 버전을 적고 있고, CMake 4.0부터 그 호환 모드가 없어졌다.
+환경 잠금 파일(`environment/hic_explicit_lock.txt`)의 cmake가 4.4.
+
+**고침**: `scripts/m10_build_hydro.sh`가 `-DCMAKE_POLICY_VERSION_MINIMUM=3.5`를 넘긴다 (CMake가 오류 메시지에서 제안하는 방법;
+3.x는 이 변수를 무시). 외부 코드는 고치지 않는다 — 고정 커밋 그대로. 클라우드에서 PyPI cmake 4.4.5로 실패를 재현하고 고친 뒤 빌드됨을 확인.
+
+**교훈**: 외부 C++ 코드를 고정 커밋으로 받아도 **빌드 도구의 버전**은 고정되지 않는다. 클라우드와 WSL의 cmake 주 버전이 달랐다.
