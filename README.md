@@ -29,7 +29,7 @@
 | Module 7 | PYTHIA Angantyr p–Pb, Pb–Pb 5.02 TeV | **1차 완료** — 중심 Pb–Pb dN_ch/dη MC/data 0.94, p–Pb 1.10, σ_pPb 맞음; Glauber는 Module 6과 비교; 기묘도 증가·radial flow 없음 |
 | Module 8 | 공개 데이터 직접 분석: CMS Open Data 이중뮤온 (pp 8 TeV) | **완료** — 6150만 사건; 질량 척도 −0.1 %(쿼코늄)·−0.3 %(Z), Υ 분해능 0.62 %(barrel), Υ(2S)/Υ(1S) 원시 0.469 |
 | Module 9 | Jet quenching: Glauber 기하 위 에너지 손실 | **1차 완료 (모형)** — κ 하나를 CMS R_AA(0–5 %, 6–9 GeV) = 0.13에 맞추면 중심도 의존이 나오고, pT 의존과 고 pT v₂가 L·L²·에너지 의존을 가름 (v₂는 L² 쪽); 이중 제트 A_J는 손실 요동과 겹쳐 L·L²를 못 가름; 전체 측정 비교 대기 |
-| Module 10 | 점성 유체역학: MUSIC + iSS, Glauber 초기 조건 | **1차 완료 (클라우드)** — s_factor 하나를 0–5 % dN_ch/dη에 맞추면 v₂(0.03 → 0.12), v₃, π/K/p의 질량 순서 ⟨pT⟩·v₂(pT)가 나옴 (Angantyr에 없던 것); η/s는 v_n을 (v₃가 더 민감), ζ/s는 ⟨pT⟩를 바꿈; 측정 비교 대기 |
+| Module 10 | 점성 유체역학: MUSIC + iSS, Glauber 초기 조건 | **완료 (모형, WSL2 정식)** — s_factor 하나를 0–5 % dN_ch/dη에 맞추면 v₂(0.033 → 0.118), v₃, π/K/p의 질량 순서 ⟨pT⟩·v₂(pT)가 나옴 (Angantyr에 없던 것); η/s는 v_n을 (v₃가 더 민감, 작은 계에서 더 큼), ζ/s는 ⟨pT⟩를 −23 % 바꿈; 측정 비교 대기 |
 
 자세한 로드맵: [`docs/roadmap.md`](docs/roadmap.md) ·
 보완 사항과 바로 다음 할 일: [`docs/next_steps.md`](docs/next_steps.md)

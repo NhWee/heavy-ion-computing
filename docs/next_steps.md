@@ -140,9 +140,8 @@ dN_ch/dη (HEPData ins1410589 Table 1을 받아 `data/raw/`에), Angantyr + rope
 `docs/modules/module09_quenching.md`. 남은 것: WSL2 큰 통계 (`bash scripts/run_all_pythia.sh m09`), CMS HIN-15-015 HEPData
 R_AA 표와 고 pT v₂ 비교, 이중 제트 비대칭 A_J.
 
-### Step 11 — Module 10 점성 유체역학 (MUSIC + iSS) 🔄 (2026-11-21)
-`docs/modules/module10_hydro.md`. 클라우드 1차 (nominal 구간당 6 사건, 변형 3 사건). 남은 것:
-- WSL2 큰 통계: `bash scripts/run_all_pythia.sh m10` (MUSIC·iSS 빌드 포함, 16코어 ~3시간).
+### Step 11 — Module 10 점성 유체역학 (MUSIC + iSS) ✅ 모형 (2026-11-22)
+`docs/modules/module10_hydro.md`. WSL2 정식 (nominal 구간당 30, 변형 20 사건; cmake 4 빌드 문제는 #30). 남은 것:
 - ALICE Pb–Pb 5.02 TeV 측정과의 직접 비교 (HEPData, 클라우드에서 접속 불가): 하전입자 v_n (arXiv:1602.01119),
   π/K/p 스펙트럼·⟨pT⟩ (arXiv:1910.07678), 중심도별 dN_ch/dη (arXiv:1512.06104, HEPData ins1410589).
 - 강입자 재산란 (SMASH 또는 UrQMD), pre-equilibrium 흐름 (free streaming), JETSCAPE.
